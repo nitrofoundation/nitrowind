@@ -7,7 +7,6 @@
  */
 import { useRouter, type Href } from "expo-router";
 import { FlatList, Pressable, Text, View } from "nitrowind";
-import {} from "react-native";
 import { ThemeToggle } from "../components/ui";
 
 type Page = {
@@ -88,6 +87,13 @@ const PAGES: Page[] = [
     subtitle: "RN gap support and Nitrowind grid engine status",
     icon: "#",
     tile: "bg-cyan-500",
+  },
+  {
+    route: "/lists",
+    title: "Nitrolist",
+    subtitle: "LazyVStack and LazyHStack virtual windows",
+    icon: "[]",
+    tile: "bg-blue-500",
   },
   {
     route: "/profiling",

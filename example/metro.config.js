@@ -1,8 +1,25 @@
 const { getDefaultConfig } = require("expo/metro-config");
+const path = require("path");
 const { withNitrowindMetroConfig } = require("nitrowind/metro");
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
+const workspaceRoot = path.resolve(__dirname, "..");
+
+config.watchFolders = Array.from(
+  new Set([...(config.watchFolders ?? []), workspaceRoot]),
+);
+config.resolver = {
+  ...config.resolver,
+  nodeModulesPaths: [
+    path.resolve(__dirname, "node_modules"),
+    path.resolve(workspaceRoot, "node_modules"),
+  ],
+  extraNodeModules: {
+    ...(config.resolver?.extraNodeModules ?? {}),
+    nitrolist: path.resolve(workspaceRoot, "packages/nitrolist"),
+  },
+};
 
 // Wrap Expo's Metro config with nitrowind's transformer so Tailwind class names
 // are compiled to native style payloads at bundle time.

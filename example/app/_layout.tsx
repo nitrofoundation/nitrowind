@@ -53,6 +53,7 @@ export default function RootLayout() {
           />
           <Stack.Screen name="pseudo" options={{ title: "Pseudo Selectors" }} />
           <Stack.Screen name="grid" options={{ title: "Grid" }} />
+          <Stack.Screen name="lists" options={{ title: "Nitrolist" }} />
           <Stack.Screen name="profiling" options={{ title: "Profiling" }} />
         </Stack>
       </SafeAreaProvider>

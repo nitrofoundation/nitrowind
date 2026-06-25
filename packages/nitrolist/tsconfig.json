@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "types": ["node", "react", "react-native"],
+    "noEmit": true
+  },
+  "include": ["src", "nitro.json"],
+  "exclude": ["node_modules", "lib", "nitrogen/generated", "**/__tests__"]
+}

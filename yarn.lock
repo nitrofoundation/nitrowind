@@ -6633,6 +6633,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nitrolist@workspace:*, nitrolist@workspace:packages/nitrolist":
+  version: 0.0.0-use.local
+  resolution: "nitrolist@workspace:packages/nitrolist"
+  dependencies:
+    "@types/node": "npm:^22.12.0"
+    "@types/react": "npm:19.2.17"
+    nitrogen: "npm:0.35.9"
+    react: "npm:19.2.3"
+    react-native: "npm:0.85.3"
+    react-native-builder-bob: "npm:0.40.13"
+    react-native-nitro-modules: "npm:0.35.9"
+    rimraf: "npm:6.0.1"
+    typescript: "npm:5.9.2"
+    vitest: "npm:3.2.4"
+  peerDependencies:
+    react: ">=19.0.0"
+    react-native: ">=0.85.0"
+    react-native-nitro-modules: ">=0.35.0"
+  languageName: unknown
+  linkType: soft
+
 "nitrowind-example@workspace:example":
   version: 0.0.0-use.local
   resolution: "nitrowind-example@workspace:example"
@@ -6646,6 +6667,7 @@ __metadata:
     expo-linking: "npm:~56.0.14"
     expo-router: "npm:~56.2.11"
     expo-status-bar: "npm:~56.0.4"
+    nitrolist: "workspace:*"
     nitrowind: "workspace:*"
     react: "npm:19.2.3"
     react-dom: "npm:19.2.3"
