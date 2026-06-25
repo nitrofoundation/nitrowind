@@ -1,0 +1,154 @@
+{
+  "name": "nitrowind",
+  "version": "0.1.0",
+  "description": "The fastest Tailwind bindings for React Native — fully open-source native C++ ShadowTree engine. Free for everyone.",
+  "license": "MIT",
+  "author": "Nitrowind contributors",
+  "repository": "https://github.com/nitrowind/nitrowind",
+  "homepage": "https://github.com/nitrowind/nitrowind",
+  "type": "module",
+  "source": "./src/index.ts",
+  "main": "./lib/commonjs/index.js",
+  "module": "./lib/module/index.js",
+  "types": "./lib/typescript/commonjs/index.d.ts",
+  "react-native": "./src/index.ts",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "react-native": "./src/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/index.d.ts",
+        "default": "./lib/module/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/index.d.ts",
+        "default": "./lib/commonjs/index.js"
+      }
+    },
+    "./components": {
+      "source": "./src/components/index.ts",
+      "react-native": "./src/components/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/components/index.d.ts",
+        "default": "./lib/module/components/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/components/index.d.ts",
+        "default": "./lib/commonjs/components/index.js"
+      }
+    },
+    "./compiler": {
+      "source": "./src/compiler/index.ts",
+      "react-native": "./src/compiler/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/compiler/index.d.ts",
+        "default": "./lib/module/compiler/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/compiler/index.d.ts",
+        "default": "./lib/commonjs/compiler/index.js"
+      }
+    },
+    "./metro": {
+      "source": "./src/metro/index.ts",
+      "types": "./lib/typescript/commonjs/metro/index.d.ts",
+      "default": "./lib/commonjs/metro/index.js"
+    },
+    "./metro/transformer": {
+      "source": "./src/metro/transformer.ts",
+      "default": "./lib/commonjs/metro/transformer.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "cpp",
+    "ios",
+    "android",
+    "nitrogen/generated",
+    "nitro.json",
+    "Nitrowind.podspec",
+    "react-native.config.js",
+    "LICENSE",
+    "!**/__tests__",
+    "!**/*.tsbuildinfo"
+  ],
+  "scripts": {
+    "nitrogen": "nitrogen",
+    "build": "bob build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "oxlint src",
+    "clean": "rimraf lib nitrogen/generated"
+  },
+  "dependencies": {
+    "@tailwindcss/node": "4.3.1",
+    "@tailwindcss/oxide": "4.3.1",
+    "culori": "4.0.2",
+    "lightningcss": "1.32.0"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-native": ">=0.85.0",
+    "react-native-nitro-modules": ">=0.35.0",
+    "tailwindcss": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native-reanimated": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/culori": "2.1.1",
+    "@types/node": "^22.12.0",
+    "@types/react": "19.2.17",
+    "nitrogen": "0.35.9",
+    "react": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-builder-bob": "0.40.13",
+    "react-native-nitro-modules": "0.35.9",
+    "rimraf": "6.0.1",
+    "tailwindcss": "4.3.1",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  },
+  "codegenConfig": {
+    "name": "TurboNitrowind",
+    "type": "modules",
+    "jsSrcsDir": "./src/specs"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "commonjs",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      "typescript"
+    ]
+  },
+  "keywords": [
+    "react-native",
+    "tailwind",
+    "tailwindcss",
+    "nitro",
+    "nitro-modules",
+    "fabric",
+    "shadowtree",
+    "styling",
+    "theme"
+  ]
+}

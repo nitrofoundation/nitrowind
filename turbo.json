@@ -1,0 +1,20 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "lib/**"]
+    },
+    "nitrogen": {
+      "cache": false,
+      "outputs": ["nitrogen/generated/**"]
+    },
+    "typecheck": {},
+    "test": {},
+    "lint": {},
+    "clean": {
+      "cache": false
+    }
+  }
+}

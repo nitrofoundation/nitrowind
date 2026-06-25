@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 design tokens. `@theme` tokens become utilities, e.g.
+ * `--color-primary` → `bg-primary` / `text-primary`. The `.dark` block
+ * overrides tokens when the dark color scheme is active; the nitrowind engine
+ * swaps these CSS variables natively (no React re-render).
+ */
+@theme {
+  --color-primary: #6d28d9;
+  --color-primary-foreground: #f5f3ff;
+  --color-accent: #ec4899;
+  --color-accent-foreground: #fdf2f8;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f3f4f6;
+  --color-on-surface: #111827;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+
+  --radius-card: 16px;
+}
+
+.dark {
+  --color-primary: #a78bfa;
+  --color-primary-foreground: #1e1b4b;
+  --color-accent: #f472b6;
+  --color-accent-foreground: #500724;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-surface: #0b1020;
+  --color-surface-elevated: #161b2e;
+  --color-on-surface: #f9fafb;
+  --color-muted: #9ca3af;
+  --color-border: #1f2937;
+}
+
+[data-theme="ocean"] {
+  --color-primary: #0284c7;
+  --color-primary-foreground: #f0f9ff;
+  --color-accent: #0d9488;
+  --color-accent-foreground: #ecfeff;
+  --color-success: #059669;
+  --color-warning: #ca8a04;
+  --color-danger: #e11d48;
+  --color-surface: #f8fafc;
+  --color-surface-elevated: #e0f2fe;
+  --color-on-surface: #082f49;
+  --color-muted: #0369a1;
+  --color-border: #7dd3fc;
+}
+
+[data-theme="ember"] {
+  --color-primary: #c2410c;
+  --color-primary-foreground: #fff7ed;
+  --color-accent: #be123c;
+  --color-accent-foreground: #fff1f2;
+  --color-success: #15803d;
+  --color-warning: #f59e0b;
+  --color-danger: #b91c1c;
+  --color-surface: #fffbeb;
+  --color-surface-elevated: #fed7aa;
+  --color-on-surface: #431407;
+  --color-muted: #9a3412;
+  --color-border: #fdba74;
+}
+
+[data-theme="graphite"] {
+  --color-primary: #475569;
+  --color-primary-foreground: #f8fafc;
+  --color-accent: #7c3aed;
+  --color-accent-foreground: #f5f3ff;
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-danger: #ef4444;
+  --color-surface: #111827;
+  --color-surface-elevated: #1f2937;
+  --color-on-surface: #f9fafb;
+  --color-muted: #cbd5e1;
+  --color-border: #334155;
+}

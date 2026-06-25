@@ -1,0 +1,417 @@
+#include "NitrowindCore.hpp"
+
+#include "../fabric/LayoutObserver.hpp"
+#include "../fabric/ShadowTreeMutator.hpp"
+
+#include <cstdint>
+#include <cmath>
+
+namespace nitrowind {
+
+using namespace facebook::react;
+
+namespace {
+
+bool isHexDigit(char c) {
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+      (c >= 'A' && c <= 'F');
+}
+
+uint8_t hexValue(char c) {
+  if (c >= '0' && c <= '9') return static_cast<uint8_t>(c - '0');
+  if (c >= 'a' && c <= 'f') return static_cast<uint8_t>(10 + c - 'a');
+  return static_cast<uint8_t>(10 + c - 'A');
+}
+
+bool parseHexColor(const std::string& value, int64_t& out) {
+  if (value.empty() || value[0] != '#') return false;
+  const std::size_t len = value.size() - 1;
+  if (len != 3 && len != 4 && len != 6 && len != 8) return false;
+  for (std::size_t i = 1; i < value.size(); ++i) {
+    if (!isHexDigit(value[i])) return false;
+  }
+
+  auto nibble = [&](std::size_t i) { return hexValue(value[i]); };
+  uint8_t r = 0;
+  uint8_t g = 0;
+  uint8_t b = 0;
+  uint8_t a = 0xff;
+  if (len == 3 || len == 4) {
+    r = static_cast<uint8_t>((nibble(1) << 4) | nibble(1));
+    g = static_cast<uint8_t>((nibble(2) << 4) | nibble(2));
+    b = static_cast<uint8_t>((nibble(3) << 4) | nibble(3));
+    if (len == 4) a = static_cast<uint8_t>((nibble(4) << 4) | nibble(4));
+  } else {
+    r = static_cast<uint8_t>((nibble(1) << 4) | nibble(2));
+    g = static_cast<uint8_t>((nibble(3) << 4) | nibble(4));
+    b = static_cast<uint8_t>((nibble(5) << 4) | nibble(6));
+    if (len == 8) a = static_cast<uint8_t>((nibble(7) << 4) | nibble(8));
+  }
+
+  uint32_t processed =
+      (static_cast<uint32_t>(a) << 24) |
+      (static_cast<uint32_t>(r) << 16) |
+      (static_cast<uint32_t>(g) << 8) |
+      static_cast<uint32_t>(b);
+#if defined(__ANDROID__)
+  out = static_cast<int32_t>(processed);
+#else
+  out = static_cast<int64_t>(processed);
+#endif
+  return true;
+}
+
+bool isColorProp(const folly::dynamic& key) {
+  if (!key.isString()) return false;
+  const auto& prop = key.getString();
+  return prop == "color" || prop == "backgroundColor" ||
+      prop == "borderColor" || prop == "borderTopColor" ||
+      prop == "borderRightColor" || prop == "borderBottomColor" ||
+      prop == "borderLeftColor" || prop == "borderStartColor" ||
+      prop == "borderEndColor" || prop == "shadowColor" ||
+      prop == "textShadowColor" || prop == "tintColor" ||
+      prop == "textDecorationColor" || prop == "placeholderTextColor" ||
+      prop == "cursorColor" || prop == "selectionColor" ||
+      prop == "selectionHandleColor" || prop == "underlineColorAndroid" ||
+      prop == "overlayColor" || prop == "accentColor" || prop == "fill" ||
+      prop == "stroke" || prop == "thumbColor" ||
+      prop == "trackColorFalse" || prop == "trackColorTrue";
+}
+
+void processColorProps(folly::dynamic& style) {
+  if (!style.isObject()) return;
+  for (const auto& pair : style.items()) {
+    if (!isColorProp(pair.first) || !pair.second.isString()) continue;
+    int64_t processed = 0;
+    if (parseHexColor(pair.second.getString(), processed)) {
+      style[pair.first] = processed;
+    }
+  }
+}
+
+} // namespace
+
+NitrowindCore& NitrowindCore::shared() {
+  static NitrowindCore instance;
+  return instance;
+}
+
+// --- Runtime ---------------------------------------------------------------
+
+RuntimeState NitrowindCore::runtimeState() const {
+  std::lock_guard<std::mutex> lock(stateMutex_);
+  return state_;
+}
+
+void NitrowindCore::setRuntimeState(const RuntimeState& next) {
+  uint32_t changed;
+  {
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    changed = diffStates(state_, next);
+    state_ = next;
+  }
+  if (changed != 0) {
+    styleEngine_.setTheme(next.currentThemeName);
+    recompute(changed);
+    if ((changed & (depFlag(Dependency::Dimensions) |
+                    depFlag(Dependency::Orientation) |
+                    depFlag(Dependency::Insets))) != 0) {
+      LayoutObserver::shared().remeasure();
+    }
+    notifyDependencyListeners(changed);
+  }
+}
+
+void NitrowindCore::setTheme(const std::string& themeName) {
+  styleEngine_.setTheme(themeName);
+  {
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    state_.currentThemeName = themeName;
+  }
+  const uint32_t changed = depFlag(Dependency::Theme);
+  recompute(changed);
+  notifyDependencyListeners(changed);
+}
+
+std::string NitrowindCore::currentTheme() const {
+  return styleEngine_.currentTheme();
+}
+
+bool NitrowindCore::hasAdaptiveThemes() const {
+  std::lock_guard<std::mutex> lock(stateMutex_);
+  return state_.hasAdaptiveThemes;
+}
+
+// --- Registry --------------------------------------------------------------
+
+void NitrowindCore::link(Tag tag,
+                         ShadowNodeFamily::Shared family,
+                         SurfaceId surfaceId,
+                         std::string className,
+                         std::string componentName,
+                         uint32_t dependencyMask,
+                         ResolveContext context,
+                         SharedFolly inlineStyle,
+                         std::vector<LinkedAccent> accents,
+                         Tag containerTag) {
+  LinkedNode node;
+  node.tag = tag;
+  node.family = std::move(family);
+  node.surfaceId = surfaceId;
+  node.className = std::move(className);
+  node.componentName = std::move(componentName);
+  // Fold in the engine's own knowledge of the class's dependencies so callers
+  // can't under-report and miss updates.
+  node.dependencyMask = dependencyMask | styleEngine_.dependencyMask(node.className);
+  node.context = std::move(context);
+  node.inlineStyle = std::move(inlineStyle);
+  node.accents = std::move(accents);
+  for (const auto& accent : node.accents) {
+    node.dependencyMask |= accent.dependencyMask |
+        styleEngine_.dependencyMask(accent.className);
+  }
+  node.containerTag = containerTag;
+  node.isContainer =
+      styleEngine_.resolveContainerMarker(node.className, node.containerName);
+    const bool readsContainerSize =
+      (node.dependencyMask & depFlag(Dependency::ContainerSize)) != 0;
+  index_.add(node);
+
+  // Track container markers so the layout observer knows which mounted nodes to
+  // measure (and can skip the whole pass when no containers exist).
+  if (node.isContainer) {
+    {
+      std::lock_guard<std::mutex> lock(containerMutex_);
+      containerTags_[tag] = node.containerName;
+    }
+  }
+
+  if (node.isContainer || readsContainerSize) {
+    // `link` runs from a React ref callback, which fires *after* Fabric's
+    // `shadowTreeDidMount` for the commit that mounted this node. Both sides can
+    // arrive in either order: a container may be known before its query children,
+    // or a query child may be known before its nearest container. Kick an
+    // immediate measurement/association pass from both link paths so static
+    // screens do not wait for an unrelated later commit.
+    LayoutObserver::shared().remeasure();
+  }
+}
+
+void NitrowindCore::unlink(Tag tag) {
+  index_.remove(tag);
+  std::lock_guard<std::mutex> lock(containerMutex_);
+  auto it = containerTags_.find(tag);
+  if (it != containerTags_.end()) {
+    if (!it->second.empty()) namedContainerSizes_.erase(it->second);
+    containerTags_.erase(it);
+  }
+  containerSizes_.erase(tag);
+}
+
+void NitrowindCore::suspend(Tag tag) {
+  index_.setSuspended(tag, true);
+}
+
+bool NitrowindCore::updateShadowTree(
+    const std::unordered_map<Tag, SharedFolly>& mutations) {
+  std::vector<NodeMutation> batch;
+  batch.reserve(mutations.size());
+  for (const auto& entry : mutations) {
+    LinkedNode node;
+    if (!index_.tryGet(entry.first, node) || node.family == nullptr) continue;
+    folly::dynamic props = entry.second && entry.second->isObject()
+                               ? *entry.second
+                               : folly::dynamic::object();
+    processColorProps(props);
+    batch.push_back({node.family, node.surfaceId, std::move(props)});
+  }
+  if (batch.empty()) return false;
+  return ShadowTreeMutator::commit(batch);
+}
+
+folly::dynamic NitrowindCore::resolveAccent(const LinkedAccent& accent,
+                                            const ResolveContext& ctx) {
+  uint32_t mask = 0;
+  folly::dynamic style = styleEngine_.resolve(accent.className, ctx, mask);
+  processColorProps(style);
+
+  folly::dynamic props = folly::dynamic::object();
+  auto copyValue = [&](const std::string& key) -> bool {
+    if (auto* value = style.get_ptr(key); value != nullptr) {
+      props[accent.propName] = *value;
+      return true;
+    }
+    return false;
+  };
+
+  copyValue("accentColor") || copyValue(accent.propName) || copyValue("color") ||
+      copyValue("tintColor") || copyValue("fill") || copyValue("stroke") ||
+      copyValue("backgroundColor") || copyValue("borderColor");
+  return props;
+}
+
+// --- Container queries ------------------------------------------------------
+
+void NitrowindCore::setContainerSize(Tag containerTag,
+                                     const std::string& name,
+                                     double width,
+                                     double height) {
+  bool changed = false;
+  {
+    std::lock_guard<std::mutex> lock(containerMutex_);
+    auto& entry = containerSizes_[containerTag];
+    if (std::isnan(width)) width = entry.first;
+    if (std::isnan(height)) height = entry.second;
+    if (entry.first != width || entry.second != height) {
+      entry = {width, height};
+      changed = true;
+    }
+    if (!name.empty()) {
+      auto& named = namedContainerSizes_[name];
+      if (std::isnan(width)) width = named.first;
+      if (std::isnan(height)) height = named.second;
+      if (named.first != width || named.second != height) {
+        named = {width, height};
+        changed = true;
+      }
+    }
+  }
+  // Container size feeds only container-query buckets; nothing to do otherwise.
+  if (changed) {
+    recompute(depFlag(Dependency::ContainerSize));
+  }
+}
+
+void NitrowindCore::syncContainers(
+    const std::vector<ContainerMeasurement>& measurements,
+    const std::unordered_map<Tag, Tag>& nodeToContainer,
+    bool forceRecompute) {
+  bool changed = false;
+  {
+    std::lock_guard<std::mutex> lock(containerMutex_);
+    for (const auto& m : measurements) {
+      auto& entry = containerSizes_[m.tag];
+      if (entry.first != m.width || entry.second != m.height) {
+        entry = {m.width, m.height};
+        changed = true;
+      }
+      if (!m.name.empty()) {
+        auto& named = namedContainerSizes_[m.name];
+        if (named.first != m.width || named.second != m.height) {
+          named = {m.width, m.height};
+          changed = true;
+        }
+      }
+    }
+  }
+  // Bind each query node to its nearest enclosing container (discovered
+  // structurally from the mounted tree, so no JS plumbing is needed).
+  for (const auto& entry : nodeToContainer) {
+    if (index_.setContainerTag(entry.first, entry.second)) changed = true;
+  }
+  if (changed || (forceRecompute && !nodeToContainer.empty())) {
+    recompute(depFlag(Dependency::ContainerSize));
+  }
+}
+
+std::unordered_map<Tag, std::string> NitrowindCore::containerTags() const {
+  std::lock_guard<std::mutex> lock(containerMutex_);
+  return containerTags_;
+}
+
+std::unordered_set<Tag> NitrowindCore::containerQueryTags() const {
+  return index_.tagsForBit(static_cast<uint32_t>(Dependency::ContainerSize));
+}
+
+void NitrowindCore::applyContainerSizes(ResolveContext& ctx,
+                                        const LinkedNode& node) const {
+  std::lock_guard<std::mutex> lock(containerMutex_);
+  if (node.containerTag != 0) {
+    auto it = containerSizes_.find(node.containerTag);
+    if (it != containerSizes_.end()) {
+      ctx.hasContainer = true;
+      ctx.containerWidth = it->second.first;
+      ctx.containerHeight = it->second.second;
+    }
+  }
+  if (!namedContainerSizes_.empty()) {
+    ctx.namedContainerSizes = namedContainerSizes_;
+  }
+}
+
+// --- Recompute -------------------------------------------------------------
+
+folly::dynamic NitrowindCore::resolveForNode(const LinkedNode& node,
+                                             const ResolveContext& ctx) {
+  ResolveContext nodeCtx = ctx;
+  nodeCtx.isFocused = node.context.isFocused;
+  nodeCtx.isActive = node.context.isActive;
+  nodeCtx.isDisabled = node.context.isDisabled;
+  nodeCtx.isHovered = node.context.isHovered;
+  nodeCtx.isFirstChild = node.context.isFirstChild;
+  nodeCtx.isLastChild = node.context.isLastChild;
+  applyContainerSizes(nodeCtx, node);
+  uint32_t mask = 0;
+  folly::dynamic style = styleEngine_.resolve(node.className, nodeCtx, mask);
+  if (node.inlineStyle && node.inlineStyle->isObject()) {
+    mergeFolly(style, *node.inlineStyle);
+  }
+  processColorProps(style);
+  return style;
+}
+
+void NitrowindCore::recompute(uint32_t changedMask) {
+  const ResolveContext ctx = runtimeState().toContext();
+  std::vector<NodeMutation> batch;
+
+  index_.forEachAffected(changedMask, [&](const LinkedNode& node) {
+    folly::dynamic props = resolveForNode(node, ctx);
+    for (const auto& accent : node.accents) {
+      const auto accentMask = accent.dependencyMask |
+          styleEngine_.dependencyMask(accent.className);
+      if ((changedMask & accentMask) == 0) continue;
+
+      folly::dynamic accentProps = resolveAccent(accent, ctx);
+      if (!accentProps.isObject()) continue;
+      for (const auto& pair : accentProps.items()) {
+        props[pair.first] = pair.second;
+      }
+    }
+    batch.push_back({node.family, node.surfaceId, std::move(props)});
+  });
+
+  if (!batch.empty()) {
+    ShadowTreeMutator::commit(batch);
+  }
+}
+
+// --- Listeners -------------------------------------------------------------
+
+int NitrowindCore::addDependencyListener(DependencyListener listener) {
+  std::lock_guard<std::mutex> lock(listenerMutex_);
+  const int id = nextListenerId_++;
+  dependencyListeners_.emplace(id, std::move(listener));
+  return id;
+}
+
+void NitrowindCore::removeDependencyListener(int id) {
+  std::lock_guard<std::mutex> lock(listenerMutex_);
+  dependencyListeners_.erase(id);
+}
+
+void NitrowindCore::setResolveListener(ResolveListener listener) {
+  std::lock_guard<std::mutex> lock(listenerMutex_);
+  resolveListener_ = std::move(listener);
+}
+
+void NitrowindCore::notifyDependencyListeners(uint32_t changedMask) {
+  std::vector<DependencyListener> snapshot;
+  {
+    std::lock_guard<std::mutex> lock(listenerMutex_);
+    snapshot.reserve(dependencyListeners_.size());
+    for (const auto& entry : dependencyListeners_) snapshot.push_back(entry.second);
+  }
+  for (const auto& listener : snapshot) listener(changedMask);
+}
+
+} // namespace nitrowind

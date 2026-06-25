@@ -1,0 +1,60 @@
+#pragma once
+
+#include "LinkedNode.hpp"
+
+#include <array>
+#include <cstdint>
+#include <functional>
+#include <mutex>
+#include <react/renderer/core/ShadowNode.h>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+namespace nitrowind {
+
+/**
+ * Tracks every linked node and indexes them by the dependencies they read, so
+ * that when a runtime value changes we can find the affected nodes in O(k)
+ * instead of scanning the whole tree.
+ */
+class DependencyIndex {
+public:
+  void add(const LinkedNode& node);
+  void remove(facebook::react::Tag tag);
+  void setSuspended(facebook::react::Tag tag, bool suspended);
+  bool contains(facebook::react::Tag tag) const;
+  bool tryGet(facebook::react::Tag tag, LinkedNode& out) const;
+
+  /** Update the inline style of an already-linked node. */
+  void updateInlineStyle(facebook::react::Tag tag, SharedFolly style);
+
+  /**
+   * Point a node at its nearest enclosing container (by Fabric tag). Called by
+   * the layout layer once the tree is mounted. Returns true if the association
+   * actually changed (so the caller knows a recompute is warranted).
+   */
+  bool setContainerTag(facebook::react::Tag tag, facebook::react::Tag containerTag);
+
+  /** Snapshot of every active tag that reads the given dependency bit. */
+  std::unordered_set<facebook::react::Tag> tagsForBit(uint32_t bitIndex) const;
+
+  /** Visit every active node whose dependency mask intersects `changedMask`. */
+  void forEachAffected(uint32_t changedMask,
+                       const std::function<void(const LinkedNode&)>& visitor) const;
+
+  /** Visit every active node (e.g. for a full recompute). */
+  void forEachActive(const std::function<void(const LinkedNode&)>& visitor) const;
+
+  std::size_t size() const;
+
+private:
+  void indexByBits(facebook::react::Tag tag, uint32_t mask);
+  void unindexByBits(facebook::react::Tag tag, uint32_t mask);
+
+  mutable std::mutex mutex_;
+  std::unordered_map<facebook::react::Tag, LinkedNode> nodes_;
+  std::array<std::unordered_set<facebook::react::Tag>, 32> byBit_;
+};
+
+} // namespace nitrowind
