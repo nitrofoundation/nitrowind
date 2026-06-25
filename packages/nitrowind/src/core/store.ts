@@ -21,13 +21,53 @@ import type { ContainerQuery, GetStylesResult } from "./types";
 const VAR_RE = /var\((--[A-Za-z0-9-_]+)(?:,\s*([^)]+))?\)/g;
 const RESOLVE_CACHE_LIMIT = 2000;
 
+const NATIVE_COLOR_PROPS = new Set([
+  "color",
+  "backgroundColor",
+  "borderColor",
+  "borderTopColor",
+  "borderRightColor",
+  "borderBottomColor",
+  "borderLeftColor",
+  "borderStartColor",
+  "borderEndColor",
+  "shadowColor",
+  "textShadowColor",
+  "tintColor",
+  "textDecorationColor",
+  "placeholderTextColor",
+  "cursorColor",
+  "selectionColor",
+  "selectionHandleColor",
+  "underlineColorAndroid",
+  "overlayColor",
+  "accentColor",
+  "fill",
+  "stroke",
+  "thumbColor",
+  "trackColorFalse",
+  "trackColorTrue",
+]);
+
+const isUnsupportedNativeColorValue = (prop: string, value: string): boolean =>
+  Platform.OS !== "web" &&
+  NATIVE_COLOR_PROPS.has(prop) &&
+  /^color-mix\(/i.test(value.trim());
+
 const resolveCache = new Map<string, GetStylesResult>();
+
+export interface ResolveState extends Partial<ComponentState> {
+  isGroupActive?: boolean;
+  isGroupFocused?: boolean;
+  isGroupHovered?: boolean;
+  isGroupDisabled?: boolean;
+}
 
 function boolKey(value: boolean | undefined): string {
   return value ? "1" : "0";
 }
 
-function stateKey(state?: Partial<ComponentState>): string {
+function stateKey(state?: ResolveState): string {
   if (!state) return "none";
   return [
     boolKey(state.isActive),
@@ -36,12 +76,17 @@ function stateKey(state?: Partial<ComponentState>): string {
     boolKey(state.isDisabled),
     boolKey(state.isFirstChild),
     boolKey(state.isLastChild),
+    boolKey(state.isGroupActive),
+    boolKey(state.isGroupFocused),
+    boolKey(state.isGroupHovered),
+    boolKey(state.isGroupDisabled),
   ].join("");
 }
 
 function snapshotKey(snapshot: RuntimeSnapshot): string {
   return [
     getArtifactVersion(),
+    Platform.OS,
     snapshot.currentThemeName,
     snapshot.colorScheme,
     snapshot.orientation,
@@ -124,7 +169,7 @@ function platformApplies(platform: string | undefined): boolean {
 function variantApplies(
   variant: string,
   snapshot: RuntimeSnapshot,
-  state?: Partial<ComponentState>,
+  state?: ResolveState,
 ): boolean {
   switch (variant) {
     case "base":
@@ -150,6 +195,18 @@ function variantApplies(
       return Boolean(state?.isFirstChild);
     case "last":
       return Boolean(state?.isLastChild);
+    case "group-hover":
+      return Boolean(state?.isGroupHovered);
+    case "group-focus":
+    case "group-focus-visible":
+    case "group-focus-within":
+      return Boolean(state?.isGroupFocused);
+    case "group-active":
+      return Boolean(state?.isGroupActive);
+    case "group-disabled":
+      return Boolean(state?.isGroupDisabled);
+    case "group-enabled":
+      return state ? !state.isGroupDisabled : true;
     case "before":
     case "after":
       return false;
@@ -169,7 +226,7 @@ function variantApplies(
 function resolveStylesUncached(
   className: string,
   snapshot: RuntimeSnapshot,
-  state?: Partial<ComponentState>,
+  state?: ResolveState,
 ): GetStylesResult {
   const tokens = className.split(/\s+/).filter(Boolean);
   const styles: RNStyle = {};
@@ -209,8 +266,14 @@ function resolveStylesUncached(
       }
       if (typeof value === "string" && value.includes("var(")) {
         const resolved = resolveVarsInString(value, vars);
+        if (isUnsupportedNativeColorValue(prop, resolved)) continue;
         target[prop] = toRNValue(prop, resolved, { rem }) ?? resolved;
       } else {
+        if (
+          typeof value === "string" &&
+          isUnsupportedNativeColorValue(prop, value)
+        )
+          continue;
         target[prop] = value;
       }
     }
@@ -295,7 +358,7 @@ function resolveStylesUncached(
 export function resolveStyles(
   className: string,
   snapshot: RuntimeSnapshot,
-  state?: Partial<ComponentState>,
+  state?: ResolveState,
 ): GetStylesResult {
   const key = `${snapshotKey(snapshot)}|${stateKey(state)}|${className}`;
   const cached = cacheGet(key);

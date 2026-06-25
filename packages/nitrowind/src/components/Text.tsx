@@ -35,6 +35,8 @@ export const Text = forwardRef<RNTextType, NitrowindTextProps>(function Text(
     forwardedRef,
     [],
     __nitrowindPseudoState,
+    undefined,
+    style,
   );
 
   // A class using an animation utility swaps the host for `Animated.Text`.
@@ -55,7 +57,7 @@ export const Text = forwardRef<RNTextType, NitrowindTextProps>(function Text(
       {...animationProps}
       {...rest}
     >
-      {withChildPseudoState(children)}
+      {withChildPseudoState(children, snapshot)}
     </Base>
   );
 });

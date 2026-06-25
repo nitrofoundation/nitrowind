@@ -38,20 +38,31 @@ namespace {
 
 /**
  * Depth-first walk of the mounted tree carrying the nearest enclosing container
- * tag. Containers are measured; query nodes are bound to their nearest *ancestor*
- * container (CSS semantics: an element never queries itself).
+ * and group tags. Containers are measured; query/group nodes are bound to their
+ * nearest *ancestor* (CSS semantics: an element never queries itself).
  */
 void walk(const ShadowNode& node,
           Tag nearestContainer,
+          Tag nearestGroup,
           const std::unordered_map<Tag, std::string>& containers,
+          const std::unordered_map<Tag, std::string>& groups,
+          const std::unordered_set<Tag>& linkedTags,
+          const std::unordered_set<Tag>& structuralPseudoTags,
           const std::unordered_set<Tag>& queryTags,
+          const std::unordered_set<Tag>& groupDependentTags,
           std::vector<NitrowindCore::ContainerMeasurement>& measurements,
-          std::unordered_map<Tag, Tag>& nodeToContainer) {
+          std::unordered_map<Tag, Tag>& nodeToContainer,
+          std::unordered_map<Tag, Tag>& nodeToGroup,
+          std::unordered_map<Tag, NitrowindCore::StructuralPseudoState>& structuralState) {
   const Tag tag = node.getTag();
 
   // Bind this query node to the nearest container found above it.
   if (nearestContainer != 0 && queryTags.find(tag) != queryTags.end()) {
     nodeToContainer[tag] = nearestContainer;
+  }
+
+  if (nearestGroup != 0 && groupDependentTags.find(tag) != groupDependentTags.end()) {
+    nodeToGroup[tag] = nearestGroup;
   }
 
   // If this node is itself a container, measure it and make it the nearest
@@ -68,10 +79,33 @@ void walk(const ShadowNode& node,
     childNearest = tag;
   }
 
+  Tag childNearestGroup = nearestGroup;
+  if (groups.find(tag) != groups.end()) {
+    childNearestGroup = tag;
+  }
+
+  std::vector<Tag> linkedChildTags;
+  for (const auto& child : node.getChildren()) {
+    if (child == nullptr) continue;
+    const Tag childTag = child->getTag();
+    if (linkedTags.find(childTag) != linkedTags.end()) {
+      linkedChildTags.push_back(childTag);
+    }
+  }
+  if (!linkedChildTags.empty()) {
+    const Tag first = linkedChildTags.front();
+    const Tag last = linkedChildTags.back();
+    for (const auto childTag : linkedChildTags) {
+      if (structuralPseudoTags.find(childTag) == structuralPseudoTags.end()) continue;
+      structuralState[childTag] = {childTag == first, childTag == last};
+    }
+  }
+
   for (const auto& child : node.getChildren()) {
     if (child != nullptr) {
-      walk(*child, childNearest, containers, queryTags, measurements,
-           nodeToContainer);
+      walk(*child, childNearest, childNearestGroup, containers, groups,
+           linkedTags, structuralPseudoTags, queryTags, groupDependentTags,
+           measurements, nodeToContainer, nodeToGroup, structuralState);
     }
   }
 }
@@ -84,16 +118,29 @@ void walk(const ShadowNode& node,
 void measureAndSync(const ShadowNode& root, bool forceRecompute) {
   auto& core = NitrowindCore::shared();
   const auto containers = core.containerTags();
-  if (containers.empty()) return; // fast path: no container queries in use.
+  const auto groups = core.groupTags();
+    const auto structuralPseudoTags = core.structuralPseudoTags();
+    if (containers.empty() && groups.empty() && structuralPseudoTags.empty()) return;
   const auto queryTags = core.containerQueryTags();
+  const auto groupDependentTags = core.groupDependentTags();
+    const auto linkedTags = core.linkedTags();
 
   std::vector<NitrowindCore::ContainerMeasurement> measurements;
   std::unordered_map<Tag, Tag> nodeToContainer;
-  walk(root, /*nearestContainer=*/0, containers, queryTags, measurements,
-       nodeToContainer);
+  std::unordered_map<Tag, Tag> nodeToGroup;
+    std::unordered_map<Tag, NitrowindCore::StructuralPseudoState> structuralState;
+  walk(root, /*nearestContainer=*/0, /*nearestGroup=*/0, containers, groups,
+      linkedTags, structuralPseudoTags, queryTags, groupDependentTags,
+      measurements, nodeToContainer, nodeToGroup, structuralState);
 
   if (!measurements.empty() || !nodeToContainer.empty()) {
     core.syncContainers(measurements, nodeToContainer, forceRecompute);
+  }
+  if (!nodeToGroup.empty()) {
+    core.syncGroups(nodeToGroup, forceRecompute);
+  }
+  if (!structuralState.empty()) {
+    core.syncStructuralPseudos(structuralState, forceRecompute);
   }
 }
 
@@ -121,7 +168,9 @@ void LayoutObserver::remeasure() noexcept {
   try {
     // Cheap pre-check so the registry walk is skipped entirely when the app
     // uses no container queries.
-    if (NitrowindCore::shared().containerTags().empty()) return;
+    auto& core = NitrowindCore::shared();
+    if (core.containerTags().empty() && core.groupTags().empty() &&
+      core.structuralPseudoTags().empty()) return;
 
     uiManager_->getShadowTreeRegistry().enumerate(
         [](const ShadowTree& shadowTree, bool& /*stop*/) {

@@ -47,6 +47,33 @@ describe("toRNValue", () => {
     ).toBe(16);
   });
 
+  it("resolves nested Tailwind var fallbacks", () => {
+    expect(
+      toRNValue(
+        "lineHeight",
+        "var(--tw-leading, var(--text-sm--line-height))",
+        {
+          rem: 16,
+          resolveVar: (name) =>
+            name === "--text-sm--line-height"
+              ? "calc(1.25 / .875)"
+              : undefined,
+        },
+      ),
+    ).toBeCloseTo(1.428571, 5);
+  });
+
+  it("keeps borderStyle keywords as strings", () => {
+    expect(toRNValue("borderStyle", "solid", { rem: 16 })).toBe("solid");
+    expect(
+      toRNValue("borderStyle", "var(--tw-border-style)", {
+        rem: 16,
+        resolveVar: (name) =>
+          name === "--tw-border-style" ? "solid" : undefined,
+      }),
+    ).toBe("solid");
+  });
+
   it("keeps percentages as strings", () => {
     expect(toRNValue("width", "50%", { rem: 16 })).toBe("50%");
   });
@@ -80,12 +107,33 @@ describe("classTokenFromSelector", () => {
     );
   });
 
+  it("picks the descendant utility from group pseudo selectors", () => {
+    expect(
+      classTokenFromSelector(".group:active .group-active\\:text-white"),
+    ).toBe("group-active:text-white");
+    expect(
+      classTokenFromSelector(".group:focus .group-focus\\:border-sky-500"),
+    ).toBe("group-focus:border-sky-500");
+  });
+
   it("ignores non-class selectors", () => {
     expect(classTokenFromSelector(":root")).toBeUndefined();
   });
 });
 
 describe("compileFromCss", () => {
+  it("resolves Tailwind default border style", () => {
+    const artifact = compileFromCss(
+      `.border { border-style: var(--tw-border-style); border-width: 1px; }`,
+    );
+    registerStyles(artifact);
+
+    expect(resolveStyles("border", makeSnapshot()).styles).toMatchObject({
+      borderStyle: "solid",
+      borderWidth: 1,
+    });
+  });
+
   it("expands logical axis border declarations to RN edge props", () => {
     const css = `
       .border-x { border-inline-width: 1px; }
@@ -125,6 +173,21 @@ describe("compileFromCss", () => {
     ).toEqual({ placeholderTextColor: "#ef4444" });
   });
 
+  it("converts Tailwind text utility line-height ratios to absolute values", () => {
+    const artifact = compileFromCss(
+      `
+        @theme { --text-sm--line-height: calc(1.25 / .875); }
+        .text-sm { font-size: 0.875rem; line-height: var(--tw-leading, var(--text-sm--line-height)); }
+      `,
+      16,
+    );
+
+    expect(artifact.classes["text-sm"]?.[0]?.style).toMatchObject({
+      fontSize: 14,
+      lineHeight: 20,
+    });
+  });
+
   it("compiles New Architecture filter objects", () => {
     registerStyles(
       compileFromCss(
@@ -145,6 +208,7 @@ describe("compileFromCss", () => {
           .\\[filter\\:brightness\\(1\\.2\\)_opacity\\(80\\%\\)\\] {
             filter: brightness(1.2) opacity(80%);
           }
+          .hue-rotate-90 { filter: hue-rotate(90deg); }
           .backdrop-blur-sm { backdrop-filter: blur(8px); }
         `,
         16,
@@ -168,6 +232,9 @@ describe("compileFromCss", () => {
           },
         },
       ],
+    });
+    expect(resolveStyles("hue-rotate-90", makeSnapshot()).styles).toEqual({
+      filter: [{ hueRotate: 90 }],
     });
     expect(
       resolveStyles("[filter:brightness(1.2)_opacity(80%)]", makeSnapshot())
@@ -229,6 +296,35 @@ describe("compileFromCss", () => {
     expect(
       resolveStyles(className, makeSnapshot(), { isLastChild: true }).styles,
     ).toEqual({ backgroundColor: "#3b82f6" });
+  });
+
+  it("applies group pseudo variants only from group state", () => {
+    const artifact = compileFromCss(
+      `
+        .group:active .group-active\\:text-white { color: #ffffff; }
+        .group:focus .group-focus\\:border-sky-500 { border-color: #0ea5e9; }
+      `,
+      16,
+    );
+    registerStyles(artifact);
+
+    expect(artifact.classes["group-active:text-white"]?.[0]).toMatchObject({
+      variant: "group-active",
+      dependencies: 1 << 9,
+    });
+    expect(artifact.classes["group-focus:border-sky-500"]?.[0]).toMatchObject({
+      variant: "group-focus",
+      dependencies: 1 << 9,
+    });
+
+    const className = "group-active:text-white group-focus:border-sky-500";
+    expect(resolveStyles(className, makeSnapshot()).styles).toEqual({});
+    expect(
+      resolveStyles(className, makeSnapshot(), { isGroupActive: true }).styles,
+    ).toEqual({ color: "#ffffff" });
+    expect(
+      resolveStyles(className, makeSnapshot(), { isGroupFocused: true }).styles,
+    ).toEqual({ borderColor: "#0ea5e9" });
   });
 
   it("maps selection pseudo colors to the TextInput selectionColor host prop", () => {

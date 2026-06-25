@@ -11,7 +11,12 @@
       "bundleIdentifier": "com.anonymous.nitrowind-example"
     },
     "plugins": [
-      ["expo-router", { "adaptiveColors": false }],
+      [
+        "expo-router",
+        {
+          "adaptiveColors": false
+        }
+      ],
       "expo-status-bar"
     ],
     "extra": {
@@ -21,6 +26,9 @@
     },
     "experiments": {
       "typedRoutes": false
+    },
+    "android": {
+      "package": "com.anonymous.nitrowindexample"
     }
   }
 }

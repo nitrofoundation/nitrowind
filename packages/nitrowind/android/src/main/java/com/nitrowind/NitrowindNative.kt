@@ -1,11 +1,13 @@
 package com.nitrowind
 
-import com.facebook.react.internal.turbomodule.core.CallInvokerHolderImpl
+import com.facebook.react.common.annotations.FrameworkAPI
+import com.facebook.react.turbomodule.core.CallInvokerHolderImpl
 
 /**
  * Thin JNI surface to the C++ engine. Method names map by symbol to the
  * `extern "C"` functions in `cpp-adapter.cpp`.
  */
+@OptIn(FrameworkAPI::class)
 internal object NitrowindNative {
   init {
     System.loadLibrary("Nitrowind")

@@ -39,7 +39,12 @@ export const toRNProperties = (cssProperty: string): string[] =>
   PROPERTY_EXPANSIONS[cssProperty] ?? [toRNProperty(cssProperty)];
 
 /** RN style props whose value must stay a string even when numeric-looking. */
-const STRING_VALUED = new Set(["fontWeight", "flexBasis", "aspectRatio"]);
+const STRING_VALUED = new Set([
+  "fontWeight",
+  "flexBasis",
+  "aspectRatio",
+  "borderStyle",
+]);
 
 /** RN style props that accept unitless numbers. */
 const UNITLESS = new Set([
@@ -54,6 +59,61 @@ const UNITLESS = new Set([
 
 const LENGTH_RE = /^(-?\d*\.?\d+)(px|rem|em|pt)?$/;
 const PERCENT_RE = /^-?\d*\.?\d+%$/;
+
+function matchingParen(value: string, openIndex: number): number {
+  let depth = 0;
+  for (let index = openIndex; index < value.length; index++) {
+    const char = value[index];
+    if (char === "(") depth++;
+    else if (char === ")") {
+      depth--;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
+function splitVarBody(body: string): [string, string | undefined] {
+  let depth = 0;
+  for (let index = 0; index < body.length; index++) {
+    const char = body[index];
+    if (char === "(") depth++;
+    else if (char === ")") depth--;
+    else if (char === "," && depth === 0) {
+      return [body.slice(0, index).trim(), body.slice(index + 1).trim()];
+    }
+  }
+  return [body.trim(), undefined];
+}
+
+function resolveVarsInValue(
+  raw: string,
+  resolveVar: VarResolver,
+  depth = 0,
+): string {
+  if (depth > 8) return raw;
+  let output = "";
+  let offset = 0;
+  while (offset < raw.length) {
+    const start = raw.indexOf("var(", offset);
+    if (start < 0) {
+      output += raw.slice(offset);
+      break;
+    }
+    const bodyStart = start + "var".length;
+    const end = matchingParen(raw, bodyStart);
+    if (end < 0) {
+      output += raw.slice(offset);
+      break;
+    }
+    output += raw.slice(offset, start);
+    const [name, fallback] = splitVarBody(raw.slice(bodyStart + 1, end));
+    const resolved = resolveVar(name) ?? fallback ?? "0";
+    output += resolveVarsInValue(resolved, resolveVar, depth + 1);
+    offset = end + 1;
+  }
+  return output;
+}
 
 export interface ValueContext {
   /** Root rem value in px. */
@@ -71,7 +131,11 @@ export const toRNValue = (
   rawValue: string,
   ctx: ValueContext,
 ): string | number | undefined => {
-  const value = rawValue.trim();
+  const raw = rawValue.trim();
+  const value =
+    ctx.resolveVar && !looksLikeColor(rnProperty, raw)
+      ? resolveVarsInValue(raw, ctx.resolveVar).trim()
+      : raw;
 
   // Colors: normalize anything culori understands to a hex form both JS and
   // Fabric-native RawProps parsing accept. This matters because the native

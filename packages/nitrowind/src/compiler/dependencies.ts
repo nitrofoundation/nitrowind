@@ -27,6 +27,7 @@ export const toList = (mask: DependencyMask): StyleDependency[] => {
     StyleDependency.FontScale,
     StyleDependency.Rem,
     StyleDependency.ContainerSize,
+    StyleDependency.GroupState,
   ]) {
     if (hasFlag(mask, dep)) out.push(dep);
   }
@@ -69,6 +70,13 @@ export const dependencyFromSelector = (selector: string): DependencyMask => {
   }
   if (s.includes("[data-theme") || s.includes(".theme-")) {
     mask = addFlag(mask, StyleDependency.Theme);
+  }
+  if (
+    /group-(active|focus|focus-visible|focus-within|hover|disabled|enabled)/.test(
+      s,
+    )
+  ) {
+    mask = addFlag(mask, StyleDependency.GroupState);
   }
   return mask;
 };

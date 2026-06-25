@@ -29,6 +29,11 @@ ios/*.xcworkspace/xcuserdata/
 android/.gradle/
 android/.cxx/
 android/build/
+**/android/.gradle/
+**/android/.cxx/
+**/android/**/.cxx/
+**/android/build/
+**/android/app/build/
 *.keystore
 
 # Metro / Expo

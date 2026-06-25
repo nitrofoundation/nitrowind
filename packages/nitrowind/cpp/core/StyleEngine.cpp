@@ -111,12 +111,45 @@ void foldTransform(folly::dynamic& style) {
 const std::regex kBoxShadowColorPattern(
     R"(#(?:[0-9a-fA-F]{3,8})\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)|oklab\([^)]*\)|lab\([^)]*\)|lch\([^)]*\)|color\([^)]*\))");
 
+bool isNativeColorProp(const folly::dynamic& key) {
+  if (!key.isString()) return false;
+  const auto& prop = key.getString();
+  return prop == "color" || prop == "backgroundColor" ||
+      prop == "borderColor" || prop == "borderTopColor" ||
+      prop == "borderRightColor" || prop == "borderBottomColor" ||
+      prop == "borderLeftColor" || prop == "borderStartColor" ||
+      prop == "borderEndColor" || prop == "shadowColor" ||
+      prop == "textShadowColor" || prop == "tintColor" ||
+      prop == "textDecorationColor" || prop == "placeholderTextColor" ||
+      prop == "cursorColor" || prop == "selectionColor" ||
+      prop == "selectionHandleColor" || prop == "underlineColorAndroid" ||
+      prop == "overlayColor" || prop == "accentColor" || prop == "fill" ||
+      prop == "stroke" || prop == "thumbColor" ||
+      prop == "trackColorFalse" || prop == "trackColorTrue";
+}
+
+bool isUnsupportedNativeColorValue(const folly::dynamic& key,
+                                   const std::string& value) {
+#if defined(__ANDROID__)
+  return isNativeColorProp(key) && value.rfind("color-mix(", 0) == 0;
+#else
+  (void)key;
+  (void)value;
+  return false;
+#endif
+}
+
 void normalizeShadow(folly::dynamic& style) {
   if (!style.isObject()) return;
   auto* marker = style.get_ptr("--nitrowind-shadow-color");
-  if (marker == nullptr || !marker->isString()) return;
-  const std::string color = marker->getString();
+  const bool hasMarker = marker != nullptr && marker->isString();
+  const std::string color = hasMarker ? marker->getString() : "";
   style.erase("--nitrowind-shadow-color");
+#if defined(__ANDROID__)
+  style.erase("boxShadow");
+  return;
+#endif
+  if (!hasMarker) return;
   auto* boxShadow = style.get_ptr("boxShadow");
   if (boxShadow == nullptr || !boxShadow->isString()) return;
   style["boxShadow"] = std::regex_replace(
@@ -272,6 +305,22 @@ bool StyleEngine::resolveContainerMarker(const std::string& className,
   return false;
 }
 
+bool StyleEngine::resolveGroupMarker(const std::string& className,
+                                     std::string& outName) const {
+  for (const auto& token : splitTokens(className)) {
+    if (token == "group") {
+      outName.clear();
+      return true;
+    }
+    constexpr const char* prefix = "group/";
+    if (token.rfind(prefix, 0) == 0 && token.size() > std::char_traits<char>::length(prefix)) {
+      outName = token.substr(std::char_traits<char>::length(prefix));
+      return true;
+    }
+  }
+  return false;
+}
+
 bool StyleEngine::variantApplies(const std::string& variant, const ResolveContext& ctx) {
   if (variant == "base" || variant == "responsive") return true;
   if (variant == "dark") return ctx.colorScheme == 1;
@@ -285,6 +334,14 @@ bool StyleEngine::variantApplies(const std::string& variant, const ResolveContex
   if (variant == "enabled") return !ctx.isDisabled;
   if (variant == "first") return ctx.isFirstChild;
   if (variant == "last") return ctx.isLastChild;
+  if (variant == "group-hover") return ctx.isGroupHovered;
+  if (variant == "group-focus" || variant == "group-focus-visible" ||
+      variant == "group-focus-within") {
+    return ctx.isGroupFocused;
+  }
+  if (variant == "group-active") return ctx.isGroupActive;
+  if (variant == "group-disabled") return ctx.isGroupDisabled;
+  if (variant == "group-enabled") return !ctx.isGroupDisabled;
   if (variant == "before" || variant == "after" || variant == "unsupported-pseudo") {
     return false;
   }
@@ -395,9 +452,12 @@ folly::dynamic StyleEngine::resolve(const std::string& className,
         if (value.isString()) {
           const std::string str = value.getString();
           if (str.find("var(") != std::string::npos) {
-            style[pair.first] = resolveVarsInString(str, vars);
+            const std::string resolved = resolveVarsInString(str, vars);
+            if (isUnsupportedNativeColorValue(pair.first, resolved)) continue;
+            style[pair.first] = resolved;
             continue;
           }
+          if (isUnsupportedNativeColorValue(pair.first, str)) continue;
         }
         style[pair.first] = value;
       }

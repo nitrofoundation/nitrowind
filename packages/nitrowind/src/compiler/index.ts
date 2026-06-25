@@ -57,7 +57,9 @@ export function compileFromCss(css: string, rem = 16): CompiledArtifact {
   // offset/floor amounts reduce to px at compile time.
   const baseVars = themes[themeNames[0] ?? "light"] ?? {};
   const resolveVar = (name: string): string | undefined =>
-    baseVars[name] ?? (name === "--spacing" ? "0.25rem" : undefined);
+    baseVars[name] ??
+    (name === "--spacing" ? "0.25rem" : undefined) ??
+    (name === "--tw-border-style" ? "solid" : undefined);
   const { classes } = parseStyles(css, rem, resolveVar);
   return {
     classes,

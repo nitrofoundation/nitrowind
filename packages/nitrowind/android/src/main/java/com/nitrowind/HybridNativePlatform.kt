@@ -1,4 +1,4 @@
-package com.nitrowind
+package com.margelo.nitro.nitrowind
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -12,16 +12,8 @@ import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.facebook.proguard.annotations.DoNotStrip
-import com.margelo.nitro.nitrowind.ColorScheme
-import com.margelo.nitro.nitrowind.ColorSchemeMode
-import com.margelo.nitro.nitrowind.Dimensions
-import com.margelo.nitro.nitrowind.HybridNativePlatformSpec
-import com.margelo.nitro.nitrowind.Insets
-import com.margelo.nitro.nitrowind.Orientation
-import com.margelo.nitro.nitrowind.RuntimeChangeSource
-import com.margelo.nitro.nitrowind.RuntimeSnapshot
-import com.margelo.nitro.nitrowind.StyleDependency
-import com.margelo.nitro.nitrowind.ThemeConfig
+import com.nitrowind.NitrowindContextHolder
+import com.nitrowind.NitrowindNative
 import java.util.Locale
 
 /**
@@ -140,11 +132,11 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
     if (previous == null) return emptyArray()
     return buildList {
       if (previous.currentThemeName != next.currentThemeName) add(StyleDependency.THEME)
-      if (previous.colorScheme != next.colorScheme) add(StyleDependency.COLOR_SCHEME)
+      if (previous.colorScheme != next.colorScheme) add(StyleDependency.COLORSCHEME)
       if (previous.screen.width != next.screen.width || previous.screen.height != next.screen.height) add(StyleDependency.DIMENSIONS)
       if (previous.insets.top != next.insets.top || previous.insets.right != next.insets.right || previous.insets.bottom != next.insets.bottom || previous.insets.left != next.insets.left) add(StyleDependency.INSETS)
       if (previous.orientation != next.orientation) add(StyleDependency.ORIENTATION)
-      if (previous.fontScale != next.fontScale) add(StyleDependency.FONT_SCALE)
+      if (previous.fontScale != next.fontScale) add(StyleDependency.FONTSCALE)
       if (previous.rtl != next.rtl) add(StyleDependency.RTL)
     }.toTypedArray()
   }
@@ -218,7 +210,7 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
       else -> 0
     }
     val deps = buildList {
-      if (previousColorScheme != colorSchemeRaw()) add(StyleDependency.COLOR_SCHEME)
+      if (previousColorScheme != colorSchemeRaw()) add(StyleDependency.COLORSCHEME)
     }.toTypedArray()
     emitUserThemeChange(deps)
   }

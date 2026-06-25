@@ -55,6 +55,44 @@ const INTERNAL_GRID_PREVIEW = [
   { label: "D", className: "col-span-1 bg-rose-500" },
 ];
 
+const AUTO_TRACK_EXAMPLES = [
+  {
+    title: "auto-rows-[64px]",
+    className: "grid grid-cols-3 auto-rows-[64px] flex-row flex-wrap gap-3",
+    cells: ["64", "64", "64"],
+  },
+  {
+    title: "auto-rows-[minmax(48px,96px)]",
+    className:
+      "grid grid-cols-3 auto-rows-[minmax(48px,96px)] flex-row flex-wrap gap-3",
+    cells: ["min", "max", "track"],
+  },
+  {
+    title: "auto-cols-[72px]",
+    className:
+      "grid auto-cols-[72px] auto-rows-[48px] flex-row flex-wrap gap-3",
+    cells: ["72", "72", "72"],
+  },
+  {
+    title: "auto-cols-[minmax(56px,104px)]",
+    className:
+      "grid auto-cols-[minmax(56px,104px)] auto-rows-[48px] flex-row flex-wrap gap-3",
+    cells: ["min", "max", "col"],
+  },
+  {
+    title: "auto-rows-min",
+    className: "grid grid-cols-3 auto-rows-min flex-row flex-wrap gap-3",
+    cells: ["short", "two\nlines", "min"],
+  },
+  {
+    title: "auto-rows-max",
+    className: "grid grid-cols-3 auto-rows-max flex-row flex-wrap gap-3",
+    cells: ["short", "tall\ncontent\ncell", "max"],
+  },
+] satisfies Array<{ title: string; className: string; cells: string[] }>;
+
+const AUTO_TRACK_COLORS = ["bg-sky-500", "bg-emerald-500", "bg-fuchsia-500"];
+
 const CELLS = [
   { label: "A", className: "w-[48%] bg-sky-500" },
   { label: "B", className: "w-[48%] bg-emerald-500" },
@@ -98,6 +136,34 @@ function PropertyRow({
         <Text className={`text-xs font-bold ${badgeTextClass(source)}`}>
           {status}
         </Text>
+      </View>
+    </View>
+  );
+}
+
+function AutoTrackExample({
+  title,
+  className,
+  cells,
+}: {
+  title: string;
+  className: string;
+  cells: string[];
+}) {
+  return (
+    <View className="gap-2">
+      <Text className="text-xs font-bold text-muted">{title}</Text>
+      <View className={`rounded-xl bg-surface p-2 ${className}`}>
+        {cells.map((label, index) => (
+          <View
+            key={`${title}-${label}-${index}`}
+            className={`items-center justify-center rounded-lg px-2 py-2 ${AUTO_TRACK_COLORS[index]}`}
+          >
+            <Text className="text-center text-xs font-extrabold text-white">
+              {label}
+            </Text>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -174,6 +240,17 @@ export default function GridExamples() {
               <PropertyRow key={item.name} {...item} />
             ))}
           </View>
+        </Card>
+      </Section>
+
+      <Section
+        title="Auto tracks"
+        subtitle="Rows and implicit columns use the same fallback metadata as grid column spans."
+      >
+        <Card className="gap-4">
+          {AUTO_TRACK_EXAMPLES.map((example) => (
+            <AutoTrackExample key={example.title} {...example} />
+          ))}
         </Card>
       </Section>
 

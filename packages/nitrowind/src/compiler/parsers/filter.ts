@@ -46,6 +46,16 @@ const parseLength = (raw: string): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const parseAngleDegrees = (raw: string): number | undefined => {
+  const value = raw.trim();
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (parsed === 0 && !/[a-z%]+$/i.test(value)) return 0;
+  if (value.endsWith("deg")) return parsed;
+  if (value.endsWith("rad")) return (180 * parsed) / Math.PI;
+  return undefined;
+};
+
 const splitArgs = (raw: string): string[] =>
   raw.trim().split(/\s+/).filter(Boolean);
 
@@ -83,9 +93,11 @@ function parseFilterList(filter: string): RNStyle["filter"] | undefined {
         if (value !== undefined) out.push({ [name]: value });
         break;
       }
-      case "hue-rotate":
-        out.push({ hueRotate: raw });
+      case "hue-rotate": {
+        const value = parseAngleDegrees(raw);
+        if (value !== undefined) out.push({ hueRotate: value });
         break;
+      }
       case "drop-shadow": {
         const value = parseDropShadow(raw);
         if (value !== undefined) out.push({ dropShadow: value });

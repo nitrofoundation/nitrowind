@@ -1,5 +1,6 @@
 import { TRANSFORM_AXES } from "../compiler/parsers/transform";
 import type { RNStyle } from "../compiler/types";
+import { Platform } from "react-native";
 
 /**
  * Fold the individual transform-axis props the compiler emits (`translateX`,
@@ -28,6 +29,10 @@ const BOX_SHADOW_COLOR_RE =
 export function normalizeShadow(style: RNStyle): void {
   const marker = style["--nitrowind-shadow-color"];
   delete style["--nitrowind-shadow-color"];
+  if (Platform.OS !== "web") {
+    delete style.boxShadow;
+    return;
+  }
   if (typeof marker !== "string" || typeof style.boxShadow !== "string") {
     return;
   }

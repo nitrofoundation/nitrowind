@@ -44,7 +44,7 @@ export {
 } from "./core/context";
 export type { NitrowindProviderProps } from "./core/context";
 
-export { withNitrowind } from "./hoc/withNitrowind";
+export { withNativeExtending, withNitrowind } from "./hoc/withNitrowind";
 export type {
   NitrowindPropMapping,
   WithNitrowindOptions,

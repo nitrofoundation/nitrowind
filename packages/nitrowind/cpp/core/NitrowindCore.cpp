@@ -61,6 +61,11 @@ bool parseHexColor(const std::string& value, int64_t& out) {
   return true;
 }
 
+bool hasStructuralPseudoToken(const std::string& className) {
+  return className.find("first:") != std::string::npos ||
+      className.find("last:") != std::string::npos;
+}
+
 bool isColorProp(const folly::dynamic& key) {
   if (!key.isString()) return false;
   const auto& prop = key.getString();
@@ -78,14 +83,76 @@ bool isColorProp(const folly::dynamic& key) {
       prop == "trackColorFalse" || prop == "trackColorTrue";
 }
 
+bool parseAngleDegrees(const std::string& value, double& out) {
+  try {
+    std::size_t parsed = 0;
+    const double numeric = std::stod(value, &parsed);
+    if (parsed == value.size() && numeric == 0.0) {
+      out = 0.0;
+      return true;
+    }
+    const std::string unit = value.substr(parsed);
+    if (unit == "deg") {
+      out = numeric;
+      return true;
+    }
+    if (unit == "rad") {
+      constexpr double radiansToDegrees = 180.0 / 3.14159265358979323846;
+      out = numeric * radiansToDegrees;
+      return true;
+    }
+  } catch (...) {
+  }
+  return false;
+}
+
+void processFilterColors(folly::dynamic& value) {
+  if (!value.isArray()) return;
+  for (auto& filter : value) {
+    if (!filter.isObject()) continue;
+    auto hueRotate = filter.find("hueRotate");
+    if (hueRotate != filter.items().end() && hueRotate->second.isString()) {
+      double degrees = 0.0;
+      if (parseAngleDegrees(hueRotate->second.getString(), degrees)) {
+        filter["hueRotate"] = degrees;
+      }
+    }
+    auto dropShadow = filter.find("dropShadow");
+    if (dropShadow == filter.items().end() || !dropShadow->second.isObject()) {
+      continue;
+    }
+    auto color = dropShadow->second.find("color");
+    if (color == dropShadow->second.items().end() || !color->second.isString()) {
+      continue;
+    }
+    int64_t processed = 0;
+    if (parseHexColor(color->second.getString(), processed)) {
+      dropShadow->second["color"] = processed;
+    }
+  }
+}
+
 void processColorProps(folly::dynamic& style) {
   if (!style.isObject()) return;
+  std::vector<folly::dynamic> unsupportedColorKeys;
   for (const auto& pair : style.items()) {
+    if (pair.first.isString() && pair.first.getString() == "filter") {
+      processFilterColors(style[pair.first]);
+      continue;
+    }
     if (!isColorProp(pair.first) || !pair.second.isString()) continue;
+    const auto& value = pair.second.getString();
+    if (value.rfind("color-mix(", 0) == 0) {
+      unsupportedColorKeys.push_back(pair.first);
+      continue;
+    }
     int64_t processed = 0;
-    if (parseHexColor(pair.second.getString(), processed)) {
+    if (parseHexColor(value, processed)) {
       style[pair.first] = processed;
     }
+  }
+  for (const auto& key : unsupportedColorKeys) {
+    style.erase(key);
   }
 }
 
@@ -173,8 +240,11 @@ void NitrowindCore::link(Tag tag,
   node.containerTag = containerTag;
   node.isContainer =
       styleEngine_.resolveContainerMarker(node.className, node.containerName);
-    const bool readsContainerSize =
+  node.isGroupRoot = styleEngine_.resolveGroupMarker(node.className, node.groupName);
+  const bool readsContainerSize =
       (node.dependencyMask & depFlag(Dependency::ContainerSize)) != 0;
+  const bool readsGroupState =
+      (node.dependencyMask & depFlag(Dependency::GroupState)) != 0;
   index_.add(node);
 
   // Track container markers so the layout observer knows which mounted nodes to
@@ -186,7 +256,19 @@ void NitrowindCore::link(Tag tag,
     }
   }
 
-  if (node.isContainer || readsContainerSize) {
+  if (node.isGroupRoot) {
+    std::lock_guard<std::mutex> lock(groupMutex_);
+    groupTags_[tag] = node.groupName;
+  }
+
+  const bool readsStructuralPseudo = hasStructuralPseudoToken(node.className);
+  if (readsStructuralPseudo) {
+    std::lock_guard<std::mutex> lock(structuralMutex_);
+    structuralPseudoTags_.insert(tag);
+  }
+
+  if (node.isContainer || readsContainerSize || node.isGroupRoot ||
+      readsGroupState || readsStructuralPseudo) {
     // `link` runs from a React ref callback, which fires *after* Fabric's
     // `shadowTreeDidMount` for the commit that mounted this node. Both sides can
     // arrive in either order: a container may be known before its query children,
@@ -195,17 +277,32 @@ void NitrowindCore::link(Tag tag,
     // screens do not wait for an unrelated later commit.
     LayoutObserver::shared().remeasure();
   }
+
+  // Native-first first paint: JS only registers the host and className; C++
+  // resolves the actual props and commits them into the ShadowTree.
+  commitResolvedNode(node, runtimeState().toContext());
 }
 
 void NitrowindCore::unlink(Tag tag) {
   index_.remove(tag);
-  std::lock_guard<std::mutex> lock(containerMutex_);
-  auto it = containerTags_.find(tag);
-  if (it != containerTags_.end()) {
-    if (!it->second.empty()) namedContainerSizes_.erase(it->second);
-    containerTags_.erase(it);
+  {
+    std::lock_guard<std::mutex> lock(containerMutex_);
+    auto it = containerTags_.find(tag);
+    if (it != containerTags_.end()) {
+      if (!it->second.empty()) namedContainerSizes_.erase(it->second);
+      containerTags_.erase(it);
+    }
+    containerSizes_.erase(tag);
   }
-  containerSizes_.erase(tag);
+  {
+    std::lock_guard<std::mutex> lock(groupMutex_);
+    groupTags_.erase(tag);
+    groupStates_.erase(tag);
+  }
+  {
+    std::lock_guard<std::mutex> lock(structuralMutex_);
+    structuralPseudoTags_.erase(tag);
+  }
 }
 
 void NitrowindCore::suspend(Tag tag) {
@@ -243,6 +340,15 @@ folly::dynamic NitrowindCore::resolveAccent(const LinkedAccent& accent,
     }
     return false;
   };
+
+  if (!accent.sourceProperty.empty()) {
+    if (accent.sourceProperty == "*") {
+      props[accent.propName] = style;
+      return props;
+    }
+    copyValue(accent.sourceProperty);
+    return props;
+  }
 
   copyValue("accentColor") || copyValue(accent.propName) || copyValue("color") ||
       copyValue("tintColor") || copyValue("fill") || copyValue("stroke") ||
@@ -314,13 +420,85 @@ void NitrowindCore::syncContainers(
   }
 }
 
+void NitrowindCore::syncGroups(
+    const std::unordered_map<Tag, Tag>& nodeToGroup,
+    bool forceRecompute) {
+  bool changed = false;
+  for (const auto& entry : nodeToGroup) {
+    if (index_.setGroupTag(entry.first, entry.second)) changed = true;
+  }
+  if (changed || (forceRecompute && !nodeToGroup.empty())) {
+    recompute(depFlag(Dependency::GroupState));
+  }
+}
+
+void NitrowindCore::syncStructuralPseudos(
+    const std::unordered_map<Tag, StructuralPseudoState>& stateByTag,
+    bool forceRecompute) {
+  bool changed = false;
+  for (const auto& entry : stateByTag) {
+    LinkedNode node;
+    if (!index_.tryGet(entry.first, node)) continue;
+    ResolveContext ctx = node.context;
+    ctx.isFirstChild = entry.second.first;
+    ctx.isLastChild = entry.second.last;
+    if (index_.updateContext(entry.first, ctx)) changed = true;
+  }
+  if (changed || (forceRecompute && !stateByTag.empty())) {
+    for (const auto& entry : stateByTag) {
+      LinkedNode node;
+      if (!index_.tryGet(entry.first, node)) continue;
+      commitResolvedNode(node, runtimeState().toContext());
+    }
+  }
+}
+
+void NitrowindCore::setGroupState(Tag groupTag, GroupState state) {
+  bool changed = false;
+  {
+    std::lock_guard<std::mutex> lock(groupMutex_);
+    auto& current = groupStates_[groupTag];
+    changed = current.active != state.active ||
+        current.focused != state.focused ||
+        current.hovered != state.hovered ||
+        current.disabled != state.disabled;
+    current = state;
+  }
+  if (changed) recompute(depFlag(Dependency::GroupState));
+}
+
+void NitrowindCore::setComponentState(Tag tag, const ResolveContext& context) {
+  if (!index_.updateContext(tag, context)) return;
+  LinkedNode node;
+  if (!index_.tryGet(tag, node)) return;
+  commitResolvedNode(node, runtimeState().toContext());
+}
+
 std::unordered_map<Tag, std::string> NitrowindCore::containerTags() const {
   std::lock_guard<std::mutex> lock(containerMutex_);
   return containerTags_;
 }
 
+std::unordered_map<Tag, std::string> NitrowindCore::groupTags() const {
+  std::lock_guard<std::mutex> lock(groupMutex_);
+  return groupTags_;
+}
+
 std::unordered_set<Tag> NitrowindCore::containerQueryTags() const {
   return index_.tagsForBit(static_cast<uint32_t>(Dependency::ContainerSize));
+}
+
+std::unordered_set<Tag> NitrowindCore::groupDependentTags() const {
+  return index_.tagsForBit(static_cast<uint32_t>(Dependency::GroupState));
+}
+
+std::unordered_set<Tag> NitrowindCore::linkedTags() const {
+  return index_.activeTags();
+}
+
+std::unordered_set<Tag> NitrowindCore::structuralPseudoTags() const {
+  std::lock_guard<std::mutex> lock(structuralMutex_);
+  return structuralPseudoTags_;
 }
 
 void NitrowindCore::applyContainerSizes(ResolveContext& ctx,
@@ -339,6 +517,18 @@ void NitrowindCore::applyContainerSizes(ResolveContext& ctx,
   }
 }
 
+void NitrowindCore::applyGroupState(ResolveContext& ctx,
+                                    const LinkedNode& node) const {
+  if (node.groupTag == 0) return;
+  std::lock_guard<std::mutex> lock(groupMutex_);
+  auto it = groupStates_.find(node.groupTag);
+  if (it == groupStates_.end()) return;
+  ctx.isGroupActive = it->second.active;
+  ctx.isGroupFocused = it->second.focused;
+  ctx.isGroupHovered = it->second.hovered;
+  ctx.isGroupDisabled = it->second.disabled;
+}
+
 // --- Recompute -------------------------------------------------------------
 
 folly::dynamic NitrowindCore::resolveForNode(const LinkedNode& node,
@@ -351,6 +541,7 @@ folly::dynamic NitrowindCore::resolveForNode(const LinkedNode& node,
   nodeCtx.isFirstChild = node.context.isFirstChild;
   nodeCtx.isLastChild = node.context.isLastChild;
   applyContainerSizes(nodeCtx, node);
+  applyGroupState(nodeCtx, node);
   uint32_t mask = 0;
   folly::dynamic style = styleEngine_.resolve(node.className, nodeCtx, mask);
   if (node.inlineStyle && node.inlineStyle->isObject()) {
@@ -383,6 +574,20 @@ void NitrowindCore::recompute(uint32_t changedMask) {
   if (!batch.empty()) {
     ShadowTreeMutator::commit(batch);
   }
+}
+
+void NitrowindCore::commitResolvedNode(const LinkedNode& node,
+                                       const ResolveContext& ctx) {
+  if (node.family == nullptr) return;
+  folly::dynamic props = resolveForNode(node, ctx);
+  for (const auto& accent : node.accents) {
+    folly::dynamic accentProps = resolveAccent(accent, ctx);
+    if (!accentProps.isObject()) continue;
+    for (const auto& pair : accentProps.items()) {
+      props[pair.first] = pair.second;
+    }
+  }
+  ShadowTreeMutator::commit({{node.family, node.surfaceId, std::move(props)}});
 }
 
 // --- Listeners -------------------------------------------------------------

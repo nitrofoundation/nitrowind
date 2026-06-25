@@ -210,32 +210,55 @@ function pushDeclaration(
   if (prop && value) out.push({ prop, value, important });
 }
 
+function classTokensFromSelector(selector: string): string[] {
+  const tokens: string[] = [];
+  let dot = selector.indexOf(".");
+  while (dot >= 0) {
+    let token = "";
+    let i = dot + 1;
+    while (i < selector.length) {
+      const ch = selector[i]!;
+      if (ch === "\\") {
+        // Escaped character is part of the class name.
+        token += selector[i + 1] ?? "";
+        i += 2;
+        continue;
+      }
+      // Unescaped delimiter ends the class name (pseudo, combinator, etc.).
+      if (".: >+~[],*#".includes(ch)) break;
+      token += ch;
+      i++;
+    }
+    if (token) tokens.push(token);
+    dot = selector.indexOf(".", dot + 1);
+  }
+  return tokens;
+}
+
 /**
- * Extract the leading class-name token from a selector, unescaping Tailwind's
- * `\:` etc. Returns `undefined` for non-class selectors (`:root`, `*`, …).
+ * Extract the utility class-name token from a selector, unescaping Tailwind's
+ * `\:` etc. Group selectors contain both `.group` and `.group-active\:*`; in
+ * that shape the utility token is the descendant class, not the group root.
  */
 export function classTokenFromSelector(selector: string): string | undefined {
-  const dot = selector.indexOf(".");
-  if (dot === -1) return undefined;
-  let token = "";
-  let i = dot + 1;
-  while (i < selector.length) {
-    const ch = selector[i]!;
-    if (ch === "\\") {
-      // Escaped character is part of the class name.
-      token += selector[i + 1] ?? "";
-      i += 2;
-      continue;
-    }
-    // Unescaped delimiter ends the class name (pseudo, combinator, etc.).
-    if (".: >+~[],*#".includes(ch)) break;
-    token += ch;
-    i++;
-  }
-  return token || undefined;
+  const tokens = classTokensFromSelector(selector);
+  if (tokens.length === 0) return undefined;
+  const groupUtility = tokens.find((token) =>
+    /^group-(?:active|focus|focus-visible|focus-within|hover|disabled|enabled):/.test(
+      token,
+    ),
+  );
+  return groupUtility ?? tokens[0];
 }
 
 const PSEUDO_VARIANTS: Array<[RegExp, string]> = [
+  [/group-active\\:/, "group-active"],
+  [/group-focus-visible\\:/, "group-focus-visible"],
+  [/group-focus-within\\:/, "group-focus-within"],
+  [/group-focus\\:/, "group-focus"],
+  [/group-hover\\:/, "group-hover"],
+  [/group-disabled\\:/, "group-disabled"],
+  [/group-enabled\\:/, "group-enabled"],
   [/:first-child\b/, "first"],
   [/:last-child\b/, "last"],
   [/:focus-visible\b/, "focus-visible"],
@@ -274,8 +297,11 @@ const rnPropsForSelector = (selector: string, cssProp: string): string[] => {
   return toRNProperties(cssProp);
 };
 
-/** Tailwind always emits `--spacing` in `:root`; this is the v4 default. */
-const DEFAULT_VARS: Record<string, string> = { "--spacing": "0.25rem" };
+/** Tailwind emits a few implicit vars even when they are not in `:root`. */
+const DEFAULT_VARS: Record<string, string> = {
+  "--spacing": "0.25rem",
+  "--tw-border-style": "solid",
+};
 const defaultResolveVar: VarResolver = (name) => DEFAULT_VARS[name];
 
 /** Collect a rule's own custom properties (`--tw-*`, …) into a lookup. */
@@ -416,6 +442,15 @@ export function parseStyles(
       if (rnValue === undefined) continue;
       for (const rnProp of rnProps) style[rnProp] = rnValue;
       mask = union(mask, dependencyFromValue(decl.value));
+    }
+
+    if (
+      typeof style.fontSize === "number" &&
+      typeof style.lineHeight === "number" &&
+      style.lineHeight > 0 &&
+      style.lineHeight < 4
+    ) {
+      style.lineHeight = style.fontSize * style.lineHeight;
     }
 
     if (Object.keys(style).length === 0 && !containerMarker) continue;

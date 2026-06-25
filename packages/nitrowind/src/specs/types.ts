@@ -41,6 +41,8 @@ export enum StyleDependency {
   Rem = 7,
   /** A parent container's measured size (container queries). */
   ContainerSize = 8,
+  /** A nearest group ancestor's interactive state. */
+  GroupState = 9,
 }
 
 export enum ColorScheme {

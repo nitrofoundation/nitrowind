@@ -35,6 +35,18 @@ public:
     double height = 0.0;
   };
 
+  struct GroupState {
+    bool active = false;
+    bool focused = false;
+    bool hovered = false;
+    bool disabled = false;
+  };
+
+  struct StructuralPseudoState {
+    bool first = false;
+    bool last = false;
+  };
+
   static NitrowindCore& shared();
 
   StyleEngine& styleEngine() { return styleEngine_; }
@@ -85,11 +97,40 @@ public:
         nodeToContainer,
       bool forceRecompute = false);
 
+  /** Bind group-dependent nodes to their nearest group root from ShadowTree ancestry. */
+  void syncGroups(
+      const std::unordered_map<facebook::react::Tag, facebook::react::Tag>&
+        nodeToGroup,
+      bool forceRecompute = false);
+
+  /** Sync direct-child first/last structural pseudo state from ShadowTree ancestry. */
+  void syncStructuralPseudos(
+      const std::unordered_map<facebook::react::Tag, StructuralPseudoState>& stateByTag,
+      bool forceRecompute = false);
+
+  /** Update one group root's interactive state and recompute group descendants. */
+  void setGroupState(facebook::react::Tag groupTag, GroupState state);
+
+  /** Update one linked node's own interactive/structural pseudo state. */
+  void setComponentState(facebook::react::Tag tag, const ResolveContext& context);
+
   /** Snapshot of every registered container: tag -> container name. */
   std::unordered_map<facebook::react::Tag, std::string> containerTags() const;
 
+  /** Snapshot of every group root: tag -> group name. */
+  std::unordered_map<facebook::react::Tag, std::string> groupTags() const;
+
   /** Snapshot of every node that reads a container's size (`ContainerSize`). */
   std::unordered_set<facebook::react::Tag> containerQueryTags() const;
+
+  /** Snapshot of every node that reads nearest group state. */
+  std::unordered_set<facebook::react::Tag> groupDependentTags() const;
+
+  /** Snapshot of every active linked node. */
+  std::unordered_set<facebook::react::Tag> linkedTags() const;
+
+  /** Snapshot of every node with first:/last: structural pseudo variants. */
+  std::unordered_set<facebook::react::Tag> structuralPseudoTags() const;
 
   // --- Recompute -----------------------------------------------------------
   void recompute(uint32_t changedMask);
@@ -104,8 +145,11 @@ private:
   void notifyDependencyListeners(uint32_t changedMask);
   folly::dynamic resolveForNode(const LinkedNode& node, const ResolveContext& ctx);
   folly::dynamic resolveAccent(const LinkedAccent& accent, const ResolveContext& ctx);
+  void commitResolvedNode(const LinkedNode& node, const ResolveContext& ctx);
   /** Inject the node's container sizes into a copy of `ctx` before resolving. */
   void applyContainerSizes(ResolveContext& ctx, const LinkedNode& node) const;
+  /** Inject the node's nearest group root state before resolving group variants. */
+  void applyGroupState(ResolveContext& ctx, const LinkedNode& node) const;
 
   StyleEngine styleEngine_;
   DependencyIndex index_;
@@ -120,6 +164,13 @@ private:
   std::unordered_map<std::string, std::pair<double, double>> namedContainerSizes_;
   // Every linked node that is itself a container: tag -> container name.
   std::unordered_map<facebook::react::Tag, std::string> containerTags_;
+
+  mutable std::mutex groupMutex_;
+  std::unordered_map<facebook::react::Tag, std::string> groupTags_;
+  std::unordered_map<facebook::react::Tag, GroupState> groupStates_;
+
+  mutable std::mutex structuralMutex_;
+  std::unordered_set<facebook::react::Tag> structuralPseudoTags_;
 
   std::mutex listenerMutex_;
   std::unordered_map<int, DependencyListener> dependencyListeners_;

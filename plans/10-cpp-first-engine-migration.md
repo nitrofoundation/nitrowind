@@ -118,9 +118,7 @@ Implement group variants natively. Desired examples:
 
 ```tsx
 <Pressable className="group rounded-2xl active:bg-primary">
-  <Text className="text-muted group-active:text-primary-foreground">
-    Save
-  </Text>
+  <Text className="text-muted group-active:text-primary-foreground">Save</Text>
 </Pressable>
 ```
 

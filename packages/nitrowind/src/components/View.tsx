@@ -45,6 +45,8 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
     forwardedRef,
     [],
     __nitrowindPseudoState,
+    undefined,
+    style,
   );
 
   // `useContainer` returns a single `onLayout` that already merges the container
@@ -54,7 +56,11 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
     containerStyle,
     provider,
   } = useContainer(resolved, onLayout);
-  const gridFallback = useGridFallback(children, className, handleLayout);
+  const gridFallback = useGridFallback(children, className, handleLayout, [
+    resolved.styles,
+    containerStyle,
+    style,
+  ]);
 
   // A class using an animation utility (`entering-*`, `animate-wiggle`, …) swaps
   // the host for Reanimated's `Animated.View` so it can drive the animation.
@@ -76,7 +82,7 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
       {...animationProps}
       {...rest}
     >
-      {withChildPseudoState(gridFallback.children)}
+      {withChildPseudoState(gridFallback.children, snapshot)}
     </Base>
   );
 

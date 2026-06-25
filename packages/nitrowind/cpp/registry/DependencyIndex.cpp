@@ -57,6 +57,29 @@ void DependencyIndex::updateInlineStyle(facebook::react::Tag tag, SharedFolly st
   if (it != nodes_.end()) it->second.inlineStyle = std::move(style);
 }
 
+bool DependencyIndex::updateContext(facebook::react::Tag tag,
+                                    const ResolveContext& context) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = nodes_.find(tag);
+  if (it == nodes_.end()) return false;
+  auto& current = it->second.context;
+  if (current.isFocused == context.isFocused &&
+      current.isActive == context.isActive &&
+      current.isDisabled == context.isDisabled &&
+      current.isHovered == context.isHovered &&
+      current.isFirstChild == context.isFirstChild &&
+      current.isLastChild == context.isLastChild) {
+    return false;
+  }
+  current.isFocused = context.isFocused;
+  current.isActive = context.isActive;
+  current.isDisabled = context.isDisabled;
+  current.isHovered = context.isHovered;
+  current.isFirstChild = context.isFirstChild;
+  current.isLastChild = context.isLastChild;
+  return true;
+}
+
 bool DependencyIndex::setContainerTag(facebook::react::Tag tag,
                                       facebook::react::Tag containerTag) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -67,11 +90,31 @@ bool DependencyIndex::setContainerTag(facebook::react::Tag tag,
   return true;
 }
 
+bool DependencyIndex::setGroupTag(facebook::react::Tag tag,
+                                  facebook::react::Tag groupTag) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = nodes_.find(tag);
+  if (it == nodes_.end()) return false;
+  if (it->second.groupTag == groupTag) return false;
+  it->second.groupTag = groupTag;
+  return true;
+}
+
 std::unordered_set<facebook::react::Tag> DependencyIndex::tagsForBit(
     uint32_t bitIndex) const {
   std::lock_guard<std::mutex> lock(mutex_);
   if (bitIndex >= byBit_.size()) return {};
   return byBit_[bitIndex];
+}
+
+std::unordered_set<facebook::react::Tag> DependencyIndex::activeTags() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  std::unordered_set<facebook::react::Tag> tags;
+  tags.reserve(nodes_.size());
+  for (const auto& entry : nodes_) {
+    if (!entry.second.suspended) tags.insert(entry.first);
+  }
+  return tags;
 }
 
 void DependencyIndex::forEachAffected(

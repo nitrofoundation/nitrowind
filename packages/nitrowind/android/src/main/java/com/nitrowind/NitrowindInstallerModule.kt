@@ -1,16 +1,18 @@
 package com.nitrowind
 
 import android.util.Log
+import com.facebook.react.common.annotations.FrameworkAPI
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
-import com.facebook.react.internal.turbomodule.core.CallInvokerHolderImpl
+import com.facebook.react.turbomodule.core.CallInvokerHolderImpl
 
 /**
  * Bootstraps the C++ engine once the React context is ready. Lifts the JS
  * runtime pointer and the JS CallInvoker from the context and hands them to the
  * native installer, mirroring how JSI libraries (e.g. Reanimated) install.
  */
+@OptIn(FrameworkAPI::class)
 class NitrowindInstallerModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
 

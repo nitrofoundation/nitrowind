@@ -21,7 +21,7 @@ inline uint32_t maskFromDeps(const std::vector<GeneratedDependency>& deps) {
 /** Expand a bitmask back into generated `StyleDependency` enum values. */
 inline std::vector<GeneratedDependency> depsFromMask(uint32_t mask) {
   std::vector<GeneratedDependency> deps;
-  for (uint32_t bit = 0; bit <= static_cast<uint32_t>(GeneratedDependency::CONTAINERSIZE); ++bit) {
+  for (uint32_t bit = 0; bit <= static_cast<uint32_t>(GeneratedDependency::GROUPSTATE); ++bit) {
     if ((mask & (1u << bit)) != 0) {
       deps.push_back(static_cast<GeneratedDependency>(bit));
     }

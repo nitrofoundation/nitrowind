@@ -64,10 +64,18 @@ public:
     for (const auto& accent : accents) {
       auto accentHandle = std::static_pointer_cast<HybridShadowNodeHandle>(accent.handle);
       if (accentHandle == nullptr || accentHandle->node() == nullptr) continue;
+      std::string sourceProperty;
+      if (accent.meta && accent.meta->isObject()) {
+        if (auto* value = accent.meta->get_ptr("sourceProperty");
+            value != nullptr && value->isString()) {
+          sourceProperty = value->getString();
+        }
+      }
       linkedAccents.push_back({accentHandle->family(),
                                accentHandle->surfaceId(),
                                accent.className,
                                accent.accentKey,
+                               sourceProperty,
                                ::nitrowind::maskFromDeps(accent.dependencies)});
     }
 
@@ -137,6 +145,37 @@ public:
     auto it = containers.find(handle->nativeTag());
     if (it == containers.end()) return false;
     core.setContainerSize(handle->nativeTag(), it->second, width, height);
+    return true;
+  }
+
+  bool setGroupStateForNode(
+      const std::shared_ptr<HybridShadowNodeHandleSpec>& shadowNode,
+      const ComponentState& state) override {
+    auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
+    if (handle == nullptr) return false;
+    auto& core = ::nitrowind::NitrowindCore::shared();
+    const auto groups = core.groupTags();
+    if (groups.find(handle->nativeTag()) == groups.end()) return false;
+    core.setGroupState(handle->nativeTag(), {state.isActive,
+                                             state.isFocused,
+                                             state.isHovered,
+                                             state.isDisabled});
+    return true;
+  }
+
+  bool setComponentStateForNode(
+      const std::shared_ptr<HybridShadowNodeHandleSpec>& shadowNode,
+      const ComponentState& state) override {
+    auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
+    if (handle == nullptr) return false;
+    ::nitrowind::ResolveContext ctx;
+    ctx.isFocused = state.isFocused;
+    ctx.isActive = state.isActive;
+    ctx.isDisabled = state.isDisabled;
+    ctx.isHovered = state.isHovered;
+    ctx.isFirstChild = state.isFirstChild;
+    ctx.isLastChild = state.isLastChild;
+    ::nitrowind::NitrowindCore::shared().setComponentState(handle->nativeTag(), ctx);
     return true;
   }
 

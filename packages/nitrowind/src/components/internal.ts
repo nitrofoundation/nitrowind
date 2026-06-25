@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, type Ref } from "react";
+import { StyleSheet } from "react-native";
 import type { RNStyle } from "../compiler/types";
 import type { Accent } from "../specs/ShadowRegistry.nitro";
+import type { ShadowNodeHandle } from "../specs/ShadowNodeHandle.nitro";
 import { type ComponentState, type RuntimeSnapshot } from "../specs/types";
 import { getEngine, hasNativeEngine } from "../core/native";
 import { runtime } from "../core/runtime";
@@ -26,7 +28,13 @@ interface FabricRef {
 export interface NativeAccentDescriptor {
   className: string;
   prop: string;
-  dependencies: Accent["dependencies"];
+  dependencies?: Accent["dependencies"];
+  sourceProperty?: string;
+}
+
+export interface LinkedNodeRegistration {
+  handle: ShadowNodeHandle;
+  cleanup: () => void;
 }
 
 function normalizeComponentState(
@@ -68,6 +76,14 @@ function shadowNodeWrapperFromRef(
   return handle?.stateNode?.node ?? null;
 }
 
+function flattenInlineStyle(style: unknown): Record<string, unknown> {
+  if (typeof style === "function") return {};
+  const flattened = StyleSheet.flatten(style as never);
+  return flattened && typeof flattened === "object"
+    ? (flattened as Record<string, unknown>)
+    : {};
+}
+
 /**
  * Link a freshly-mounted host component to the native ShadowRegistry so the C++
  * engine owns its future style updates. Returns a cleanup (unlink) function, or
@@ -81,7 +97,8 @@ export function linkNode(
   snapshot: RuntimeSnapshot,
   nativeAccents: NativeAccentDescriptor[] = [],
   componentState?: Partial<ComponentState>,
-): (() => void) | undefined {
+  inlineStyle?: unknown,
+): LinkedNodeRegistration | undefined {
   if (!hasNativeEngine() || !instance) return undefined;
   const engine = getEngine();
   if (!engine) return undefined;
@@ -97,14 +114,16 @@ export function linkNode(
     handle.fromRef(wrapper);
 
     const inline = engine.createFollyStyle();
-    inline.fromJSObject({});
+    inline.fromJSObject(flattenInlineStyle(inlineStyle));
 
     const accents: Accent[] = nativeAccents.map((accent) => ({
       handle,
       className: accent.className,
       accentKey: accent.prop,
-      dependencies: accent.dependencies,
-      meta: {},
+      dependencies: accent.dependencies ?? [],
+      meta: accent.sourceProperty
+        ? { sourceProperty: accent.sourceProperty }
+        : {},
     }));
 
     engine.Registry.link(
@@ -123,15 +142,64 @@ export function linkNode(
       },
     );
 
-    return () => {
+    const cleanup = () => {
       try {
         engine.Registry.unlink(handle);
       } catch {
         /* node already gone */
       }
     };
+    return { handle, cleanup };
   } catch {
     return undefined;
+  }
+}
+
+export function setNativeGroupStateForNode(
+  handle: ShadowNodeHandle | undefined,
+  state: Partial<ComponentState>,
+): void {
+  if (!handle || !hasNativeEngine()) return;
+  const engine = getEngine();
+  if (!engine) return;
+  try {
+    engine.Registry.setGroupStateForNode(
+      handle,
+      normalizeComponentState(state) ?? {
+        isFocused: false,
+        isActive: false,
+        isDisabled: false,
+        isHovered: false,
+        isFirstChild: false,
+        isLastChild: false,
+      },
+    );
+  } catch {
+    /* native group state is best-effort */
+  }
+}
+
+export function setNativeComponentStateForNode(
+  handle: ShadowNodeHandle | undefined,
+  state: Partial<ComponentState>,
+): void {
+  if (!handle || !hasNativeEngine()) return;
+  const engine = getEngine();
+  if (!engine) return;
+  try {
+    engine.Registry.setComponentStateForNode(
+      handle,
+      normalizeComponentState(state) ?? {
+        isFocused: false,
+        isActive: false,
+        isDisabled: false,
+        isHovered: false,
+        isFirstChild: false,
+        isLastChild: false,
+      },
+    );
+  } catch {
+    /* native component state is best-effort */
   }
 }
 
@@ -162,6 +230,8 @@ export function useLinkedRef<T>(
   forwardedRef: Ref<T> | undefined,
   nativeAccents: NativeAccentDescriptor[] = [],
   componentState?: Partial<ComponentState>,
+  onLinked?: (handle: ShadowNodeHandle | undefined) => void,
+  inlineStyle?: unknown,
 ): (node: T | null) => void {
   const cleanup = useRef<(() => void) | undefined>(undefined);
 
@@ -170,7 +240,7 @@ export function useLinkedRef<T>(
       cleanup.current?.();
       cleanup.current = undefined;
       if (node) {
-        cleanup.current = linkNode(
+        const registration = linkNode(
           node,
           className,
           componentName,
@@ -178,7 +248,12 @@ export function useLinkedRef<T>(
           snapshot,
           nativeAccents,
           componentState,
+          inlineStyle,
         );
+        cleanup.current = registration?.cleanup;
+        onLinked?.(registration?.handle);
+      } else {
+        onLinked?.(undefined);
       }
       assignRef(forwardedRef, node);
     },
@@ -190,6 +265,8 @@ export function useLinkedRef<T>(
       forwardedRef,
       nativeAccents,
       componentState,
+      onLinked,
+      inlineStyle,
     ],
   );
 }

@@ -72,6 +72,18 @@ export interface ShadowRegistry extends HybridObject<{
     height: number,
   ): boolean;
 
+  /** Update the native interactive state for a registered group root. */
+  setGroupStateForNode(
+    shadowNode: ShadowNodeHandle,
+    state: ComponentState,
+  ): boolean;
+
+  /** Update one registered node's own native pseudo state. */
+  setComponentStateForNode(
+    shadowNode: ShadowNodeHandle,
+    state: ComponentState,
+  ): boolean;
+
   /** Attach a diagnostics instance to receive link/mutation events. */
   enableDiagnostics(instance: NitrowindDiagnostics): void;
 }

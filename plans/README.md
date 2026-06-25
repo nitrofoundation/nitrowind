@@ -37,15 +37,15 @@ See [01-architecture.md](./01-architecture.md) for the full breakdown. Short ver
 
 ## Phases
 
-| Phase | Doc                                                    | Output                            |
-| ----- | ------------------------------------------------------ | --------------------------------- |
-| P0    | this file + [01](./01-architecture.md)                 | Monorepo scaffold, architecture   |
-| P1    | [02-build-compiler.md](./02-build-compiler.md)         | Tailwind → RN styles compiler     |
-| P2    | [03-runtime.md](./03-runtime.md)                       | JS runtime glue + components      |
-| P3    | [04-nitro-specs.md](./04-nitro-specs.md)               | Nitro `.nitro.ts` specs + codegen |
-| P4    | [05-cpp-engine.md](./05-cpp-engine.md)                 | Open-source C++ ShadowTree engine |
-| P5    | [06-native-ios-android.md](./06-native-ios-android.md) | iOS Swift + Android JNI           |
-| P6    | [07-roadmap.md](./07-roadmap.md)                       | Demo, tests, parity, release      |
+| Phase | Doc                                                                    | Output                                    |
+| ----- | ---------------------------------------------------------------------- | ----------------------------------------- |
+| P0    | this file + [01](./01-architecture.md)                                 | Monorepo scaffold, architecture           |
+| P1    | [02-build-compiler.md](./02-build-compiler.md)                         | Tailwind → RN styles compiler             |
+| P2    | [03-runtime.md](./03-runtime.md)                                       | JS runtime glue + components              |
+| P3    | [04-nitro-specs.md](./04-nitro-specs.md)                               | Nitro `.nitro.ts` specs + codegen         |
+| P4    | [05-cpp-engine.md](./05-cpp-engine.md)                                 | Open-source C++ ShadowTree engine         |
+| P5    | [06-native-ios-android.md](./06-native-ios-android.md)                 | iOS Swift + Android JNI                   |
+| P6    | [07-roadmap.md](./07-roadmap.md)                                       | Demo, tests, parity, release              |
 | P7    | [10-cpp-first-engine-migration.md](./10-cpp-first-engine-migration.md) | C++-first runtime migration + group state |
 
 ## Repo layout (target)

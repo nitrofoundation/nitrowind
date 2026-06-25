@@ -15,6 +15,7 @@ struct LinkedAccent {
   facebook::react::SurfaceId surfaceId = 0;
   std::string className;
   std::string propName;
+  std::string sourceProperty;
   uint32_t dependencyMask = 0;
 };
 
@@ -52,6 +53,13 @@ struct LinkedNode {
   bool isContainer = false;
   /** Container name for named queries (`@container/sidebar`); empty if anon. */
   std::string containerName;
+
+  /** Fabric tag of the nearest ancestor that is a group root. */
+  facebook::react::Tag groupTag = 0;
+  /** True when this node itself is a group root (`group` / `group/name`). */
+  bool isGroupRoot = false;
+  /** Group name for named groups; empty for the default group. */
+  std::string groupName;
 
   bool suspended = false;
 };

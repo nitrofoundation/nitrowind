@@ -23,6 +23,7 @@ enum class Dependency : uint32_t {
   FontScale = 6,
   Rem = 7,
   ContainerSize = 8,
+  GroupState = 9,
 };
 
 inline uint32_t depFlag(Dependency d) {
@@ -69,6 +70,10 @@ struct ResolveContext {
   bool isHovered = false;
   bool isFirstChild = false;
   bool isLastChild = false;
+  bool isGroupActive = false;
+  bool isGroupFocused = false;
+  bool isGroupHovered = false;
+  bool isGroupDisabled = false;
 };
 
 /** A single compiled variant of a class. */
@@ -111,6 +116,10 @@ public:
    */
   bool resolveContainerMarker(const std::string& className,
                               std::string& outName) const;
+
+  /** Whether a class marks its node as a group root (`group` / `group/name`). */
+  bool resolveGroupMarker(const std::string& className,
+                          std::string& outName) const;
 
   /**
    * Resolve a space-separated `className` into a merged style object for the

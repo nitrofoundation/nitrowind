@@ -7,7 +7,7 @@
  */
 import { useRouter, type Href } from "expo-router";
 import { FlatList, Pressable, Text, View } from "nitrowind";
-
+import {} from "react-native";
 import { ThemeToggle } from "../components/ui";
 
 type Page = {

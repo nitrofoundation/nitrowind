@@ -76,8 +76,8 @@ async function buildBootstrap(): Promise<string> {
       compileOptions.rem,
     );
     return (
-      "var nitrowind = require('nitrowind');\n" +
-      `nitrowind.registerStyles(${compiler.serializeArtifact(artifact)});\n`
+      "import { registerStyles as __nitrowindRegisterStyles } from 'nitrowind';\n" +
+      `__nitrowindRegisterStyles(${compiler.serializeArtifact(artifact)});\n`
     );
   })();
   return bootstrapPromise;

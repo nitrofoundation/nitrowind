@@ -175,4 +175,43 @@ describe("resolveStyles · platform filter", () => {
       resolveStyles("web:gap-4", makeSnapshot()).styles.gap,
     ).toBeUndefined();
   });
+
+  it("drops CSS-string boxShadow on native platforms", () => {
+    const css = `
+      .shadow-md {
+        --tw-shadow: 0 4px 6px -1px #0000001a;
+        box-shadow: var(--tw-shadow);
+      }
+    `;
+    registerStyles(compileFromCss(css, 16));
+
+    Platform.OS = "android";
+    const androidStyles = resolveStyles("shadow-md", makeSnapshot()).styles;
+    expect(androidStyles.boxShadow).toBeUndefined();
+    expect(androidStyles.shadowColor).toBe("#000000");
+    expect(androidStyles.elevation).toBe(3);
+
+    Platform.OS = "web";
+    expect(resolveStyles("shadow-md", makeSnapshot()).styles.boxShadow).toBe(
+      "0px 4px 6px -1px #0000001a",
+    );
+  });
+
+  it("keeps native color fallbacks when Tailwind emits color-mix overrides", () => {
+    const css = `
+      .bg-primary\/15 { background-color: #6d28d926; }
+      .bg-primary\/15 { background-color: color-mix(in oklab, var(--color-primary) 15%, transparent); }
+    `;
+    registerStyles(compileFromCss(css, 16));
+
+    Platform.OS = "android";
+    expect(resolveStyles("bg-primary/15", makeSnapshot()).styles).toEqual({
+      backgroundColor: "#6d28d926",
+    });
+
+    Platform.OS = "web";
+    expect(resolveStyles("bg-primary/15", makeSnapshot()).styles).toEqual({
+      backgroundColor: "color-mix(in oklab,  15%, transparent)",
+    });
+  });
 });

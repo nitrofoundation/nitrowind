@@ -1,11 +1,17 @@
 import React, { Children, cloneElement, isValidElement } from "react";
-import type { ComponentState } from "../specs/types";
+import type { StyleProp } from "react-native";
+import { resolveStyles } from "../core/store";
+import type { ComponentState, RuntimeSnapshot } from "../specs/types";
 
 export interface PseudoStateProp {
   __nitrowindPseudoState?: Partial<ComponentState>;
 }
 
-function hasClassName(props: unknown): props is { className: string } {
+function hasClassName(props: unknown): props is {
+  className: string;
+  style?: StyleProp<unknown>;
+  __nitrowindPseudoState?: Partial<ComponentState>;
+} {
   return (
     !!props &&
     typeof props === "object" &&
@@ -13,8 +19,29 @@ function hasClassName(props: unknown): props is { className: string } {
   );
 }
 
+function structuralPseudoClassName(className: string): string {
+  return className
+    .split(/\s+/)
+    .filter((token) => token.startsWith("first:") || token.startsWith("last:"))
+    .join(" ");
+}
+
+function mergePseudoStyle(
+  props: { className: string; style?: StyleProp<unknown> },
+  snapshot: RuntimeSnapshot | undefined,
+  state: Partial<ComponentState>,
+): { style?: StyleProp<unknown> } {
+  const pseudoClassName = structuralPseudoClassName(props.className);
+  if (!snapshot || !pseudoClassName) return {};
+  const pseudoStyle = resolveStyles(pseudoClassName, snapshot, state).styles;
+  return {
+    style: props.style ? [props.style, pseudoStyle] : pseudoStyle,
+  };
+}
+
 export function withChildPseudoState(
   children: React.ReactNode,
+  snapshot?: RuntimeSnapshot,
 ): React.ReactNode {
   const items = Children.toArray(children);
   const styledIndexes = items
@@ -29,14 +56,15 @@ export function withChildPseudoState(
   const last = styledIndexes[styledIndexes.length - 1];
   return items.map((child, index) => {
     if (!isValidElement(child) || !hasClassName(child.props)) return child;
-    const existing =
-      (child.props as PseudoStateProp).__nitrowindPseudoState ?? {};
+    const existing = child.props.__nitrowindPseudoState ?? {};
+    const state = {
+      ...existing,
+      isFirstChild: index === first,
+      isLastChild: index === last,
+    };
     return cloneElement(child, {
-      __nitrowindPseudoState: {
-        ...existing,
-        isFirstChild: index === first,
-        isLastChild: index === last,
-      },
+      __nitrowindPseudoState: state,
+      ...mergePseudoStyle(child.props, snapshot, state),
     } as PseudoStateProp);
   });
 }
@@ -44,16 +72,18 @@ export function withChildPseudoState(
 export function withComponentPseudoState(
   children: React.ReactNode,
   state: Partial<ComponentState>,
+  snapshot?: RuntimeSnapshot,
 ): React.ReactNode {
   return Children.map(children, (child) => {
     if (!isValidElement(child) || !hasClassName(child.props)) return child;
-    const existing =
-      (child.props as PseudoStateProp).__nitrowindPseudoState ?? {};
+    const existing = child.props.__nitrowindPseudoState ?? {};
+    const nextState = {
+      ...existing,
+      ...state,
+    };
     return cloneElement(child, {
-      __nitrowindPseudoState: {
-        ...existing,
-        ...state,
-      },
+      __nitrowindPseudoState: nextState,
+      ...mergePseudoStyle(child.props, snapshot, nextState),
     } as PseudoStateProp);
   });
 }

@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Platform } from "react-native";
 import { compileFromCss } from "../index";
 import { registerStyles } from "../../core/registry";
 import { resolveStyles } from "../../core/store";
@@ -98,9 +99,16 @@ const stylesFor = (className: string) =>
   resolveStyles(className, makeSnapshot()).styles;
 
 describe("value parsers", () => {
+  const originalPlatform = Platform.OS;
+
+  afterEach(() => {
+    Platform.OS = originalPlatform;
+  });
+
   // Registry is a module global; (re)register before each test so this file's
   // artifact wins regardless of run order with the other suites.
   beforeEach(() => {
+    Platform.OS = "web";
     registerStyles(compileFromCss(CSS, 16));
   });
 

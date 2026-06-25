@@ -85,6 +85,10 @@ const SUPPORTED = new Set([
   ":focus",
   ":focus-visible",
   ":focus-within",
+  "group-active",
+  "group-focus",
+  "group-focus-visible",
+  "group-hover",
   ":first-child",
   ":hover",
   ":last-child",
@@ -142,6 +146,22 @@ export default function PseudoSelectors() {
       </Section>
 
       <Section
+        title="Group pseudo-classes"
+        subtitle="Group descendants react to the nearest group root state through native shadow tree associations."
+      >
+        <Pressable
+          accessibilityRole="button"
+          className="group rounded-2xl border border-border bg-surface-elevated p-4 active:border-primary focus:border-primary"
+        >
+          <View className="rounded-xl border border-transparent bg-surface px-4 py-3 group-active:bg-primary group-focus:border-accent">
+            <Text className="text-center text-sm font-bold text-on-surface group-active:text-on-primary">
+              Group child follows parent state
+            </Text>
+          </View>
+        </Pressable>
+      </Section>
+
+      <Section
         title="Host pseudo props"
         subtitle="Placeholder and selection map to React Native host props. Generated pseudo-elements stay inert."
       >
@@ -161,9 +181,9 @@ export default function PseudoSelectors() {
           {["first child", "middle child", "last child"].map((label) => (
             <View
               key={label}
-              className="rounded-xl bg-surface px-4 py-3 first:bg-primary last:bg-accent"
+              className="rounded-xl bg-surface px-4 py-3 first:bg-sky-500 last:bg-fuchsia-500"
             >
-              <Text className="text-sm font-semibold text-on-surface">
+              <Text className="text-sm font-semibold text-on-surface first:text-white last:text-white">
                 {label}
               </Text>
             </View>
@@ -184,7 +204,7 @@ export default function PseudoSelectors() {
 
       <Section
         title="W3 pseudo-element catalog"
-        subtitle="Only placeholder has a direct React Native equivalent today; generated elements are intentionally inert."
+        subtitle="Placeholder and selection have direct React Native host mappings; generated elements are intentionally inert."
       >
         <Card className="flex-row flex-wrap gap-2">
           {PSEUDO_ELEMENTS.map((name) => (

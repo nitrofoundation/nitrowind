@@ -29,6 +29,9 @@ public:
   /** Update the inline style of an already-linked node. */
   void updateInlineStyle(facebook::react::Tag tag, SharedFolly style);
 
+  /** Update the per-node pseudo state captured for native variant resolution. */
+  bool updateContext(facebook::react::Tag tag, const ResolveContext& context);
+
   /**
    * Point a node at its nearest enclosing container (by Fabric tag). Called by
    * the layout layer once the tree is mounted. Returns true if the association
@@ -36,8 +39,14 @@ public:
    */
   bool setContainerTag(facebook::react::Tag tag, facebook::react::Tag containerTag);
 
+  /** Point a node at its nearest enclosing group root. */
+  bool setGroupTag(facebook::react::Tag tag, facebook::react::Tag groupTag);
+
   /** Snapshot of every active tag that reads the given dependency bit. */
   std::unordered_set<facebook::react::Tag> tagsForBit(uint32_t bitIndex) const;
+
+  /** Snapshot of every active linked tag. */
+  std::unordered_set<facebook::react::Tag> activeTags() const;
 
   /** Visit every active node whose dependency mask intersects `changedMask`. */
   void forEachAffected(uint32_t changedMask,

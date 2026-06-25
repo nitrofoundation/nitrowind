@@ -63,6 +63,10 @@ export const ScrollView = forwardRef<RNScrollView, NitrowindScrollViewProps>(
       resolved,
       snapshot,
       forwardedRef,
+      [],
+      undefined,
+      undefined,
+      style,
     );
     return (
       <RNScrollView
@@ -114,6 +118,10 @@ function FlatListInner<ItemT>(
     resolved,
     snapshot,
     forwardedRef,
+    [],
+    undefined,
+    undefined,
+    style,
   );
   return (
     <RNFlatList<ItemT>
@@ -177,6 +185,10 @@ function SectionListInner<ItemT, SectionT>(
     resolved,
     snapshot,
     forwardedRef,
+    [],
+    undefined,
+    undefined,
+    style,
   );
   return (
     <RNSectionList<ItemT, SectionT>
