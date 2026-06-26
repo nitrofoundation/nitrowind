@@ -103,6 +103,8 @@ export default function NitroNativeListScreen() {
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [actionStatus, setActionStatus] = useState<string>('idle');
   const listRef = useRef<any>(null);
+  const listReadyRef = useRef(false);
+  const pendingScrollIndexRef = useRef<number | null>(null);
 
   const nativeAvailable = NitroList.isNativeAvailable();
 
@@ -146,6 +148,39 @@ export default function NitroNativeListScreen() {
 
   const scrollTargets = [0, 50, 150, 400, 999];
 
+  const scrollVisibleListToIndex = useCallback((index: number) => {
+    const list = listRef.current;
+    if (list == null || !listReadyRef.current) {
+      pendingScrollIndexRef.current = index;
+      return false;
+    }
+
+    pendingScrollIndexRef.current = null;
+    void list.scrollToIndex?.({
+      animated: false,
+      index,
+      viewPosition: 0,
+    });
+    requestAnimationFrame(() => {
+      void listRef.current?.scrollToIndex?.({
+        animated: true,
+        index,
+        viewPosition: 0,
+      });
+    });
+    return true;
+  }, []);
+
+  const onListLoad = useCallback(() => {
+    listReadyRef.current = true;
+    const pendingIndex = pendingScrollIndexRef.current;
+    if (pendingIndex != null) {
+      requestAnimationFrame(() => {
+        scrollVisibleListToIndex(pendingIndex);
+      });
+    }
+  }, [scrollVisibleListToIndex]);
+
   const scrollToIndex = (index: number) => {
     if (!handleRef.scrollToIndex(index, true)) {
       setActionStatus('list is still creating');
@@ -153,8 +188,12 @@ export default function NitroNativeListScreen() {
     }
 
     setActiveIndex(index);
-    setActionStatus(`scrolled to index ${index}`);
-    listRef.current?.scrollToIndex?.({ animated: true, index });
+    const visibleScrollStarted = scrollVisibleListToIndex(index);
+    setActionStatus(
+      visibleScrollStarted
+        ? `scrolled to index ${index}`
+        : `queued scroll to index ${index}`,
+    );
   };
 
   const renderItem = useCallback(({ item, index }: { item: DemoItem; index: number }) => {
@@ -218,6 +257,7 @@ export default function NitroNativeListScreen() {
                 getItemType={item => item.template}
                 keyExtractor={item => item.id}
                 maintainVisibleContentPosition={{ disabled: true }}
+                onLoad={onListLoad}
                 renderItem={renderItem}
               />
             </View>

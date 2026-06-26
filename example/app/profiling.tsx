@@ -1118,14 +1118,34 @@ export default function Profiling() {
       if (handle != null) {
         NitroList.scrollToIndex(handle, AUTO_SCROLL_INDEX, true);
       }
+      await flashRef.current?.scrollToIndex?.({
+        index: AUTO_SCROLL_INDEX,
+        animated: false,
+        viewPosition: 0,
+      });
+      requestAnimationFrame(() => {
+        void flashRef.current?.scrollToIndex?.({
+          index: AUTO_SCROLL_INDEX,
+          animated: true,
+          viewPosition: 0,
+        });
+      });
       return;
     }
 
     if (mode === 'flash') {
       flashFirstVisibleRef.current = AUTO_SCROLL_INDEX;
-      flashRef.current?.scrollToIndex?.({
+      await flashRef.current?.scrollToIndex?.({
         index: AUTO_SCROLL_INDEX,
-        animated: true,
+        animated: false,
+        viewPosition: 0,
+      });
+      requestAnimationFrame(() => {
+        void flashRef.current?.scrollToIndex?.({
+          index: AUTO_SCROLL_INDEX,
+          animated: true,
+          viewPosition: 0,
+        });
       });
       return;
     }
