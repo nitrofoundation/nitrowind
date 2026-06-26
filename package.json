@@ -8,6 +8,10 @@
     "packages/*",
     "example"
   ],
+  "resolutions": {
+    "react": "19.2.7",
+    "react-native": "0.86.0"
+  },
   "scripts": {
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",

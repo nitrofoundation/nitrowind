@@ -1,77 +1,97 @@
-# Nitrowind Example (Expo Router · React Native 0.86)
+This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
-An [Expo Router](https://docs.expo.dev/router/introduction/) app that showcases
-nitrowind features one per page. Styling is driven entirely by the native
-nitrowind engine — toggling the color scheme, resizing a container, or animating
-a view mutates the Fabric ShadowTree in C++ without a React re-render.
+# Getting Started
 
-## What's here
+> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
 
-File-based routes under [app/](app):
+## Step 1: Start Metro
 
-| Route          | File                                       | Shows                                                   |
-| -------------- | ------------------------------------------ | ------------------------------------------------------- |
-| `/`            | [app/index.tsx](app/index.tsx)             | A `FlatList` of every page — tap to navigate            |
-| `/animations`  | [app/animations.tsx](app/animations.tsx)   | Entering / exiting / layout + CSS `@keyframes` loops    |
-| `/borders`     | [app/borders.tsx](app/borders.tsx)         | Width, color, radius, style, per-side                   |
-| `/backgrounds` | [app/backgrounds.tsx](app/backgrounds.tsx) | Solid colors, `/alpha` opacity, theme surfaces          |
-| `/transforms`  | [app/transforms.tsx](app/transforms.tsx)   | Rotate / scale / translate / skew + box-shadow          |
-| `/containers`  | [app/containers.tsx](app/containers.tsx)   | Native container queries (`@container` + `@min`/`@max`) |
-| `/typography`  | [app/typography.tsx](app/typography.tsx)   | Size, weight, tracking, leading, decoration, color      |
-| `/theming`     | [app/theming.tsx](app/theming.tsx)         | Live dark / light token swap + `dark:` variants         |
-| `/layout`      | [app/layout.tsx](app/layout.tsx)           | Flexbox, gap, safe-area, `ios:` / `android:` variants   |
+First, you will need to run **Metro**, the JavaScript build tool for React Native.
 
-Supporting files:
-
-- [app/\_layout.tsx](app/_layout.tsx) — root `Stack`, `NitrowindProvider`, and the single `global.css` import.
-- [components/ui.tsx](components/ui.tsx) — shared `Screen` / `Section` / `Card` / `ThemeToggle` helpers (no `StyleSheet` anywhere).
-- [global.css](global.css) — `@import "tailwindcss"` plus `@theme` tokens and a `.dark` override.
-- [metro.config.js](metro.config.js) — wraps Expo's Metro config with `withNitrowindMetroConfig`.
-
-## Run it
-
-> [!IMPORTANT]
-> nitrowind ships a [Nitro](https://nitro.margelo.com/) native module, so this
-> app needs a **custom dev client** (a prebuild) — it will **not** run in Expo
-> Go. The new architecture (`newArchEnabled`) is required.
+To start the Metro dev server, run the following command from the root of your React Native project:
 
 ```sh
-# from the repo root
-yarn install
+# Using npm
+npm start
 
-cd example
+# OR using Yarn
+yarn start
+```
 
-# pin the Expo packages to versions that match your installed Expo SDK
-npx expo install --fix
+## Step 2: Build and run your app
 
-# generate the native iOS/Android projects (git-ignored)
-npx expo prebuild --clean
+With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
 
-# iOS (builds & launches the dev client)
-yarn ios
+### Android
 
-# Android
+```sh
+# Using npm
+npm run android
+
+# OR using Yarn
 yarn android
 ```
 
-Then start Metro for the dev client:
+### iOS
+
+For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+
+The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
 
 ```sh
-yarn start   # expo start --dev-client
+bundle install
 ```
 
-### Version note
+Then, and every time you update your native dependencies, run:
 
-This example targets **React Native 0.86**, which is newer than the React
-Native pinned by current Expo SDKs. Run `npx expo install --fix` to align the
-`expo-*`, `react-native-reanimated`, `react-native-safe-area-context`, and
-`react-native-screens` versions to your SDK, then prebuild. The nitrowind
-engine, the iOS Swift/Obj-C++ bridge, and the Android Kotlin/JNI bridge are
-autolinked from the `nitrowind` package — no extra native wiring is required.
+```sh
+bundle exec pod install
+```
 
-### Reanimated is optional
+For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
 
-The animation utilities (`entering-*`, `exiting-*`, `layout-*`, `animate-*`)
-use `react-native-reanimated`. It's listed as a dependency here so the
-animations page works, but in your own app it's an **optional** peer — without
-it those classes degrade to plain views (no animation, no crash).
+```sh
+# Using npm
+npm run ios
+
+# OR using Yarn
+yarn ios
+```
+
+If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+
+This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+
+## Step 3: Modify your app
+
+Now that you have successfully run the app, let's make changes!
+
+Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+
+When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+
+- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
+- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+
+## Congratulations! :tada:
+
+You've successfully run and modified your React Native App. :partying_face:
+
+### Now what?
+
+- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
+- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+
+# Troubleshooting
+
+If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+
+# Learn More
+
+To learn more about React Native, take a look at the following resources:
+
+- [React Native Website](https://reactnative.dev) - learn more about React Native.
+- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
+- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
+- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
+- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.

@@ -7,7 +7,6 @@ import { Platform } from "react-native";
 import { Text, View } from "nitrowind";
 
 import { Card, Caption, Screen, Section } from "../components/ui";
-
 function Box({ className = "" }: { className?: string }) {
   return <View className={`h-10 w-10 rounded-lg bg-primary ${className}`} />;
 }

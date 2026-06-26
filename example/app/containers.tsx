@@ -10,7 +10,6 @@
  * Resize the container with the buttons below and watch the children respond.
  */
 import { useCallback, useRef } from "react";
-import type { View as RNViewType } from "react-native";
 import { Text, View, setNativeProps } from "nitrowind";
 
 import { Caption, Screen, Section } from "../components/ui";
@@ -22,9 +21,9 @@ const WIDTHS = [
 ];
 
 export default function Containers() {
-  const layoutContainerRef = useRef<RNViewType>(null);
-  const colorContainerRef = useRef<RNViewType>(null);
-  const namedContainerRef = useRef<RNViewType>(null);
+  const layoutContainerRef = useRef<any>(null);
+  const colorContainerRef = useRef<any>(null);
+  const namedContainerRef = useRef<any>(null);
 
   const setContainerSize = useCallback((width: number, height: number) => {
     const style = { width };

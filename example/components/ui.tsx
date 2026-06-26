@@ -4,9 +4,9 @@
  * They use nitrowind's `View` / `Text` / `ScrollView` so all styling flows
  * through the native engine — there is no `StyleSheet` anywhere in the example.
  */
-import type { ReactNode } from "react";
-import { ColorScheme, runtime } from "nitrowind";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import type { ReactNode } from 'react';
+import { ColorScheme, runtime } from 'nitrowind';
+import { Pressable, ScrollView, Text, View } from 'nitrowind';
 
 /** Safe-area aware scrolling page wrapper used by every demo screen. */
 export function Screen({ children }: { children: ReactNode }) {
@@ -29,13 +29,15 @@ export function Section({
   title,
   subtitle,
   children,
+  className,
 }: {
   title: string;
   subtitle?: string;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <View className="gap-3 self-stretch">
+    <View className={'gap-3 self-stretch' + (className ? ` ${className}` : '')}>
       <View className="gap-1">
         <Text className="text-base font-bold text-on-surface">{title}</Text>
         {subtitle ? (
@@ -49,7 +51,7 @@ export function Section({
 
 /** A soft, elevated, theme-aware card. */
 export function Card({
-  className = "",
+  className = '',
   children,
 }: {
   className?: string;
@@ -80,7 +82,7 @@ export function ThemeToggle() {
       accessibilityRole="button"
       onPress={() => {
         const isDark = runtime.current.colorScheme === ColorScheme.Dark;
-        runtime.setColorScheme(isDark ? "light" : "dark");
+        runtime.setColorScheme(isDark ? 'light' : 'dark');
       }}
     >
       <View className="flex-row items-center gap-2 rounded-full bg-primary px-4 py-2">

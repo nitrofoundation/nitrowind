@@ -5,8 +5,9 @@
     "lib": ["ESNext", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "allowArbitraryExtensions": true,
     "noEmit": true,
     "types": ["react", "react-native", "nitrowind"]
   },
-  "include": ["app", "components", "*.ts", "*.tsx"]
+  "include": ["app", "components", "*.ts", "*.tsx", "*.d.ts"]
 }

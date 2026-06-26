@@ -1,45 +1,24 @@
-require "json"
+require 'json'
 
-package = JSON.parse(File.read(File.join(__dir__, "package.json")))
+package = JSON.parse(File.read(File.join(__dir__, 'package.json')))
 
 Pod::Spec.new do |s|
-  s.name         = "Nitrolist"
-  s.version      = package["version"]
-  s.summary      = package["description"]
-  s.homepage     = package["homepage"]
-  s.license      = package["license"]
-  s.authors      = package["author"]
+  s.name         = 'Nitrolist'
+  s.version      = package['version']
+  s.summary      = package['description']
+  s.license      = package['license']
+  s.author       = 'Nitrolist contributors'
+  s.homepage     = 'https://github.com/nitrowind/nitrowind'
+  s.platforms    = { :ios => '15.1' }
+  s.source       = { :git => 'https://github.com/nitrowind/nitrowind', :tag => s.version }
+  s.source_files = 'ios/**/*.{h,m,mm,swift}', 'cpp/**/*.{hpp,cpp}'
+  s.public_header_files = 'ios/**/*.h'
 
-  s.platforms    = { :ios => min_ios_version_supported }
-  s.source       = { :git => "https://github.com/nitrowind/nitrowind.git", :tag => "#{s.version}" }
-
-  s.source_files = [
-    "ios/**/*.{h,m,mm}",
-    "cpp/**/*.{hpp,cpp}"
-  ]
-
-  s.public_header_files = [
-    "ios/NitrolistBridge.h"
-  ]
+  s.dependency 'React-Core'
+  s.dependency 'ReactCommon/turbomodule/core'
 
   s.pod_target_xcconfig = {
-    "HEADER_SEARCH_PATHS" => [
-      "\"$(PODS_TARGET_SRCROOT)/cpp\"",
-      "\"$(PODS_TARGET_SRCROOT)/cpp/core\"",
-      "\"$(PODS_TARGET_SRCROOT)/nitrogen/generated/shared/c++\""
-    ].join(" ")
+    'DEFINES_MODULE' => 'YES',
+    'SWIFT_COMPILATION_MODE' => 'wholemodule'
   }
-
-  s.dependency "React-jsi"
-  s.dependency "React-callinvoker"
-  s.dependency "React-Fabric"
-  s.dependency "React-FabricComponents"
-  s.dependency "React-graphics"
-  s.dependency "React-RCTFabric"
-  s.dependency "ReactCommon/turbomodule/core"
-
-  load File.join(__dir__, "nitrogen/generated/ios/Nitrolist+autolinking.rb")
-  add_nitrogen_files(s)
-
-  install_modules_dependencies(s)
 end
