@@ -32,6 +32,7 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
   private var extraThemes: Array<String> = emptyArray()
   private var currentThemeName: String = "light"
   private var overrideColorScheme: Int? = null
+  private var adaptiveThemeFollowsColorScheme: Boolean = true
   private var receiver: BroadcastReceiver? = null
   private var insetsListenerAttached: Boolean = false
   private var lastSnapshot: RuntimeSnapshot? = null
@@ -45,6 +46,12 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
     overrideColorScheme?.let { return it }
     val night = config().uiMode and Configuration.UI_MODE_NIGHT_MASK
     return if (night == Configuration.UI_MODE_NIGHT_YES) 1 else 0
+  }
+
+  private fun syncAdaptiveThemeName() {
+    if (adaptiveThemeFollowsColorScheme) {
+      currentThemeName = if (colorSchemeRaw() == 1) "dark" else "light"
+    }
   }
 
   private fun density(): Double = Resources.getSystem().displayMetrics.density.toDouble()
@@ -84,6 +91,7 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
       ).isRightToLeft
 
   private fun makeSnapshot(): RuntimeSnapshot {
+    syncAdaptiveThemeName()
     val (w, h) = screenSize()
     val scale = density()
     return RuntimeSnapshot(
@@ -102,6 +110,7 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
   }
 
   private fun pushToEngine() {
+    syncAdaptiveThemeName()
     val (w, h) = screenSize()
     val scale = density()
     val insets = readInsets()
@@ -189,12 +198,14 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
   // MARK: - Spec
 
   override fun getThemeConfig(): ThemeConfig {
+    syncAdaptiveThemeName()
     val themes = (listOf("light", "dark") + extraThemes.toList()).toTypedArray()
     return ThemeConfig(themes, currentThemeName, true)
   }
 
   override fun setTheme(theme: String) {
     val previousTheme = currentThemeName
+    adaptiveThemeFollowsColorScheme = false
     currentThemeName = theme
     val deps = buildList {
       if (previousTheme != currentThemeName) add(StyleDependency.THEME)
@@ -204,13 +215,17 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
 
   override fun setColorScheme(scheme: ColorSchemeMode) {
     val previousColorScheme = colorSchemeRaw()
+    val previousTheme = currentThemeName
+    adaptiveThemeFollowsColorScheme = true
     overrideColorScheme = when (scheme) {
       ColorSchemeMode.SYSTEM -> null
       ColorSchemeMode.DARK -> 1
       else -> 0
     }
+    syncAdaptiveThemeName()
     val deps = buildList {
       if (previousColorScheme != colorSchemeRaw()) add(StyleDependency.COLORSCHEME)
+      if (previousTheme != currentThemeName) add(StyleDependency.THEME)
     }.toTypedArray()
     emitUserThemeChange(deps)
   }

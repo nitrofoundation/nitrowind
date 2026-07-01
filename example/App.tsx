@@ -15,11 +15,6 @@ import GridScreen from './app/grid';
 import HomeScreen from './app/index';
 import LayoutScreen from './app/layout';
 import ListsScreen from './app/lists';
-import MixedContentScreen from './app/mixed-content';
-import NitroListProfilerScreen from './app/nitrolist-profiler';
-import NitroListReanimatedScreen from './app/nitrolist-reanimated';
-import NitroNativeListScreen from './app/nitronativelist';
-import ProfilingScreen from './app/profiling';
 import PseudoScreen from './app/pseudo';
 import ThemingScreen from './app/theming';
 import TransformsScreen from './app/transforms';
@@ -38,11 +33,6 @@ type RootStackParamList = {
   Pseudo: undefined;
   Grid: undefined;
   Lists: undefined;
-  MixedContent: undefined;
-  NitroListProfiler: undefined;
-  NitroListReanimated: undefined;
-  NitroNativeList: undefined;
-  Profiling: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -135,31 +125,6 @@ export default function App() {
               name="Lists"
               component={ListsScreen}
               options={{ title: 'Virtual Lists' }}
-            />
-            <Stack.Screen
-              name="MixedContent"
-              component={MixedContentScreen}
-              options={{ title: 'Mixed Content Rows' }}
-            />
-            <Stack.Screen
-              name="NitroNativeList"
-              component={NitroNativeListScreen}
-              options={{ title: 'NitroList Native' }}
-            />
-            <Stack.Screen
-              name="NitroListProfiler"
-              component={NitroListProfilerScreen}
-              options={{ title: 'NitroList Profiler' }}
-            />
-            <Stack.Screen
-              name="NitroListReanimated"
-              component={NitroListReanimatedScreen}
-              options={{ title: 'NitroList Reanimated' }}
-            />
-            <Stack.Screen
-              name="Profiling"
-              component={ProfilingScreen}
-              options={{ title: 'Profiling' }}
             />
           </Stack.Navigator>
         </NavigationContainer>

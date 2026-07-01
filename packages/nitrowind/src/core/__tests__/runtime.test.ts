@@ -113,12 +113,13 @@ describe("runtime native subscriptions", () => {
   it("sets native color scheme without changing the named theme", async () => {
     const setTheme = vi.fn();
     const setColorScheme = vi.fn();
+    const setAppearanceColorScheme = vi.fn();
 
     vi.doMock("react-native", () => ({
       Appearance: {
         addChangeListener: vi.fn(),
         getColorScheme: () => "light",
-        setColorScheme: vi.fn(),
+        setColorScheme: setAppearanceColorScheme,
       },
       Dimensions: {
         addEventListener: vi.fn(),
@@ -145,8 +146,84 @@ describe("runtime native subscriptions", () => {
     const { runtime } = await import("../runtime");
     runtime.setColorScheme("dark");
 
+    expect(setAppearanceColorScheme).toHaveBeenCalledWith("dark");
     expect(setColorScheme).toHaveBeenCalledWith("dark");
     expect(setTheme).not.toHaveBeenCalled();
+  });
+
+  it("keeps fallback explicit color schemes pinned across system changes", async () => {
+    let appearanceListener: (() => void) | undefined;
+    let systemScheme: "light" | "dark" = "light";
+    const callback = vi.fn();
+
+    vi.doMock("react-native", () => ({
+      Appearance: {
+        addChangeListener: vi.fn((listener) => {
+          appearanceListener = listener;
+          return { remove: vi.fn() };
+        }),
+        getColorScheme: () => systemScheme,
+        setColorScheme: vi.fn(),
+      },
+      Dimensions: {
+        addEventListener: vi.fn(() => ({ remove: vi.fn() })),
+        get: () => ({ width: 390, height: 844, fontScale: 1 }),
+      },
+      I18nManager: { isRTL: false },
+      PixelRatio: { get: () => 3 },
+      StyleSheet: { hairlineWidth: 1 },
+    }));
+    vi.doMock("../native", () => ({
+      hasNativeEngine: () => false,
+      getEngine: () => undefined,
+    }));
+
+    const { runtime } = await import("../runtime");
+    runtime.subscribe([StyleDependency.ColorScheme], callback);
+    runtime.setColorScheme("light");
+    systemScheme = "dark";
+    appearanceListener?.();
+
+    expect(runtime.current.colorScheme).toBe(ColorScheme.Light);
+    expect(runtime.current.currentThemeName).toBe("light");
+  });
+
+  it("lets fallback auto color scheme follow system theme changes", async () => {
+    let appearanceListener: (() => void) | undefined;
+    let systemScheme: "light" | "dark" = "light";
+    const callback = vi.fn();
+
+    vi.doMock("react-native", () => ({
+      Appearance: {
+        addChangeListener: vi.fn((listener) => {
+          appearanceListener = listener;
+          return { remove: vi.fn() };
+        }),
+        getColorScheme: () => systemScheme,
+        setColorScheme: vi.fn(),
+      },
+      Dimensions: {
+        addEventListener: vi.fn(() => ({ remove: vi.fn() })),
+        get: () => ({ width: 390, height: 844, fontScale: 1 }),
+      },
+      I18nManager: { isRTL: false },
+      PixelRatio: { get: () => 3 },
+      StyleSheet: { hairlineWidth: 1 },
+    }));
+    vi.doMock("../native", () => ({
+      hasNativeEngine: () => false,
+      getEngine: () => undefined,
+    }));
+
+    const { runtime } = await import("../runtime");
+    runtime.subscribe([StyleDependency.ColorScheme], callback);
+    runtime.setTheme("ocean");
+    runtime.setColorScheme("system");
+    systemScheme = "dark";
+    appearanceListener?.();
+
+    expect(runtime.current.colorScheme).toBe(ColorScheme.Dark);
+    expect(runtime.current.currentThemeName).toBe("dark");
   });
 
   it("does not emit fallback rerenders after native engine becomes available", async () => {

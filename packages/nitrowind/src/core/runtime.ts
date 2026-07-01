@@ -46,6 +46,7 @@ function diffSnapshots(a: RuntimeSnapshot, b: RuntimeSnapshot): number {
  */
 class RuntimeManager {
   private themeName: string | null = null;
+  private adaptiveThemeFollowsColorScheme = true;
   private insets = { top: 0, right: 0, bottom: 0, left: 0 };
   private snapshot: RuntimeSnapshot = this.read();
   private started = false;
@@ -152,6 +153,7 @@ class RuntimeManager {
 
   setTheme(name: string): void {
     this.themeName = name;
+    this.adaptiveThemeFollowsColorScheme = false;
     if (hasNativeEngine()) {
       try {
         getEngine()!.Platform.setTheme(name);
@@ -171,6 +173,8 @@ class RuntimeManager {
 
   setColorScheme(scheme: "light" | "dark" | "system"): void {
     this.colorSchemeMode = scheme;
+    this.adaptiveThemeFollowsColorScheme = true;
+    Appearance.setColorScheme((scheme === "system" ? null : scheme) as never);
     if (hasNativeEngine()) {
       try {
         getEngine()!.Platform.setColorScheme(scheme);
@@ -184,19 +188,11 @@ class RuntimeManager {
         }
       }
     }
-    Appearance.setColorScheme((scheme === "system" ? null : scheme) as never);
-    const colorScheme =
-      scheme === "system"
-        ? Appearance.getColorScheme() === "dark"
-          ? ColorScheme.Dark
-          : ColorScheme.Light
-        : scheme === "dark"
-          ? ColorScheme.Dark
-          : ColorScheme.Light;
+    const colorScheme = this.resolveColorScheme();
     this.snapshot = {
       ...this.snapshot,
       colorScheme,
-      currentThemeName: scheme === "system" ? getDefaultThemeName() : scheme,
+      currentThemeName: this.resolveThemeName(colorScheme),
     };
     dependencyEmitter.emit(
       flag(StyleDependency.ColorScheme) | flag(StyleDependency.Theme),
@@ -220,16 +216,28 @@ class RuntimeManager {
     dependencyEmitter.emit(changed);
   }
 
+  private resolveColorScheme(): ColorScheme {
+    if (this.colorSchemeMode === "dark") return ColorScheme.Dark;
+    if (this.colorSchemeMode === "light") return ColorScheme.Light;
+    return Appearance.getColorScheme() === "dark"
+      ? ColorScheme.Dark
+      : ColorScheme.Light;
+  }
+
+  private resolveThemeName(colorScheme: ColorScheme): string {
+    if (!this.adaptiveThemeFollowsColorScheme) {
+      return this.themeName ?? getDefaultThemeName();
+    }
+    return colorScheme === ColorScheme.Dark ? "dark" : "light";
+  }
+
   private read(): RuntimeSnapshot {
     const win = RNDimensions.get("window");
-    const colorScheme =
-      Appearance.getColorScheme() === "dark"
-        ? ColorScheme.Dark
-        : ColorScheme.Light;
+    const colorScheme = this.resolveColorScheme();
     return {
       colorScheme,
       hasAdaptiveThemes: true,
-      currentThemeName: this.themeName ?? getDefaultThemeName(),
+      currentThemeName: this.resolveThemeName(colorScheme),
       screen: { width: win.width, height: win.height },
       insets: this.insets,
       orientation:

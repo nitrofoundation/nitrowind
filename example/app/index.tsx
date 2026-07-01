@@ -23,11 +23,6 @@ type RootStackParamList = {
   Pseudo: undefined;
   Grid: undefined;
   Lists: undefined;
-  MixedContent: undefined;
-  NitroListProfiler: undefined;
-  NitroListReanimated: undefined;
-  NitroNativeList: undefined;
-  Profiling: undefined;
 };
 
 type Page = {
@@ -112,44 +107,9 @@ const PAGES: Page[] = [
   {
     route: 'Lists',
     title: 'List Features',
-    subtitle: 'Paging, viewability, layout debug, horizontal enter/exit',
+    subtitle: 'Styled vertical and horizontal list surfaces',
     icon: '[]',
     tile: 'bg-blue-500',
-  },
-  {
-    route: 'MixedContent',
-    title: 'Mixed Content Rows',
-    subtitle: 'Images, text, buttons, toggles, chips, and varied heights',
-    icon: 'UI',
-    tile: 'bg-slate-600',
-  },
-  {
-    route: 'NitroNativeList',
-    title: 'NitroList Native',
-    subtitle: 'Template registration + native create/update/dispose',
-    icon: 'NL',
-    tile: 'bg-teal-500',
-  },
-  {
-    route: 'NitroListProfiler',
-    title: 'NitroList Profiler',
-    subtitle: 'NitroList-only surface streamed into Rozenite DevTools',
-    icon: 'NP',
-    tile: 'bg-emerald-600',
-  },
-  {
-    route: 'NitroListReanimated',
-    title: 'NitroList Reanimated',
-    subtitle: 'Native viewability mirrored to Reanimated worklets',
-    icon: 'RA',
-    tile: 'bg-cyan-600',
-  },
-  {
-    route: 'Profiling',
-    title: 'Profiling',
-    subtitle: '1000 Nitrowind list items with render timing output',
-    icon: 'ms',
-    tile: 'bg-orange-500',
   },
 ];
 

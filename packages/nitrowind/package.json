@@ -108,7 +108,7 @@
     "@types/react": "19.2.17",
     "nitrogen": "0.35.9",
     "react": "19.2.3",
-    "react-native": "0.85.3",
+    "react-native": "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch",
     "react-native-builder-bob": "0.40.13",
     "react-native-nitro-modules": "0.35.9",
     "rimraf": "6.0.1",

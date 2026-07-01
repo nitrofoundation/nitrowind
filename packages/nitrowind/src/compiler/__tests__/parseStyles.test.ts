@@ -55,9 +55,7 @@ describe("toRNValue", () => {
         {
           rem: 16,
           resolveVar: (name) =>
-            name === "--text-sm--line-height"
-              ? "calc(1.25 / .875)"
-              : undefined,
+            name === "--text-sm--line-height" ? "calc(1.25 / .875)" : undefined,
         },
       ),
     ).toBeCloseTo(1.428571, 5);
@@ -208,8 +206,10 @@ describe("compileFromCss", () => {
           .\\[filter\\:brightness\\(1\\.2\\)_opacity\\(80\\%\\)\\] {
             filter: brightness(1.2) opacity(80%);
           }
+           .\\[filter\\:blur\\(24px\\)\\] { filter: blur(24px); }
           .hue-rotate-90 { filter: hue-rotate(90deg); }
           .backdrop-blur-sm { backdrop-filter: blur(8px); }
+           .backdrop-brightness-125 { -webkit-backdrop-filter: brightness(125%); }
         `,
         16,
       ),
@@ -240,9 +240,15 @@ describe("compileFromCss", () => {
       resolveStyles("[filter:brightness(1.2)_opacity(80%)]", makeSnapshot())
         .styles,
     ).toEqual({ filter: [{ brightness: 1.2 }, { opacity: 0.8 }] });
-    expect(resolveStyles("backdrop-blur-sm", makeSnapshot()).styles).toEqual(
-      {},
+    expect(resolveStyles("[filter:blur(24px)]", makeSnapshot()).styles).toEqual(
+      { filter: [{ blur: 24 }] },
     );
+    expect(resolveStyles("backdrop-blur-sm", makeSnapshot()).styles).toEqual({
+      filter: [{ blur: 8 }],
+    });
+    expect(
+      resolveStyles("backdrop-brightness-125", makeSnapshot()).styles,
+    ).toEqual({ filter: [{ brightness: 1.25 }] });
   });
 
   it("applies interactive pseudo variants only from component state", () => {

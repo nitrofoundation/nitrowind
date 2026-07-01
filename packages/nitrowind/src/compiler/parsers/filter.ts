@@ -117,7 +117,12 @@ export function extractFilter(
   declarations: ReadonlyArray<Decl>,
   resolveVar: VarResolver,
 ): RNStyle | undefined {
-  const raw = declarations.find((d) => d.prop === "filter")?.value;
+  const raw = declarations.find(
+    (d) =>
+      d.prop === "filter" ||
+      d.prop === "backdrop-filter" ||
+      d.prop === "-webkit-backdrop-filter",
+  )?.value;
   if (raw === undefined) return undefined;
   const filter = normalizeFilter(resolveVars(raw, resolveVar));
   const parsed = filter ? parseFilterList(filter) : undefined;

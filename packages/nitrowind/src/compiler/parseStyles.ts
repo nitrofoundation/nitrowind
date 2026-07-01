@@ -318,8 +318,8 @@ const collectCustomProps = (
 /**
  * True for declarations handled by the dedicated value parsers (transform,
  * box-shadow, filter, text-shadow, font-variant), every custom property, and
- * effects RN cannot represent (`backdrop-filter`). These are skipped by the
- * generic value loop.
+ * backdrop filters that map to RN's native `filter` prop. These are skipped by
+ * the generic value loop.
  */
 const isParsedProp = (prop: string): boolean =>
   prop.startsWith("--") ||

@@ -478,7 +478,9 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
           const pressableState = {
             ...__nitrowindPseudoState,
             ...(needsPressableState ? stateFromPressable(state, disabled) : {}),
-            ...(needsGroupState ? groupStateFromPressable(state, disabled) : {}),
+            ...(needsGroupState
+              ? groupStateFromPressable(state, disabled)
+              : {}),
           };
           const sourceChildren =
             typeof gridFallback.children === "function"

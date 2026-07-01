@@ -17,6 +17,7 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
   private var extraThemes: [String] = []
   private var currentThemeName: String = "light"
   private var overrideColorScheme: Int? = nil
+  private var adaptiveThemeFollowsColorScheme: Bool = true
   private var lastSnapshot: RuntimeSnapshot? = nil
 
   override init() {
@@ -60,6 +61,12 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
     return style == .dark ? 1 : 0
   }
 
+  private func syncAdaptiveThemeName() {
+    if adaptiveThemeFollowsColorScheme {
+      currentThemeName = colorSchemeRaw() == 1 ? "dark" : "light"
+    }
+  }
+
   private func screenSize() -> (Double, Double) {
     let bounds = keyWindow()?.bounds ?? UIScreen.main.bounds
     return (Double(bounds.width), Double(bounds.height))
@@ -80,6 +87,7 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
   }
 
   private func makeSnapshot() -> RuntimeSnapshot {
+    syncAdaptiveThemeName()
     let (w, h) = screenSize()
     let (top, right, bottom, left) = safeInsets()
     let scale = Double(UIScreen.main.scale)
@@ -98,6 +106,7 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
   }
 
   private func pushToEngine() {
+    syncAdaptiveThemeName()
     let (w, h) = screenSize()
     let (top, right, bottom, left) = safeInsets()
     let scale = Double(UIScreen.main.scale)
@@ -162,6 +171,7 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
   // MARK: - Spec
 
   func getThemeConfig() -> ThemeConfig {
+    syncAdaptiveThemeName()
     var themes = ["light", "dark"]
     themes.append(contentsOf: extraThemes)
     return ThemeConfig(themes: themes, currentTheme: currentThemeName, hasAdaptiveThemes: true)
@@ -169,6 +179,7 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
 
   func setTheme(theme: String) {
     let previousTheme = currentThemeName
+    adaptiveThemeFollowsColorScheme = false
     currentThemeName = theme
     NitrowindBridge.setTheme(currentThemeName)
     var deps: [StyleDependency] = []
@@ -178,6 +189,8 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
 
   func setColorScheme(scheme: ColorSchemeMode) {
     let previousColorScheme = colorSchemeRaw()
+    let previousTheme = currentThemeName
+    adaptiveThemeFollowsColorScheme = true
     if scheme == .system {
       overrideColorScheme = nil
     } else if scheme == .dark {
@@ -185,8 +198,10 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
     } else {
       overrideColorScheme = 0
     }
+    syncAdaptiveThemeName()
     var deps: [StyleDependency] = []
     if previousColorScheme != colorSchemeRaw() { deps.append(.colorscheme) }
+    if previousTheme != currentThemeName { deps.append(.theme) }
     emitUserThemeChange(deps)
   }
 

@@ -3,9 +3,9 @@
  * tokens. The opacity row shows nitrowind resolving `/<alpha>` color modifiers
  * natively.
  */
-import { Text, View } from "nitrowind";
+import { Text, View } from 'nitrowind';
 
-import { Caption, Screen, Section } from "../components/ui";
+import { Caption, Screen, Section } from '../components/ui';
 
 function Swatch({
   cls,
@@ -22,8 +22,8 @@ function Swatch({
         <Text
           className={
             dark
-              ? "text-xs font-semibold text-white"
-              : "text-xs font-semibold text-on-surface"
+              ? 'text-xs font-semibold text-white'
+              : 'text-xs font-semibold text-on-surface'
           }
         >
           {label}
@@ -41,9 +41,18 @@ function FilterTile({ cls, label }: { cls: string; label: string }) {
         className={`h-20 overflow-hidden rounded-2xl border border-border bg-surface-elevated ${cls}`}
       >
         <View className="h-full flex-row">
-          <View className="flex-1 bg-sky-500" />
-          <View className="flex-1 bg-emerald-500" />
-          <View className="flex-1 bg-amber-500" />
+          {Array.from({ length: 3 }, (_, index) => (
+            <View
+              key={index}
+              className={`flex-1 ${
+                index % 3 === 0
+                  ? 'bg-sky-500'
+                  : index % 3 === 1
+                    ? 'bg-emerald-500'
+                    : 'bg-amber-500'
+              }`}
+            />
+          ))}
         </View>
       </View>
       <Caption>{label}</Caption>
@@ -108,26 +117,20 @@ export default function Backgrounds() {
 
       <Section
         title="Filters"
-        subtitle="Native filters use React Native's Android-only filter prop; opacity is the cross-platform fallback."
+        subtitle="Native filters use React Native's New Architecture filter prop."
       >
         <View className="flex-row flex-wrap gap-3">
           <FilterTile cls="opacity-60" label="opacity" />
-          <FilterTile
-            cls="android:[filter:brightness(1.25)]"
-            label="android brightness"
-          />
-          <FilterTile
-            cls="android:[filter:opacity(60%)]"
-            label="android filter opacity"
-          />
-          <FilterTile cls="android:blur-sm" label="android blur" />
-          <FilterTile cls="android:contrast-125" label="android contrast" />
-          <FilterTile cls="android:grayscale" label="android grayscale" />
-          <FilterTile cls="android:hue-rotate-90" label="android hue" />
-          <FilterTile cls="android:invert" label="android invert" />
-          <FilterTile cls="android:sepia" label="android sepia" />
-          <FilterTile cls="android:saturate-150" label="android saturate" />
-          <FilterTile cls="android:drop-shadow-lg" label="android shadow" />
+          <FilterTile cls="[filter:brightness(1.25)]" label="brightness" />
+          <FilterTile cls="[filter:opacity(60%)]" label="filter opacity" />
+          <FilterTile cls="[filter:blur(14px)]" label="blur" />
+          <FilterTile cls="contrast-125" label="contrast" />
+          <FilterTile cls="grayscale" label="grayscale" />
+          <FilterTile cls="hue-rotate-90" label="hue" />
+          <FilterTile cls="invert" label="invert" />
+          <FilterTile cls="sepia" label="sepia" />
+          <FilterTile cls="saturate-150" label="saturate" />
+          <FilterTile cls="drop-shadow-lg" label="shadow" />
         </View>
       </Section>
     </Screen>
