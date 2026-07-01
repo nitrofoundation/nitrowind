@@ -56,6 +56,13 @@ const isUnsupportedNativeColorValue = (prop: string, value: string): boolean =>
 
 const resolveCache = new Map<string, GetStylesResult>();
 
+export const EMPTY_STYLES_RESULT: GetStylesResult = {
+  styles: {},
+  dependencyMask: 0,
+  dependencies: [],
+  isAnimated: false,
+};
+
 export interface ResolveState extends Partial<ComponentState> {
   isGroupActive?: boolean;
   isGroupFocused?: boolean;
@@ -366,4 +373,19 @@ export function resolveStyles(
   const resolved = resolveStylesUncached(className, snapshot, state);
   cacheSet(key, resolved);
   return resolved;
+}
+
+
+/**
+ * Platform-aware resolver used by components. Web keeps CSS class names on the
+ * host and lets Tailwind/browser CSS resolve them directly. Native resolves the
+ * compiled artifact for first paint and native-engine fallback.
+ */
+export function resolveStylesForPlatform(
+  className: string,
+  snapshot: RuntimeSnapshot,
+  state?: ResolveState,
+): GetStylesResult {
+  if (Platform.OS === "web") return EMPTY_STYLES_RESULT;
+  return resolveStyles(className, snapshot, state);
 }

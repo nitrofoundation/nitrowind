@@ -3,9 +3,9 @@
  *
  * Registered as Metro's `transformerPath`, so Metro calls us with the worker
  * signature \u2014 `transform(config, projectRoot, filename, data, options)` \u2014 for
- * every module. For the configured `input` stylesheet we swap its contents for a
- * tiny module that registers the compiled native style tables; every other file
- * is delegated to the upstream worker untouched.
+ * every module. For the configured `input` stylesheet we swap native builds to
+ * a tiny module that registers the compiled native style tables. Web builds are
+ * delegated unchanged so Tailwind/browser CSS handles the stylesheet directly.
  *
  * Intercepting at the worker layer (rather than the babel transformer) is what
  * makes this work on Expo, whose worker routes `*.css` through lightningcss
@@ -51,10 +51,10 @@ async function buildBootstrap(): Promise<string> {
   // synchronous require graph. The specifier is held in a variable so the
   // typechecker doesn't try to resolve the package's built types here; the
   // shape is asserted against the local source instead.
-  const compilerSpecifier = "nitrowind/compiler";
+  const compilerSpecifier = "nitrocss/compiler";
   const compiler = (await import(
     compilerSpecifier
-  )) as unknown as typeof import("../compiler");
+  )) as unknown as typeof import("nitrocss/compiler");
   const compileOptions = {
     input: process.env.NITROWIND_INPUT as string,
     content: JSON.parse(process.env.NITROWIND_CONTENT || "[]"),
@@ -75,9 +75,12 @@ async function buildBootstrap(): Promise<string> {
       candidates,
       compileOptions.rem,
     );
+    const serialized = compiler.serializeArtifact(artifact);
     return (
-      "import { registerStyles as __nitrowindRegisterStyles } from 'nitrowind';\n" +
-      `__nitrowindRegisterStyles(${compiler.serializeArtifact(artifact)});\n`
+      "import { registerSerializedStyles as __nitrowindRegisterSerializedStyles } from 'nitrowind';\n" +
+      `__nitrowindRegisterSerializedStyles(${JSON.stringify(serialized)}, ${JSON.stringify(
+        artifact.themeNames,
+      )}, ${JSON.stringify(artifact.rem)});\n`
     );
   })();
   return bootstrapPromise;
@@ -88,6 +91,14 @@ function isDevTransform(options: unknown): boolean {
     options &&
     typeof options === "object" &&
     (options as { dev?: unknown }).dev,
+  );
+}
+
+function isWebTransform(options: unknown): boolean {
+  return Boolean(
+    options &&
+      typeof options === "object" &&
+      (options as { platform?: unknown }).platform === "web",
   );
 }
 
@@ -102,6 +113,7 @@ function shouldRefreshDevStyles(
 ): boolean {
   return (
     isDevTransform(options) &&
+    !isWebTransform(options) &&
     shouldRewriteReactNativeImports(filename) &&
     isSourceModule(filename) &&
     /\b(?:className|contentContainerClassName)\s*=/.test(source)
@@ -189,6 +201,9 @@ async function transform(
   options: unknown,
 ): Promise<unknown> {
   if (isStylesheet(projectRoot, filename)) {
+    if (isWebTransform(options)) {
+      return upstream.transform(config, projectRoot, filename, data, options);
+    }
     const bootstrap = await buildBootstrap();
     return jsWorker.transform(
       config,

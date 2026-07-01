@@ -37,7 +37,7 @@ const FALLBACK_UPSTREAM = "metro-transform-worker";
 /**
  * Wrap a Metro config so that importing the nitrowind stylesheet compiles your
  * Tailwind classes (build-time) and injects the resulting style tables via
- * `registerStyles`. The native C++ engine consumes the same tables.
+ * `registerSerializedStyles`. The native C++ engine consumes the same tables.
  *
  * @example
  * // metro.config.js
@@ -68,7 +68,7 @@ export function withNitrowindMetroConfig(
   // module — `transform(config, projectRoot, filename, data, options)`), not the
   // babel transformer. This matters on Expo: its worker routes `*.css` through
   // lightningcss *before* the babel transformer runs, so the only place we can
-  // intercept the stylesheet and swap it for `registerStyles(...)` is the worker.
+  // intercept the stylesheet and swap it for `registerSerializedStyles(...)` is the worker.
   // We stash the upstream worker so our transformer can delegate every other file
   // to it untouched (preserving Expo's asset / CSS / +api / customTransformOptions
   // handling).

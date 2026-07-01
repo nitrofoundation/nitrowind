@@ -1,10 +1,11 @@
 import React, { forwardRef, useMemo } from "react";
 import {
+  Platform,
   View as RNView,
   type View as RNViewType,
   type ViewProps,
 } from "react-native";
-import { resolveStyles } from "../core/store";
+import { resolveStylesForPlatform } from "../core/store";
 import { getAnimatedView } from "./animated";
 import { ContainerProvider, useContainer } from "./containerContext";
 import { useGridFallback } from "./grid";
@@ -17,9 +18,9 @@ export interface NitrowindViewProps extends ViewProps, PseudoStateProp {
 }
 
 /**
- * Drop-in replacement for RN's `View` that accepts a `className`. The initial
- * style is resolved in JS for first paint; the native engine then owns all
- * subsequent updates (no React re-render on theme/dimension changes).
+ * Drop-in replacement for RN's `View` that accepts a `className`. Native builds
+ * resolve first-paint styles through nitrocss; web leaves `className` on the
+ * host so Tailwind CSS/browser CSS owns styling directly.
  */
 export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
   {
@@ -32,9 +33,10 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
   },
   forwardedRef,
 ) {
+  const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
-    () => resolveStyles(className, snapshot, __nitrowindPseudoState),
+    () => resolveStylesForPlatform(className, snapshot, __nitrowindPseudoState),
     [className, snapshot, __nitrowindPseudoState],
   );
   const ref = useLinkedRef<RNViewType>(
@@ -73,16 +75,21 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
         layout: resolved.layout,
       }
     : undefined;
+  const webProps: Record<string, unknown> =
+    isWeb && className ? { className } : {};
 
   const node = (
     <Base
       ref={ref}
-      style={[resolved.styles, containerStyle, style]}
+      {...webProps}
+      style={isWeb ? style : [resolved.styles, containerStyle, style]}
       onLayout={gridFallback.onLayout}
       {...animationProps}
       {...rest}
     >
-      {withChildPseudoState(gridFallback.children, snapshot)}
+      {isWeb
+        ? gridFallback.children
+        : withChildPseudoState(gridFallback.children, snapshot)}
     </Base>
   );
 

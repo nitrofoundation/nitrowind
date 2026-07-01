@@ -2,8 +2,8 @@
  * nitrowind — a fully open-source, native C++ ShadowTree styling engine for
  * React Native, driven by Tailwind class names.
  *
- * Public runtime API. The build-time compiler lives under `nitrowind/compiler`
- * and the Metro plugin under `nitrowind/metro`.
+ * Public runtime API. `nitrowind/compiler` is a compatibility re-export of
+ * `nitrocss/compiler`; the Metro plugin lives under `nitrowind/metro`.
  */
 
 import "./types/react-native";
@@ -51,11 +51,11 @@ export type {
   WithNitrowindProps,
 } from "./hoc/withNitrowind";
 
-export { registerStyles } from "./core/registry";
+export { registerSerializedStyles, registerStyles } from "./core/registry";
 export { setNativeProps } from "./core/nativeProps";
 export type { NativeProps } from "./core/nativeProps";
 export { runtime } from "./core/runtime";
-export { resolveStyles } from "./core/store";
+export { resolveStyles, resolveStylesForPlatform } from "./core/store";
 
 export type { GetStylesResult, NitrowindContextValue } from "./core/types";
 export type { RuntimeSnapshot, Dimensions, Insets } from "./specs/types";

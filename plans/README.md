@@ -47,6 +47,7 @@ See [01-architecture.md](./01-architecture.md) for the full breakdown. Short ver
 | P5    | [06-native-ios-android.md](./06-native-ios-android.md)                 | iOS Swift + Android JNI                   |
 | P6    | [07-roadmap.md](./07-roadmap.md)                                       | Demo, tests, parity, release              |
 | P7    | [10-cpp-first-engine-migration.md](./10-cpp-first-engine-migration.md) | C++-first runtime migration + group state |
+| P8    | [11-nitrocss-engine-package.md](./11-nitrocss-engine-package.md)        | `nitrocss` compiler/native resolver package split |
 
 ## Repo layout (target)
 
@@ -54,15 +55,16 @@ See [01-architecture.md](./01-architecture.md) for the full breakdown. Short ver
 nitrowind/
 ├── plans/                    # this folder
 ├── packages/
-│   └── nitrowind/            # the library
+│   ├── nitrocss/             # CSS compiler + C++ class resolver
+│   └── nitrowind/            # RN runtime/native integration
 │       ├── src/
 │       │   ├── specs/        # Nitro .nitro.ts specs (the C++ contract)
-│       │   ├── compiler/     # build-time Tailwind → styles
+│       │   ├── compiler/     # compatibility shims to nitrocss/compiler
 │       │   ├── core/         # store, listener, context (runtime)
 │       │   ├── hoc/          # withNitrowind
 │       │   ├── components/   # View, Text, …
 │       │   └── metro/        # Metro plugin
-│       ├── cpp/              # shared C++ engine (iOS + Android)
+│       ├── cpp/              # ShadowTree runtime, registry, Fabric integration
 │       ├── ios/              # Swift platform bridge
 │       └── android/          # JNI + CMake glue
 └── example/                  # Expo demo app

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type Ref } from "react";
-import { StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 import type { RNStyle } from "../compiler/types";
 import type { Accent } from "../specs/ShadowRegistry.nitro";
 import type { ShadowNodeHandle } from "../specs/ShadowNodeHandle.nitro";
@@ -99,7 +99,9 @@ export function linkNode(
   componentState?: Partial<ComponentState>,
   inlineStyle?: unknown,
 ): LinkedNodeRegistration | undefined {
-  if (!hasNativeEngine() || !instance) return undefined;
+  if (Platform.OS === "web" || !hasNativeEngine() || !instance) {
+    return undefined;
+  }
   const engine = getEngine();
   if (!engine) return undefined;
 
@@ -213,7 +215,7 @@ export function useReactiveSnapshot(): RuntimeSnapshot {
   const initialSnapshot = useRef<RuntimeSnapshot | undefined>(undefined);
   if (!initialSnapshot.current) initialSnapshot.current = runtime.current;
   useEffect(() => {
-    runtime.start();
+    if (Platform.OS !== "web") runtime.start();
   }, []);
   return initialSnapshot.current;
 }

@@ -1,5 +1,5 @@
 import React, { Children, cloneElement, isValidElement } from "react";
-import type { StyleProp } from "react-native";
+import { Platform, type StyleProp } from "react-native";
 import { resolveStyles } from "../core/store";
 import type { ComponentState, RuntimeSnapshot } from "../specs/types";
 
@@ -31,6 +31,7 @@ function mergePseudoStyle(
   snapshot: RuntimeSnapshot | undefined,
   state: Partial<ComponentState>,
 ): { style?: StyleProp<unknown> } {
+  if (Platform.OS === "web") return {};
   const pseudoClassName = structuralPseudoClassName(props.className);
   if (!snapshot || !pseudoClassName) return {};
   const pseudoStyle = resolveStyles(pseudoClassName, snapshot, state).styles;
@@ -43,6 +44,7 @@ export function withChildPseudoState(
   children: React.ReactNode,
   snapshot?: RuntimeSnapshot,
 ): React.ReactNode {
+  if (Platform.OS === "web") return children;
   const items = Children.toArray(children);
   const styledIndexes = items
     .map((child, index) =>
@@ -74,6 +76,7 @@ export function withComponentPseudoState(
   state: Partial<ComponentState>,
   snapshot?: RuntimeSnapshot,
 ): React.ReactNode {
+  if (Platform.OS === "web") return children;
   return Children.map(children, (child) => {
     if (!isValidElement(child) || !hasClassName(child.props)) return child;
     const existing = child.props.__nitrowindPseudoState ?? {};

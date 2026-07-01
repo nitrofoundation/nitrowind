@@ -13,7 +13,8 @@ export const ALL_DEPENDENCIES: DependencyMask =
   (1 << StyleDependency.Rtl) |
   (1 << StyleDependency.FontScale) |
   (1 << StyleDependency.Rem) |
-  (1 << StyleDependency.ContainerSize);
+  (1 << StyleDependency.ContainerSize) |
+  (1 << StyleDependency.GroupState);
 
 export const flag = (dependency: StyleDependency): DependencyMask =>
   1 << dependency;
@@ -31,7 +32,7 @@ export function toList(mask: DependencyMask): StyleDependency[] {
   const out: StyleDependency[] = [];
   for (
     let bit = StyleDependency.Theme;
-    bit <= StyleDependency.ContainerSize;
+    bit <= StyleDependency.GroupState;
     bit++
   ) {
     if ((mask & (1 << bit)) !== 0) out.push(bit as StyleDependency);

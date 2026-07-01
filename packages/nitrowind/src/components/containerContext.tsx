@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { LayoutChangeEvent } from "react-native";
+import { Platform, type LayoutChangeEvent } from "react-native";
 import type { ContainerCondition } from "../compiler/container";
 import type { RNStyle } from "../compiler/types";
 import {
@@ -61,8 +61,9 @@ export interface UseContainerResult {
  * When the native engine is present the C++ `LayoutObserver` reads container
  * sizes straight off the shadow tree post-layout and commits the gated styles
  * with no re-render, so the JS measurement below is skipped entirely. The JS
- * path is the fallback only (web, Expo Go, tests, or before the native module is
- * linked), where it reports size via `onLayout` and re-renders on change.
+ * path is the fallback only (Expo Go, tests, or before the native module is
+ * linked), where it reports size via `onLayout` and re-renders on change. Web
+ * leaves container queries to Tailwind/browser CSS directly.
  */
 export function useContainer(
   resolved: GetStylesResult,
@@ -70,11 +71,13 @@ export function useContainer(
 ): UseContainerResult {
   const parent = useContext(ContainerContext);
   const id = useId();
-  const marker = resolved.container;
-  const queries = resolved.containerQueries;
+  const isWeb = Platform.OS === "web";
+  const marker = isWeb ? undefined : resolved.container;
+  const queries = isWeb ? undefined : resolved.containerQueries;
   // In native mode the LayoutObserver owns container queries; disable the JS
   // path so it stays a pure fallback and honors the no-re-render guarantee.
-  const native = hasNativeEngine();
+  // On web, Tailwind/browser CSS owns container queries directly.
+  const native = !isWeb && hasNativeEngine();
 
   // --- Marker side: register the container + provide context. ---
   useEffect(() => {

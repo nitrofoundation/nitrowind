@@ -1,6 +1,6 @@
 # nitrowind
 
-The fastest Tailwind bindings for React Native — fully open source. Compiles
+The fastest Tailwind bindings for React Native — fully open source. Uses `nitrocss` to compile
 Tailwind classes at build time and applies them with a native **C++ ShadowTree
 engine**, so theme/color-scheme/dimension changes update Fabric directly without
 a React re-render.
@@ -40,8 +40,16 @@ export default () => (
 ## Entry points
 
 - `nitrowind` — runtime API (`View`, `Text`, `NitrowindProvider`, `useNitrowind`, …).
-- `nitrowind/compiler` — the build-time Tailwind → style-table compiler.
+- `nitrowind/compiler` — compatibility export that re-exports `nitrocss/compiler`.
 - `nitrowind/metro` — the Metro plugin (`withNitrowindMetroConfig`).
+
+
+## nitrocss engine
+
+Nitrowind consumes the sibling `nitrocss` package for CSS compilation and the
+shared C++ class-name resolver. Android and iOS link `nitrocss/cpp` into the
+Nitrowind native target; web builds keep the original CSS file flowing through
+Metro so Tailwind/browser CSS handles `className` directly.
 
 ## Safe-area utilities
 

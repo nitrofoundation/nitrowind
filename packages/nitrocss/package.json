@@ -1,0 +1,140 @@
+{
+  "name": "nitrocss",
+  "version": "0.1.0",
+  "description": "CSS-to-native-style compiler and C++ resolver engine used by Nitrowind.",
+  "license": "MIT",
+  "author": "Nitrowind contributors",
+  "repository": "https://github.com/nitrowind/nitrowind",
+  "homepage": "https://github.com/nitrowind/nitrowind",
+  "type": "module",
+  "source": "./src/index.ts",
+  "main": "./lib/commonjs/index.js",
+  "module": "./lib/module/index.js",
+  "types": "./lib/typescript/commonjs/index.d.ts",
+  "react-native": "./src/index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "react-native": "./src/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/index.d.ts",
+        "default": "./lib/module/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/index.d.ts",
+        "default": "./lib/commonjs/index.js"
+      }
+    },
+    "./compiler": {
+      "source": "./src/compiler/index.ts",
+      "react-native": "./src/compiler/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/compiler/index.d.ts",
+        "default": "./lib/module/compiler/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/compiler/index.d.ts",
+        "default": "./lib/commonjs/compiler/index.js"
+      }
+    },
+    "./compiler/parsers": {
+      "source": "./src/compiler/parsers/index.ts",
+      "react-native": "./src/compiler/parsers/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/compiler/parsers/index.d.ts",
+        "default": "./lib/module/compiler/parsers/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/compiler/parsers/index.d.ts",
+        "default": "./lib/commonjs/compiler/parsers/index.js"
+      }
+    },
+    "./compiler/parsers/*": {
+      "source": "./src/compiler/parsers/*.ts",
+      "react-native": "./src/compiler/parsers/*.ts",
+      "import": {
+        "types": "./lib/typescript/module/compiler/parsers/*.d.ts",
+        "default": "./lib/module/compiler/parsers/*.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/compiler/parsers/*.d.ts",
+        "default": "./lib/commonjs/compiler/parsers/*.js"
+      }
+    },
+    "./compiler/*": {
+      "source": "./src/compiler/*.ts",
+      "react-native": "./src/compiler/*.ts",
+      "import": {
+        "types": "./lib/typescript/module/compiler/*.d.ts",
+        "default": "./lib/module/compiler/*.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/compiler/*.d.ts",
+        "default": "./lib/commonjs/compiler/*.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "cpp",
+    "README.md",
+    "LICENSE",
+    "!**/__tests__",
+    "!**/*.tsbuildinfo"
+  ],
+  "scripts": {
+    "build": "bob build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "lint": "oxlint src",
+    "clean": "rimraf lib"
+  },
+  "dependencies": {
+    "@tailwindcss/node": "4.3.1",
+    "@tailwindcss/oxide": "4.3.1",
+    "culori": "4.0.2",
+    "lightningcss": "1.32.0"
+  },
+  "peerDependencies": {
+    "tailwindcss": ">=4.0.0"
+  },
+  "devDependencies": {
+    "@types/culori": "2.1.1",
+    "@types/node": "^22.12.0",
+    "react-native-builder-bob": "0.40.13",
+    "rimraf": "6.0.1",
+    "tailwindcss": "4.3.1",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "commonjs",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      "typescript"
+    ]
+  },
+  "keywords": [
+    "tailwindcss",
+    "react-native",
+    "css",
+    "native",
+    "cpp",
+    "nitrowind"
+  ]
+}

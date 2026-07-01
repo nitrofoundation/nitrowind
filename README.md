@@ -19,7 +19,7 @@ concept, with the whole engine free for everyone. No tiers, no paywall.
 Most RN Tailwind solutions resolve styles in JavaScript on every render. nitrowind
 moves the steady-state work off the JS thread:
 
-1. **Build time** — a compiler (Tailwind v4 + a self-contained CSS reader) turns
+1. **Build time** — `nitrocss` (Tailwind v4 + a self-contained CSS reader) turns
    your classes into compact style tables, each tagged with a _dependency
    bitmask_ (does it depend on theme? color scheme? insets? rem? …).
 2. **First render** — the JS runtime resolves the initial style and _links_ each
@@ -30,7 +30,7 @@ moves the steady-state work off the JS thread:
 
 ```
  ┌────────────┐   build    ┌──────────────┐   register   ┌─────────────────────┐
- │ Tailwind   │ ─────────▶ │  compiler    │ ───────────▶ │  C++ StyleEngine     │
+ │ Tailwind   │ ─────────▶ │  nitrocss    │ ───────────▶ │  C++ NitroCssEngine │
  │ CSS + JSX  │            │ (style table │              │  + DependencyIndex   │
  └────────────┘            │  + bitmask)  │              └─────────┬───────────┘
                            └──────────────┘                        │ commit
@@ -47,7 +47,8 @@ See [plans/](plans/) for the full design notes.
 
 | Package                                    | Description                                                                                    |
 | ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| [`packages/nitrowind`](packages/nitrowind) | The library: compiler, JS runtime, Metro plugin, Nitro specs, C++ engine, iOS/Android bridges. |
+| [`packages/nitrocss`](packages/nitrocss)   | CSS/Tailwind compiler plus the reusable C++ class-name style resolver engine.                   |
+| [`packages/nitrowind`](packages/nitrowind) | React Native runtime, Metro plugin, Nitro specs, native integration, and component bindings.    |
 | [`example`](example)                       | A React Native 0.86 demo app.                                                                  |
 
 ---
@@ -122,8 +123,9 @@ iOS: `pod install`. Android: nothing extra — the engine is autolinked.
 
 - **Nitro modules** generate the C++/Swift/Kotlin bindings from the `*.nitro.ts`
   specs in [`src/specs`](packages/nitrowind/src/specs).
-- The C++ engine ([`cpp/`](packages/nitrowind/cpp)) owns the `StyleEngine`,
-  a `DependencyIndex` of linked nodes, and a `ShadowTreeMutator` that commits via
+- The C++ layer links `nitrocss/cpp/NitroCssEngine` for class-name resolution,
+  while [`packages/nitrowind/cpp`](packages/nitrowind/cpp) owns the `DependencyIndex`
+  of linked nodes and a `ShadowTreeMutator` that commits via
   `ShadowNode::cloneTree` + `ComponentDescriptor::cloneProps`.
 - **iOS** ([`ios/`](packages/nitrowind/ios)) — a Swift `NativePlatform`
   HybridObject reads UIKit appearance/dimensions and pushes them to C++; an

@@ -1,10 +1,11 @@
 import React, { forwardRef, useMemo } from "react";
 import {
+  Platform,
   Text as RNText,
   type Text as RNTextType,
   type TextProps,
 } from "react-native";
-import { resolveStyles } from "../core/store";
+import { resolveStylesForPlatform } from "../core/store";
 import { getAnimatedText } from "./animated";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
@@ -15,16 +16,18 @@ export interface NitrowindTextProps extends TextProps, PseudoStateProp {
 }
 
 /**
- * Drop-in replacement for RN's `Text` that accepts a `className`. Behaves like
- * {@link View}: JS resolves the first paint, the native engine owns updates.
+ * Drop-in replacement for RN's `Text` that accepts a `className`. Native builds
+ * resolve first-paint styles through nitrocss; web leaves `className` on the
+ * host so Tailwind CSS/browser CSS owns styling directly.
  */
 export const Text = forwardRef<RNTextType, NitrowindTextProps>(function Text(
   { className = "", style, children, __nitrowindPseudoState, ...rest },
   forwardedRef,
 ) {
+  const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
-    () => resolveStyles(className, snapshot, __nitrowindPseudoState),
+    () => resolveStylesForPlatform(className, snapshot, __nitrowindPseudoState),
     [className, snapshot, __nitrowindPseudoState],
   );
   const ref = useLinkedRef<RNTextType>(
@@ -49,15 +52,18 @@ export const Text = forwardRef<RNTextType, NitrowindTextProps>(function Text(
         layout: resolved.layout,
       }
     : undefined;
+  const webProps: Record<string, unknown> =
+    isWeb && className ? { className } : {};
 
   return (
     <Base
       ref={ref}
-      style={[resolved.styles, style]}
+      {...webProps}
+      style={isWeb ? style : [resolved.styles, style]}
       {...animationProps}
       {...rest}
     >
-      {withChildPseudoState(children, snapshot)}
+      {isWeb ? children : withChildPseudoState(children, snapshot)}
     </Base>
   );
 });

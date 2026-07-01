@@ -1,6 +1,17 @@
 require "json"
+require "open3"
 
 package = JSON.parse(File.read(File.join(__dir__, "package.json")))
+
+def resolve_node_package(package_name)
+  script = "require.resolve(\"#{package_name}/package.json\", { paths: [#{JSON.generate(__dir__)}] })"
+  stdout, status = Open3.capture2e("node", "--print", script)
+  return File.dirname(stdout.strip) if status.success? && !stdout.strip.empty?
+
+  nil
+end
+
+nitrocss_dir = resolve_node_package("nitrocss") || File.expand_path("../nitrocss", __dir__)
 
 Pod::Spec.new do |s|
   s.name         = "Nitrowind"
@@ -25,7 +36,8 @@ Pod::Spec.new do |s|
   # umbrella's `#error`, so the Swift header is never emitted (build deadlock).
   s.source_files = [
     "ios/**/*.{swift,h,m,mm}",
-    "cpp/**/*.{hpp,cpp}"
+    "cpp/**/*.{hpp,cpp}",
+    File.join(nitrocss_dir, "cpp/**/*.{hpp,cpp}")
   ]
 
   # The hand-written Objective-C++ seam that the Swift HybridObject calls into
@@ -40,6 +52,7 @@ Pod::Spec.new do |s|
     "HEADER_SEARCH_PATHS" => [
       "\"$(PODS_TARGET_SRCROOT)/cpp\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/core\"",
+      "\"#{File.join(nitrocss_dir, 'cpp')}\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/jsi\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/registry\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/fabric\"",

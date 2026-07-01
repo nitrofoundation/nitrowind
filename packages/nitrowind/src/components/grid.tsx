@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 
 const GRID_COLS_RE = /(?:^|\s)grid-cols-(\d+)(?:\s|$)/;
 const GRID_COLS_TEMPLATE_RE = /(?:^|\s)grid-cols-\[([^\]]+)\](?:\s|$)/;
@@ -633,6 +633,7 @@ export function withGridFallback(
 ): React.ReactNode {
   const columns = columnsFor(parentClassName);
   if (
+    Platform.OS === "web" ||
     !/(?:^|\s)grid(?:\s|$)/.test(parentClassName) ||
     !hasGridFallbackTracks(parentClassName)
   ) {
@@ -753,7 +754,8 @@ export function useGridFallback(
   onLayout?: (event: LayoutChangeEvent) => void;
 } {
   const isGrid = /(?:^|\s)grid(?:\s|$)/.test(parentClassName);
-  const enabled = isGrid && hasGridFallbackTracks(parentClassName);
+  const enabled =
+    Platform.OS !== "web" && isGrid && hasGridFallbackTracks(parentClassName);
   const [containerWidth, setContainerWidth] = useState(0);
   const handleLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -769,12 +771,15 @@ export function useGridFallback(
       }
       onLayout?.(event);
     },
-    [enabled, onLayout, parentStyle],
+    [enabled, onLayout, parentClassName, parentStyle],
   );
 
   const nextChildren = useMemo(
-    () => withGridFallback(children, parentClassName, containerWidth),
-    [children, parentClassName, containerWidth],
+    () =>
+      enabled
+        ? withGridFallback(children, parentClassName, containerWidth)
+        : children,
+    [children, parentClassName, containerWidth, enabled],
   );
 
   return {

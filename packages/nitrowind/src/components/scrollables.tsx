@@ -3,11 +3,9 @@
  * `className` for the outer host node and a `contentContainerClassName` for the
  * inner content container.
  *
- * The outer node is linked to the native engine like every other styled
- * component, so theme / inset / dimension changes commit without a React
- * re-render. The content container is resolved in JS at mount (it has no host
- * ref to link); for the common case — static layout classes like padding / gap
- * — that is exactly right.
+ * Native builds link the outer node to the native engine and resolve the inner
+ * content container in JS. Web builds keep class names on the host props so
+ * Tailwind/browser CSS can handle styling directly.
  */
 import React, {
   forwardRef,
@@ -17,13 +15,14 @@ import React, {
 } from "react";
 import {
   FlatList as RNFlatList,
+  Platform,
   ScrollView as RNScrollView,
   SectionList as RNSectionList,
   type FlatListProps,
   type ScrollViewProps,
   type SectionListProps,
 } from "react-native";
-import { resolveStyles } from "../core/store";
+import { resolveStylesForPlatform } from "../core/store";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 
 export interface NitrowindScrollViewProps extends ScrollViewProps {
@@ -31,6 +30,17 @@ export interface NitrowindScrollViewProps extends ScrollViewProps {
   className?: string;
   /** Class names for the inner content container. */
   contentContainerClassName?: string;
+}
+
+function webScrollableProps(
+  className: string,
+  contentContainerClassName: string | undefined,
+): Record<string, unknown> {
+  if (Platform.OS !== "web") return {};
+  return {
+    ...(className ? { className } : {}),
+    ...(contentContainerClassName ? { contentContainerClassName } : {}),
+  };
 }
 
 /** Drop-in replacement for RN's `ScrollView` that accepts `className`. */
@@ -45,17 +55,18 @@ export const ScrollView = forwardRef<RNScrollView, NitrowindScrollViewProps>(
     },
     forwardedRef,
   ) {
+    const isWeb = Platform.OS === "web";
     const snapshot = useReactiveSnapshot();
     const resolved = useMemo(
-      () => resolveStyles(className, snapshot),
+      () => resolveStylesForPlatform(className, snapshot),
       [className, snapshot],
     );
     const content = useMemo(
       () =>
-        contentContainerClassName
-          ? resolveStyles(contentContainerClassName, snapshot)
+        !isWeb && contentContainerClassName
+          ? resolveStylesForPlatform(contentContainerClassName, snapshot)
           : undefined,
-      [contentContainerClassName, snapshot],
+      [contentContainerClassName, isWeb, snapshot],
     );
     const ref = useLinkedRef<RNScrollView>(
       className,
@@ -71,11 +82,14 @@ export const ScrollView = forwardRef<RNScrollView, NitrowindScrollViewProps>(
     return (
       <RNScrollView
         ref={ref}
-        style={[resolved.styles, style]}
+        {...webScrollableProps(className, contentContainerClassName)}
+        style={isWeb ? style : [resolved.styles, style]}
         contentContainerStyle={
-          content
-            ? [content.styles, contentContainerStyle]
-            : contentContainerStyle
+          isWeb
+            ? contentContainerStyle
+            : content
+              ? [content.styles, contentContainerStyle]
+              : contentContainerStyle
         }
         {...rest}
       />
@@ -100,17 +114,18 @@ function FlatListInner<ItemT>(
   }: NitrowindFlatListProps<ItemT>,
   forwardedRef: ForwardedRef<RNFlatList<ItemT>>,
 ) {
+  const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
-    () => resolveStyles(className, snapshot),
+    () => resolveStylesForPlatform(className, snapshot),
     [className, snapshot],
   );
   const content = useMemo(
     () =>
-      contentContainerClassName
-        ? resolveStyles(contentContainerClassName, snapshot)
+      !isWeb && contentContainerClassName
+        ? resolveStylesForPlatform(contentContainerClassName, snapshot)
         : undefined,
-    [contentContainerClassName, snapshot],
+    [contentContainerClassName, isWeb, snapshot],
   );
   const ref = useLinkedRef<RNFlatList<ItemT>>(
     className,
@@ -126,11 +141,14 @@ function FlatListInner<ItemT>(
   return (
     <RNFlatList<ItemT>
       ref={ref}
-      style={[resolved.styles, style]}
+      {...webScrollableProps(className, contentContainerClassName)}
+      style={isWeb ? style : [resolved.styles, style]}
       contentContainerStyle={
-        content
-          ? [content.styles, contentContainerStyle]
-          : contentContainerStyle
+        isWeb
+          ? contentContainerStyle
+          : content
+            ? [content.styles, contentContainerStyle]
+            : contentContainerStyle
       }
       {...rest}
     />
@@ -167,17 +185,18 @@ function SectionListInner<ItemT, SectionT>(
   }: NitrowindSectionListProps<ItemT, SectionT>,
   forwardedRef: ForwardedRef<RNSectionList<ItemT, SectionT>>,
 ) {
+  const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
-    () => resolveStyles(className, snapshot),
+    () => resolveStylesForPlatform(className, snapshot),
     [className, snapshot],
   );
   const content = useMemo(
     () =>
-      contentContainerClassName
-        ? resolveStyles(contentContainerClassName, snapshot)
+      !isWeb && contentContainerClassName
+        ? resolveStylesForPlatform(contentContainerClassName, snapshot)
         : undefined,
-    [contentContainerClassName, snapshot],
+    [contentContainerClassName, isWeb, snapshot],
   );
   const ref = useLinkedRef<RNSectionList<ItemT, SectionT>>(
     className,
@@ -193,11 +212,14 @@ function SectionListInner<ItemT, SectionT>(
   return (
     <RNSectionList<ItemT, SectionT>
       ref={ref}
-      style={[resolved.styles, style]}
+      {...webScrollableProps(className, contentContainerClassName)}
+      style={isWeb ? style : [resolved.styles, style]}
       contentContainerStyle={
-        content
-          ? [content.styles, contentContainerStyle]
-          : contentContainerStyle
+        isWeb
+          ? contentContainerStyle
+          : content
+            ? [content.styles, contentContainerStyle]
+            : contentContainerStyle
       }
       {...rest}
     />

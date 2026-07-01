@@ -86,10 +86,7 @@
     "clean": "rimraf lib nitrogen/generated"
   },
   "dependencies": {
-    "@tailwindcss/node": "4.3.1",
-    "@tailwindcss/oxide": "4.3.1",
-    "culori": "4.0.2",
-    "lightningcss": "1.32.0"
+    "nitrocss": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=19.0.0",
@@ -103,9 +100,12 @@
     }
   },
   "devDependencies": {
+    "@tailwindcss/node": "4.3.1",
+    "@tailwindcss/oxide": "4.3.1",
     "@types/culori": "2.1.1",
     "@types/node": "^22.12.0",
     "@types/react": "19.2.17",
+    "lightningcss": "1.32.0",
     "nitrogen": "0.35.9",
     "react": "19.2.3",
     "react-native": "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch",

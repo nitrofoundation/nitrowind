@@ -6,8 +6,13 @@ import React, {
   type ComponentType,
   type Ref,
 } from "react";
-import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
-import { resolveStyles } from "../core/store";
+import {
+  Platform,
+  type LayoutChangeEvent,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
+import { resolveStyles, resolveStylesForPlatform } from "../core/store";
 import { getClassBuckets } from "../core/registry";
 import { hasNativeEngine } from "../core/native";
 import type { RNStyle } from "../compiler/types";
@@ -329,30 +334,36 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
     forwardedRef,
   ) {
     const snapshot = useReactiveSnapshot();
-    const native = hasNativeEngine();
+    const isWeb = Platform.OS === "web";
+    const native = !isWeb && hasNativeEngine();
     const nativeHandleRef = useRef<ShadowNodeHandle | undefined>(undefined);
     const resolved = useMemo(
-      () => resolveStyles(className, snapshot, __nitrowindPseudoState),
+      () =>
+        resolveStylesForPlatform(className, snapshot, __nitrowindPseudoState),
       [className, snapshot, __nitrowindPseudoState],
     );
-    const generatedProps = useMemo(
+    const generatedProps = useMemo<Record<string, unknown>>(
       () =>
-        resolveGeneratedProps(
-          rest as Record<string, unknown>,
-          snapshot,
-          options,
-        ),
-      [rest, snapshot],
+        isWeb
+          ? {}
+          : resolveGeneratedProps(
+              rest as Record<string, unknown>,
+              snapshot,
+              options,
+            ),
+      [isWeb, rest, snapshot, options],
     );
-    const nativeAccents = useMemo(
+    const nativeAccents = useMemo<NativeAccentDescriptor[]>(
       () =>
-        resolveNativeAccents(
-          { className, ...(rest as Record<string, unknown>) },
-          snapshot,
-          options,
-          native,
-        ),
-      [className, native, rest, snapshot],
+        isWeb
+          ? []
+          : resolveNativeAccents(
+              { className, ...(rest as Record<string, unknown>) },
+              snapshot,
+              options,
+              native,
+            ),
+      [className, isWeb, native, rest, snapshot, options],
     );
     const ref = useLinkedRef<unknown>(
       className,
@@ -402,15 +413,16 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
     // equivalent so entering/exiting/layout + CSS animations can run.
     const isPressable = componentName === "Pressable";
     const needsPressableState =
-      isPressable && !native && hasInteractiveVariant(className);
-    const needsGroupState = isPressable && !native && hasGroupMarker(className);
-    const updatesNativePressableState = isPressable && native;
+      !isWeb && isPressable && !native && hasInteractiveVariant(className);
+    const needsGroupState =
+      !isWeb && isPressable && !native && hasGroupMarker(className);
+    const updatesNativePressableState = !isWeb && isPressable && native;
     const Animated =
-      resolved.isAnimated && !isPressable
+      !isWeb && resolved.isAnimated && !isPressable
         ? getAnimatedComponent(Component as ComponentType<unknown>)
         : null;
     const PressableAnimatedSurface =
-      isPressable && resolved.isAnimated
+      !isWeb && isPressable && resolved.isAnimated
         ? (getAnimatedView() as ComponentType<{
             children?: React.ReactNode;
             style?: unknown;
@@ -434,10 +446,12 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
         }
       : undefined;
     const { style: generatedStyle, ...hostGeneratedProps } = generatedProps;
-    const classHostColorProps = resolveHostColorProps(
-      resolved.styles,
-      rest as Record<string, unknown>,
-    );
+    const classHostColorProps = isWeb
+      ? {}
+      : resolveHostColorProps(
+          resolved.styles,
+          rest as Record<string, unknown>,
+        );
     // Preserve callback styles (e.g. `Pressable`'s `style={(state) => …}`) by
     // composing them rather than discarding them.
     const disabled = Boolean((rest as { disabled?: unknown }).disabled);
@@ -450,9 +464,11 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
       },
       [disabled, updatesNativePressableState],
     );
-    const mergedStyle = PressableAnimatedSurface
-      ? undefined
-      : needsPressableState ||
+    const mergedStyle = isWeb
+      ? style
+      : PressableAnimatedSurface
+        ? undefined
+        : needsPressableState ||
           updatesNativePressableState ||
           typeof style === "function"
         ? (state: unknown) => {
@@ -472,54 +488,53 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
             ];
           }
         : [resolved.styles, containerStyle, generatedStyle, style];
-    const renderedChildren = needsPressableRenderFunction
-      ? (state: unknown) => {
-          updateNativePressableState(state);
-          const pressableState = {
-            ...__nitrowindPseudoState,
-            ...(needsPressableState ? stateFromPressable(state, disabled) : {}),
-            ...(needsGroupState
-              ? groupStateFromPressable(state, disabled)
-              : {}),
-          };
-          const sourceChildren =
-            typeof gridFallback.children === "function"
-              ? (gridFallback.children as (s: unknown) => React.ReactNode)(
-                  state,
-                )
-              : gridFallback.children;
-          const content = withChildPseudoState(
-            needsPressableState || needsGroupState
-              ? withComponentPseudoState(
-                  sourceChildren,
-                  pressableState,
-                  snapshot,
-                )
-              : sourceChildren,
-            snapshot,
-          );
-          if (!PressableAnimatedSurface) return content;
-          return (
-            <PressableAnimatedSurface
-              style={[
-                needsPressableState
-                  ? resolveStyles(className, snapshot, pressableState).styles
-                  : resolved.styles,
-                containerStyle,
-                generatedStyle,
-                typeof style === "function"
-                  ? (style as (s: unknown) => unknown)(state)
-                  : style,
-              ]}
-            >
-              {content}
-            </PressableAnimatedSurface>
-          );
-        }
-      : withChildPseudoState(gridFallback.children, snapshot);
+    const renderedChildren = (() => {
+      if (isWeb) return gridFallback.children;
+      if (!needsPressableRenderFunction) {
+        return withChildPseudoState(gridFallback.children, snapshot);
+      }
+      return (state: unknown) => {
+        updateNativePressableState(state);
+        const pressableState = {
+          ...__nitrowindPseudoState,
+          ...(needsPressableState ? stateFromPressable(state, disabled) : {}),
+          ...(needsGroupState ? groupStateFromPressable(state, disabled) : {}),
+        };
+        const sourceChildren =
+          typeof gridFallback.children === "function"
+            ? (gridFallback.children as (s: unknown) => React.ReactNode)(state)
+            : gridFallback.children;
+        const content = withChildPseudoState(
+          needsPressableState || needsGroupState
+            ? withComponentPseudoState(sourceChildren, pressableState, snapshot)
+            : sourceChildren,
+          snapshot,
+        );
+        if (!PressableAnimatedSurface) return content;
+        return (
+          <PressableAnimatedSurface
+            style={[
+              needsPressableState
+                ? resolveStyles(className, snapshot, pressableState).styles
+                : resolved.styles,
+              containerStyle,
+              generatedStyle,
+              typeof style === "function"
+                ? (style as (s: unknown) => unknown)(state)
+                : style,
+            ]}
+          >
+            {content}
+          </PressableAnimatedSurface>
+        );
+      };
+    })();
+    const webProps: Record<string, unknown> =
+      isWeb && className ? { className } : {};
     const node = (
       <Host
         ref={ref}
+        {...webProps}
         {...(rest as Record<string, unknown>)}
         {...classHostColorProps}
         {...hostGeneratedProps}
