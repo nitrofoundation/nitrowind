@@ -138,6 +138,24 @@ public:
     notify();
   }
 
+  /**
+   * Drop every registered target. Called when a new React instance (dev
+   * reload) replaces the UIManager: tags from the old instance are meaningless
+   * in the new tree, and keeping them would make every applier flush walk
+   * permanently-stale entries. The reloaded tree re-registers fresh
+   * descriptors as it resolves; notifying here lets the applier prune layers
+   * painted for the previous instance.
+   */
+  void resetForNewInstance() {
+    bool hadEntries = false;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      hadEntries = !entries_.empty();
+      entries_.clear();
+    }
+    if (hadEntries) notify();
+  }
+
 private:
   GradientTargets() = default;
 

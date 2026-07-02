@@ -22,7 +22,14 @@ LayoutObserver& LayoutObserver::shared() {
 }
 
 void LayoutObserver::registerWith(UIManager& uiManager) {
-  if (registered_) return;
+  if (registered_ && uiManager_ == &uiManager) return;
+  // A different UIManager means a new React instance (dev reload) replaced the
+  // one we registered on. That instance — including its mount-hook registry —
+  // is gone or being torn down; unregistering through the stale pointer would
+  // be a use-after-free. Just re-point at the live UIManager and register: the
+  // mount hook is what re-pings the gradient applier and re-measures container
+  // queries after every mount, so without this the reloaded app never paints
+  // gradients again.
   uiManager_ = &uiManager;
   uiManager.registerMountHook(*this);
   registered_ = true;

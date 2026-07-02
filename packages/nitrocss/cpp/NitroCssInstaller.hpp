@@ -53,6 +53,13 @@ private:
   std::shared_ptr<facebook::react::UIManager> uiManager_;
   std::shared_ptr<const facebook::react::ContextContainer> contextContainer_;
   facebook::react::RuntimeExecutor runtimeExecutor_;
+  /**
+   * Identity of the runtime the current capture came from. A dev reload tears
+   * down the JS runtime + UIManager and builds new ones; comparing the runtime
+   * pointer lets `ensureCaptured` detect the swap and re-capture instead of
+   * holding the dead instance forever.
+   */
+  facebook::jsi::Runtime* capturedRuntime_ = nullptr;
 };
 
 } // namespace nitrocss
