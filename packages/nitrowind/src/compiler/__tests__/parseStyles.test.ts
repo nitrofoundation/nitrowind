@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compileFromCss } from "../index";
+import { backdropBlurRadius } from "../parsers/filter";
 import { classTokenFromSelector } from "../parseStyles";
 import { toRNValue } from "../toRNValue";
 import { registerStyles } from "../../core/registry";
@@ -245,19 +246,21 @@ describe("compileFromCss", () => {
     );
     // backdrop-filter must NOT fold into RN's `filter` (that would filter the
     // view's own content). It compiles to the `--nitrowind-backdrop-filter`
-    // marker, which stays out of resolved styles until native consumes it.
+    // marker, which SURVIVES JS resolution so `View` can consume it and
+    // render the native BackdropLayer (the C++ engine still strips it from
+    // committed RN props at its resolve() tail).
     expect(artifact.classes["backdrop-blur-sm"]?.[0]?.style).toEqual({
       "--nitrowind-backdrop-filter": [{ blur: 8 }],
     });
     expect(artifact.classes["backdrop-brightness-125"]?.[0]?.style).toEqual({
       "--nitrowind-backdrop-filter": [{ brightness: 1.25 }],
     });
-    expect(resolveStyles("backdrop-blur-sm", makeSnapshot()).styles).toEqual(
-      {},
-    );
+    expect(resolveStyles("backdrop-blur-sm", makeSnapshot()).styles).toEqual({
+      "--nitrowind-backdrop-filter": [{ blur: 8 }],
+    });
     expect(
       resolveStyles("backdrop-brightness-125", makeSnapshot()).styles,
-    ).toEqual({});
+    ).toEqual({ "--nitrowind-backdrop-filter": [{ brightness: 1.25 }] });
     // A rule carrying both keeps `filter` intact and routes backdrop-filter to
     // the marker.
     expect(artifact.classes["frosted"]?.[0]?.style).toEqual({
@@ -266,7 +269,47 @@ describe("compileFromCss", () => {
     });
     expect(resolveStyles("frosted", makeSnapshot()).styles).toEqual({
       filter: [{ blur: 4 }],
+      "--nitrowind-backdrop-filter": [{ blur: 8 }],
     });
+  });
+
+  it("compiles Tailwind v4 backdrop-blur-* utilities to the backdrop marker", () => {
+    // The exact shape Tailwind v4 emits for `backdrop-blur-md`: the blur rides
+    // on a composed `--tw-backdrop-blur` variable referencing the theme's
+    // `--blur-md`, and both the -webkit- and standard properties carry the
+    // full empty-fallback var chain.
+    const artifact = compileFromCss(
+      `
+        @theme { --blur-md: 12px; }
+        .backdrop-blur-md {
+          --tw-backdrop-blur: blur(var(--blur-md));
+          -webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+          backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+        }
+      `,
+      16,
+    );
+    registerStyles(artifact);
+
+    expect(artifact.classes["backdrop-blur-md"]?.[0]?.style).toEqual({
+      "--nitrowind-backdrop-filter": [{ blur: 12 }],
+    });
+    expect(resolveStyles("backdrop-blur-md", makeSnapshot()).styles).toEqual({
+      "--nitrowind-backdrop-filter": [{ blur: 12 }],
+    });
+  });
+
+  it("extracts the blur radius from a backdrop marker array", () => {
+    // v1 backdrop consumes blur only; other backdrop functions are ignored
+    // (documented TODO in parsers/filter.ts).
+    expect(backdropBlurRadius([{ blur: 12 }])).toBe(12);
+    expect(backdropBlurRadius([{ brightness: 1.25 }, { blur: 8 }])).toBe(8);
+    expect(backdropBlurRadius([{ brightness: 1.25 }])).toBe(0);
+    // Sequential gaussian blurs compose as sqrt(a² + b²).
+    expect(backdropBlurRadius([{ blur: 3 }, { blur: 4 }])).toBe(5);
+    expect(backdropBlurRadius(undefined)).toBe(0);
+    expect(backdropBlurRadius("blur(8px)")).toBe(0);
+    expect(backdropBlurRadius([{ blur: -4 }])).toBe(0);
   });
 
   it("applies interactive pseudo variants only from component state", () => {

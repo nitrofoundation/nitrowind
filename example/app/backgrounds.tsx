@@ -63,6 +63,7 @@ function FilterTile({ cls, label }: { cls: string; label: string }) {
 export default function Backgrounds() {
   return (
     <Screen>
+
       <Section
         title="Solid colors"
         subtitle="bg-<color> from the Tailwind palette"
@@ -115,9 +116,38 @@ export default function Backgrounds() {
         </View>
       </Section>
 
+
+      <Section
+        title="Backdrop"
+        subtitle="backdrop-blur-* — the engine's own native blur of what's BEHIND the view (iOS; Android renders a graceful no-op in v1)."
+      >
+        {/* Photo-ish busy background: a gradient wash plus crisp shapes so
+            the blur-behind is actually visible through the glass card. */}
+        <View className="h-44 items-center justify-center overflow-hidden rounded-3xl bg-linear-to-br from-violet-600 via-fuchsia-500 to-amber-400">
+          <View className="absolute inset-0 flex-row flex-wrap items-center justify-around p-2">
+            <View className="size-8 rounded-full bg-cyan-300" />
+            <View className="size-10 rounded-md bg-emerald-400" />
+            <View className="size-6 rounded-full bg-white" />
+            <View className="size-9 rounded-lg bg-rose-500" />
+            <View className="size-7 rounded-full bg-yellow-300" />
+            <View className="size-10 rounded-md bg-sky-400" />
+            <View className="size-6 rounded-full bg-lime-300" />
+            <View className="size-8 rounded-lg bg-indigo-400" />
+          </View>
+          {/* The glass card: backdrop-blur-md compiles to the
+              --nitrowind-backdrop-filter marker → native BackdropView. */}
+          <View className="w-3/4 items-center gap-1 rounded-2xl border border-white/30 bg-white/10 p-4 backdrop-blur-md">
+            <Text className="text-sm font-bold text-white">Glass card</Text>
+            <Text className="text-xs text-white/80">
+              backdrop-blur-md rounded-2xl bg-white/10
+            </Text>
+          </View>
+        </View>
+      </Section>
+
       <Section
         title="Filters"
-        subtitle="Native filters use React Native's New Architecture filter prop."
+        subtitle="Element filters via RN's filter prop: Android color-matrix everywhere (blur needs API 31+); iOS renders opacity/brightness only — the blur family needs RN's SwiftUI flag (out of scope in v1)."
       >
         <View className="flex-row flex-wrap gap-3">
           <FilterTile cls="opacity-60" label="opacity" />

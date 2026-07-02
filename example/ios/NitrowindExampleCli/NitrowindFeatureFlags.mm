@@ -24,11 +24,12 @@ namespace {
 class NitrowindFeatureFlags
     : public facebook::react::ReactNativeFeatureFlagsOverridesOSSExperimental {
  public:
-  // Required for nitrowind gradients: parse `experimental_backgroundImage`
-  // (and other CSS values) from their raw string form on the native side.
-  bool enableNativeCSSParsing() override {
-    return true;
-  }
+  // NOTE: `enableNativeCSSParsing` is deliberately NOT overridden anymore.
+  // Gradients render through nitrowind's own native GradientView (no
+  // `experimental_backgroundImage`), and box shadows flow in RN's processed
+  // `BoxShadowValue[]` form (see nitrocss parsers/boxShadow.ts +
+  // NitroCssEngine.cpp normalizeShadow), which stable RN parses natively
+  // without the flag.
 
   // VirtualView / view-culling experiments.
   bool enableViewCulling() override {
@@ -66,7 +67,7 @@ class NitrowindFeatureFlags
 
 } // namespace
 
-void NitrowindEnableNativeCSSParsing(void) {
+void NitrowindInstallFeatureFlags(void) {
   facebook::react::ReactNativeFeatureFlags::dangerouslyForceOverride(
       std::make_unique<NitrowindFeatureFlags>());
 }

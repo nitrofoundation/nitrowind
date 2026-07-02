@@ -12,7 +12,6 @@ export { GRADIENT_DESCRIPTOR_PROP } from "../compiler/parsers/gradient";
 /** Props the Nitro `GradientView` host component accepts from JSX. */
 interface GradientHostProps {
   style?: unknown;
-  pointerEvents?: "none";
   gradientType: GradientDescriptor["gradientType"];
   angle: number;
   positionX: number;
@@ -93,6 +92,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Style-level pointerEvents (the `pointerEvents` PROP is deprecated in RN).
+    pointerEvents: "none",
   },
 });
 
@@ -160,7 +161,6 @@ export const GradientLayer = memo(function GradientLayer({
   return (
     <Host
       style={styles.fill}
-      pointerEvents="none"
       gradientType={descriptor.gradientType}
       angle={descriptor.angle}
       positionX={descriptor.positionX}

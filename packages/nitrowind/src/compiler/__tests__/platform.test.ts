@@ -176,15 +176,28 @@ describe("resolveStyles · platform filter", () => {
     ).toBeUndefined();
   });
 
-  it("drops CSS-string boxShadow on native platforms", () => {
+  it("strips boxShadow on native platforms and folds the processed layers to a CSS string on web", () => {
     const css = `
       .shadow-md {
         --tw-shadow: 0 4px 6px -1px #0000001a;
         box-shadow: var(--tw-shadow);
       }
     `;
-    registerStyles(compileFromCss(css, 16));
+    const artifact = compileFromCss(css, 16);
+    // The compiled artifact carries RN's processed BoxShadowValue[] — the
+    // form the native C++ engine commits directly (no enableNativeCSSParsing).
+    expect(artifact.classes["shadow-md"]?.[0]?.style.boxShadow).toEqual([
+      {
+        offsetX: 0,
+        offsetY: 4,
+        blurRadius: 6,
+        spreadDistance: -1,
+        color: "#0000001a",
+      },
+    ]);
+    registerStyles(artifact);
 
+    // The JS render path paints native shadows via the legacy fallbacks only.
     Platform.OS = "android";
     const androidStyles = resolveStyles("shadow-md", makeSnapshot()).styles;
     expect(androidStyles.boxShadow).toBeUndefined();

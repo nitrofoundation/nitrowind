@@ -112,9 +112,6 @@ void foldTransform(folly::dynamic& style) {
   }
 }
 
-const std::regex kBoxShadowColorPattern(
-    R"(#(?:[0-9a-fA-F]{3,8})\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)|oklab\([^)]*\)|lab\([^)]*\)|lch\([^)]*\)|color\([^)]*\))");
-
 bool isNativeColorProp(const folly::dynamic& key) {
   if (!key.isString()) return false;
   const auto& prop = key.getString();
@@ -145,9 +142,9 @@ bool isUnsupportedNativeColorValue(const folly::dynamic& key,
 
 /**
  * True for props whose (whole-string) value is a color: RN's native color
- * props plus the marker props whose values get spliced into composite strings
- * later in this file (`--nitrowind-shadow-color` into `boxShadow`,
- * `--nw-gradient-from/via/to` into the gradient descriptor).
+ * props plus the marker props whose values get spliced into composite values
+ * later in this file (`--nitrowind-shadow-color` into each `boxShadow`
+ * layer's `color`, `--nw-gradient-from/via/to` into the gradient descriptor).
  */
 bool isColorBearingProp(const folly::dynamic& key) {
   if (isNativeColorProp(key)) return true;
@@ -179,6 +176,21 @@ std::string lowerColorFunctionValue(const folly::dynamic& key,
   return value;
 }
 
+/**
+ * The compiler emits `boxShadow` as RN's *processed* `BoxShadowValue[]`
+ * (src/compiler/parsers/boxShadow.ts). With `enableNativeCSSParsing` off
+ * (RN's stable default), native parsing (BoxShadowPropsConversions.h
+ * `parseProcessedBoxShadow`) accepts only that form: numeric px lengths,
+ * boolean `inset`, and a `color` that `fromRawValue(SharedColor)` can read —
+ * an already-processed ARGB int, NOT a CSS string. So here we (1) splice the
+ * theme-resolved `--nitrowind-shadow-color` marker into every layer's `color`
+ * (the JS runtime performs the identical splice for web in
+ * core/normalize.ts), and (2) lower each layer's hex color to the processed
+ * int, so ShadowTree re-commits carry shadows stable RN parses without any
+ * experimental feature flag. Raw CSS strings (the compiler's web-only
+ * fallback for layers it cannot lower) are erased — natively they would
+ * require `enableNativeCSSParsing`.
+ */
 void normalizeShadow(folly::dynamic& style) {
   if (!style.isObject()) return;
   auto* marker = style.get_ptr("--nitrowind-shadow-color");
@@ -186,14 +198,33 @@ void normalizeShadow(folly::dynamic& style) {
   const std::string color = hasMarker ? marker->getString() : "";
   style.erase("--nitrowind-shadow-color");
 #if defined(__ANDROID__)
+  // Android paints shadows via the compiler's `elevation` fallback. RN 0.76+
+  // Android does parse the processed array form too, but committing it
+  // alongside `elevation` would double-draw — keep stripping (mirrors the JS
+  // runtime, which strips `boxShadow` on every native platform).
   style.erase("boxShadow");
   return;
-#endif
-  if (!hasMarker) return;
+#else
   auto* boxShadow = style.get_ptr("boxShadow");
-  if (boxShadow == nullptr || !boxShadow->isString()) return;
-  style["boxShadow"] = std::regex_replace(
-      boxShadow->getString(), kBoxShadowColorPattern, color);
+  if (boxShadow == nullptr) return;
+  if (!boxShadow->isArray()) {
+    style.erase("boxShadow");
+    return;
+  }
+  for (auto& layer : *boxShadow) {
+    if (!layer.isObject()) continue;
+    if (hasMarker) layer["color"] = color;
+    auto* layerColor = layer.get_ptr("color");
+    if (layerColor == nullptr || !layerColor->isString()) continue;
+    if (auto rgba = css::parseColor(layerColor->getString())) {
+      const uint32_t argb = (static_cast<uint32_t>(rgba->a) << 24) |
+          (static_cast<uint32_t>(rgba->r) << 16) |
+          (static_cast<uint32_t>(rgba->g) << 8) |
+          static_cast<uint32_t>(rgba->b);
+      layer["color"] = static_cast<int64_t>(argb);
+    }
+  }
+#endif
 }
 
 // Gradient marker props emitted by the parser; must match
@@ -688,9 +719,10 @@ folly::dynamic NitroCssEngine::resolve(const std::string& className,
   foldGradient(style);
   normalizeShadow(style);
   // `backdrop-filter` compiles to this marker (src/compiler/parsers/filter.ts)
-  // so it never pollutes RN's `filter` prop; there is no native backdrop
-  // consumer yet, so keep it out of committed props. Mirrors the JS strip in
-  // src/core/normalize.ts.
+  // so it never pollutes RN's `filter` prop. The JS side consumes it: `View`
+  // reads it from the JS-resolved styles and renders the native BackdropView
+  // layer. Committed RN props must never carry it, so the engine still erases
+  // it here at the resolve() tail.
   style.erase("--nitrowind-backdrop-filter");
   return style;
 }

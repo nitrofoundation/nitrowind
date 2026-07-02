@@ -5,6 +5,7 @@ import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.ViewManager
 import com.margelo.nitro.nitrowind.NitrowindOnLoad
+import com.margelo.nitro.nitrowind.views.HybridBackdropViewManager
 import com.margelo.nitro.nitrowind.views.HybridGradientViewManager
 
 /**
@@ -22,5 +23,5 @@ class NitrowindPackage : ReactPackage {
     listOf(NitrowindInstallerModule(reactContext))
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
-    listOf(HybridGradientViewManager())
+    listOf(HybridGradientViewManager(), HybridBackdropViewManager())
 }

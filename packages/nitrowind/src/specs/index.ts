@@ -57,3 +57,8 @@ export type {
   GradientViewMethods,
   GradientViewProps,
 } from "./GradientView.nitro";
+export type {
+  BackdropView,
+  BackdropViewMethods,
+  BackdropViewProps,
+} from "./BackdropView.nitro";

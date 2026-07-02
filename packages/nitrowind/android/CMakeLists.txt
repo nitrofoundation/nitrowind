@@ -29,6 +29,13 @@ file(GLOB_RECURSE nitrowind_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp/*.cpp"
 )
 
+# The iOS podspec vendors a copy of nitrocss into ../cpp/nitrocss at
+# pod-install time. If that copy exists on disk, the ../cpp glob above picks
+# it up in addition to the real nitrocss sources, producing duplicate
+# symbols. Android always compiles nitrocss from NITROCSS_CPP_DIR, so drop
+# the vendored copy from the source list.
+list(FILTER nitrowind_SOURCES EXCLUDE REGEX "nitrowind/cpp/nitrocss/")
+
 add_library(${PACKAGE_NAME} SHARED ${nitrowind_SOURCES})
 
 target_include_directories(${PACKAGE_NAME} PUBLIC

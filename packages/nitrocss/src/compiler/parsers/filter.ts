@@ -112,12 +112,41 @@ function parseFilterList(filter: string): RNStyle["filter"] | undefined {
  * Marker prop carrying a rule's `backdrop-filter` as the same parsed
  * filter-function array shape as RN's `filter`. RN has no backdrop-filter
  * support, so the value must NOT be folded into the `filter` prop (that
- * would filter the view's own content instead of what's behind it). The
- * marker is kept out of committed RN styles (see `normalizeShadow` in
- * src/core/normalize.ts and the native engine's resolve()) until a native
- * backdrop consumer lands.
+ * would filter the view's own content instead of what's behind it).
+ *
+ * Consumer: nitrowind's `View` reads the marker from the JS-resolved styles,
+ * strips it, and renders the engine's own Nitro `BackdropView` (a
+ * blur-what's-behind native layer) as its first child. The native C++
+ * engine's resolve() still erases the marker at its tail so committed RN
+ * props never carry it.
  */
 export const BACKDROP_FILTER_PROP = "--nitrowind-backdrop-filter";
+
+/**
+ * Extract the effective blur radius (dp/pt) from a parsed backdrop-filter
+ * function array (the {@link BACKDROP_FILTER_PROP} marker value).
+ *
+ * Sequential gaussian blurs compose as `sqrt(a² + b² + …)`, so multiple
+ * `blur()` entries fold into one radius the native layer can render.
+ *
+ * TODO(engine-v2 v2+): non-blur backdrop functions (brightness / saturate /
+ * contrast / …) are IGNORED here — iOS `UIVisualEffectView` exposes no public
+ * color-matrix backdrop and Android has no backdrop primitive at all, so v1
+ * ships blur-only backdrop (the native win). Revisit with the snapshot-based
+ * pipeline (docs/engine-v2/research/filters.md §4).
+ */
+export function backdropBlurRadius(filters: unknown): number {
+  if (!Array.isArray(filters)) return 0;
+  let sumOfSquares = 0;
+  for (const fn of filters) {
+    if (fn === null || typeof fn !== "object") continue;
+    const radius = (fn as Record<string, unknown>).blur;
+    if (typeof radius === "number" && radius > 0) {
+      sumOfSquares += radius * radius;
+    }
+  }
+  return sumOfSquares > 0 ? Math.sqrt(sumOfSquares) : 0;
+}
 
 /**
  * React Native New Architecture accepts `filter` as an array of filter function
@@ -125,6 +154,16 @@ export const BACKDROP_FILTER_PROP = "--nitrowind-backdrop-filter";
  * the resolved CSS functions to the native object form Fabric can consume.
  * `backdrop-filter` declarations compile to the separate
  * {@link BACKDROP_FILTER_PROP} marker instead of polluting `filter`.
+ *
+ * Platform reach of the emitted `filter` array (the engine-v2 "hybrid" filter
+ * decision, docs/engine-v2/research/filters.md §1.3–1.5):
+ * - Android: color-matrix filters (brightness/contrast/grayscale/…) work on
+ *   all supported API levels; `blur`/`dropShadow` need API 31+ RenderEffect.
+ * - iOS: only `opacity` and `brightness` render out of the box (CALayer path).
+ *   The blur family (blur/grayscale/saturate/contrast/hueRotate/dropShadow)
+ *   is gated behind RN's `enableSwiftUIBasedFilters` feature flag (default
+ *   OFF) and is out of scope for engine v1 — `backdrop-filter` is the native
+ *   win, rendered by the engine's own `BackdropView` instead.
  */
 export function extractFilter(
   declarations: ReadonlyArray<Decl>,

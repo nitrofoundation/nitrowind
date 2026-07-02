@@ -9,6 +9,11 @@ import type { RNStyle } from "../compiler/types";
 import { resolveStylesForPlatform } from "../core/store";
 import type { ReanimatedAnimation } from "../core/reanimated";
 import { getAnimatedView } from "./animated";
+import {
+  BACKDROP_FILTER_PROP,
+  BackdropLayer,
+  backdropBlurRadius,
+} from "./backdrop";
 import { ContainerProvider, useContainer } from "./containerContext";
 import {
   GRADIENT_DESCRIPTOR_PROP,
@@ -77,28 +82,43 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
   );
 
   // Gradient: the fold emits the compact numeric descriptor under
-  // `--nitrowind-gradient`. Strip it from the RN style (it is not a real style
-  // key), force `overflow: hidden` so the absolutely-filling gradient child
-  // clips to the box, and remember the uniform borderRadius so the native
-  // layer self-clips to the same rounded rect.
+  // `--nitrowind-gradient`. Backdrop: `backdrop-filter` compiles to the parsed
+  // filter array under `--nitrowind-backdrop-filter` (parsers/filter.ts).
+  // Strip both from the RN style (they are not real style keys), force
+  // `overflow: hidden` so the absolutely-filling native children clip to the
+  // box, and remember the uniform borderRadius so the native layers self-clip
+  // to the same rounded rect.
   const gradient = isWeb
     ? undefined
     : ((resolved.styles as Record<string, unknown>)[
         GRADIENT_DESCRIPTOR_PROP
       ] as GradientDescriptor | undefined);
-  const { viewStyles, gradientBorderRadius } = useMemo(() => {
-    if (!gradient) {
-      return { viewStyles: resolved.styles, gradientBorderRadius: 0 };
+  const backdropFilter = isWeb
+    ? undefined
+    : (resolved.styles as Record<string, unknown>)[BACKDROP_FILTER_PROP];
+  const { viewStyles, layerBorderRadius, backdropRadius } = useMemo(() => {
+    if (!gradient && backdropFilter === undefined) {
+      return {
+        viewStyles: resolved.styles,
+        layerBorderRadius: 0,
+        backdropRadius: 0,
+      };
     }
-    const { [GRADIENT_DESCRIPTOR_PROP]: _descriptor, ...restStyles } =
-      resolved.styles as Record<string, unknown>;
+    const {
+      [GRADIENT_DESCRIPTOR_PROP]: _descriptor,
+      [BACKDROP_FILTER_PROP]: _backdrop,
+      ...restStyles
+    } = resolved.styles as Record<string, unknown>;
     const stripped = restStyles as RNStyle;
     if (stripped.overflow === undefined) stripped.overflow = "hidden";
     return {
       viewStyles: stripped,
-      gradientBorderRadius: pickBorderRadius(stripped),
+      layerBorderRadius: pickBorderRadius(stripped),
+      // v1 backdrop = blur only; non-blur backdrop functions are ignored
+      // (documented TODO in parsers/filter.ts `backdropBlurRadius`).
+      backdropRadius: backdropBlurRadius(backdropFilter),
     };
-  }, [resolved.styles, gradient]);
+  }, [resolved.styles, gradient, backdropFilter]);
 
   // `useContainer` returns a single `onLayout` that already merges the container
   // size reporter (JS fallback) with the caller's own handler.
@@ -177,13 +197,21 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
       {...animationProps}
       {...rest}
     >
+      {!isWeb && backdropRadius > 0 ? (
+        // VERY FIRST child: the blur-behind surface must paint below the
+        // gradient (and everything else). RN paints children in source order.
+        <BackdropLayer
+          blurRadius={backdropRadius}
+          borderRadius={layerBorderRadius}
+        />
+      ) : null}
       {!isWeb && gradient ? (
-        // FIRST child + absolute fill + no pointer events → paints behind the
-        // real children. The C++ engine keeps its colors theme-fresh natively
-        // via the GradientRegistry link (no JS re-render).
+        // Behind the real children (after the backdrop layer) + absolute fill
+        // + no pointer events. The C++ engine keeps its colors theme-fresh
+        // natively via the GradientRegistry link (no JS re-render).
         <GradientLayer
           descriptor={gradient}
-          borderRadius={gradientBorderRadius}
+          borderRadius={layerBorderRadius}
           className={className}
         />
       ) : null}

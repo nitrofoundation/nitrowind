@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Platform } from "react-native";
 import { compileFromCss } from "../index";
+import {
+  formatBoxShadow,
+  spliceBoxShadowColor,
+} from "../parsers/boxShadow";
 import { registerStyles } from "../../core/registry";
 import { resolveStyles } from "../../core/store";
 import {
@@ -67,6 +71,14 @@ const CSS = String.raw`
   }
   .shadow-\[0_8px_20px_rgba\(239\,68\,68\,0\.45\)\] {
     --tw-shadow: 0 8px 20px var(--tw-shadow-color, #ef444473);
+    box-shadow: var(--tw-inset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  .shadow-\[inset_0_2px_4px_\#0000000d\] {
+    --tw-shadow: inset 0 2px 4px var(--tw-shadow-color, #0000000d);
+    box-shadow: var(--tw-inset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  .shadow-\[0_1rem_2rem_\#ef4444\] {
+    --tw-shadow: 0 1rem 2rem var(--tw-shadow-color, #ef4444);
     box-shadow: var(--tw-inset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
   .text-shadow-sm {
@@ -166,6 +178,55 @@ describe("value parsers", () => {
   });
 
   describe("box-shadow", () => {
+    it("compiles --tw-shadow to RN's processed BoxShadowValue[]", () => {
+      // The artifact carries the array form RN's native parser accepts with
+      // `enableNativeCSSParsing` OFF (parseProcessedBoxShadow): numeric px
+      // lengths, boolean `inset`, hex colors.
+      const artifact = compileFromCss(CSS, 16);
+      expect(artifact.classes["shadow-md"]?.[0]?.style.boxShadow).toEqual([
+        {
+          offsetX: 0,
+          offsetY: 4,
+          blurRadius: 6,
+          spreadDistance: -1,
+          color: "#0000001a",
+        },
+        {
+          offsetX: 0,
+          offsetY: 2,
+          blurRadius: 4,
+          spreadDistance: -2,
+          color: "#0000001a",
+        },
+      ]);
+    });
+
+    it("parses the inset keyword into the layer's inset flag", () => {
+      const artifact = compileFromCss(CSS, 16);
+      const style = artifact.classes["shadow-[inset_0_2px_4px_#0000000d]"]?.[0]
+        ?.style as Record<string, unknown>;
+      expect(style.boxShadow).toEqual([
+        {
+          offsetX: 0,
+          offsetY: 2,
+          blurRadius: 4,
+          color: "#0000000d",
+          inset: true,
+        },
+      ]);
+      // Inset shadows have no legacy iOS approximation.
+      expect(style.shadowOffset).toBeUndefined();
+      expect(style.elevation).toBeUndefined();
+    });
+
+    it("falls back to the CSS string form for non-px units (web-only)", () => {
+      const artifact = compileFromCss(CSS, 16);
+      const style = artifact.classes["shadow-[0_1rem_2rem_#ef4444]"]?.[0]
+        ?.style as Record<string, unknown>;
+      expect(style.boxShadow).toBe("0px 1rem 2rem #ef4444");
+      expect(style.shadowOffset).toBeUndefined();
+    });
+
     it("builds RN shadow props from --tw-shadow", () => {
       expect(stylesFor("shadow-md").boxShadow).toBe(
         "0px 4px 6px -1px #0000001a, 0px 2px 4px -2px #0000001a",
@@ -210,6 +271,40 @@ describe("value parsers", () => {
         shadowOpacity: expect.closeTo(0.451, 3),
         shadowRadius: 20,
       });
+    });
+
+    it("serializes inset layers back to a CSS string on web", () => {
+      expect(stylesFor("shadow-[inset_0_2px_4px_#0000000d]").boxShadow).toBe(
+        "inset 0px 2px 4px #0000000d",
+      );
+    });
+
+    it("splices the marker color into new layer objects", () => {
+      const layers = [
+        { offsetX: 0, offsetY: 4, blurRadius: 6, color: "#0000001a" },
+        { offsetX: 0, offsetY: 2, color: "#0000001a", inset: true },
+      ];
+      const spliced = spliceBoxShadowColor(layers, "#ef444480");
+      expect(spliced).toEqual([
+        { offsetX: 0, offsetY: 4, blurRadius: 6, color: "#ef444480" },
+        { offsetX: 0, offsetY: 2, color: "#ef444480", inset: true },
+      ]);
+      // Compiled bucket styles are shared state: the splice must not mutate.
+      expect(layers[0]?.color).toBe("#0000001a");
+      expect(spliced[0]).not.toBe(layers[0]);
+      expect(formatBoxShadow(spliced)).toBe(
+        "0px 4px 6px #ef444480, inset 0px 2px #ef444480",
+      );
+    });
+
+    it("strips boxShadow on native platforms, keeping the fallbacks", () => {
+      Platform.OS = "ios";
+      const styles = stylesFor("shadow-md shadow-red-500/50");
+      expect(styles.boxShadow).toBeUndefined();
+      expect(styles.shadowColor).toBe("#ef4444");
+      expect(styles.shadowOpacity).toBeCloseTo(0.502, 3);
+      expect(styles.shadowRadius).toBe(6);
+      expect(styles.elevation).toBe(3);
     });
   });
 

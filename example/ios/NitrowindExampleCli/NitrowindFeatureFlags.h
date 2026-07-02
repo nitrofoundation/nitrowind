@@ -7,18 +7,20 @@ extern "C" {
 #endif
 
 /**
- * Enables React Native's `enableNativeCSSParsing` feature flag so that native
- * CSS values (linear/radial gradients via `experimental_backgroundImage`,
- * box-shadow, filters, colors) are parsed on the native side from their raw
- * string form. This is required for nitrowind gradients to render on iOS: RN
- * 0.86's JS-processed background-image path does not paint on the prebuilt core,
- * but the native string parser (`parseUnprocessedBackgroundImageString`) does.
+ * Installs the app's React Native feature-flag overrides. Uses the OSS
+ * "Experimental" override set as its base (so the app keeps every
+ * Experimental-release-level flag) and enables the iOS-relevant new-feature
+ * flags on top (view culling, view recycling, view transitions, …).
+ *
+ * Note: `enableNativeCSSParsing` is intentionally left at its default (off).
+ * It was originally forced on for gradients, which now render through
+ * nitrowind's own native GradientView, and box shadows flow in RN's processed
+ * `BoxShadowValue[]` form — both parse on stable RN without the flag.
  *
  * Must be called before the React Native runtime is initialized (i.e. before
- * `startReactNative`). Uses the OSS "Experimental" override set as its base so
- * the app keeps every other Experimental-release-level flag.
+ * `startReactNative`).
  */
-void NitrowindEnableNativeCSSParsing(void);
+void NitrowindInstallFeatureFlags(void);
 
 #ifdef __cplusplus
 }

@@ -35,6 +35,10 @@
       "swift": "HybridGradientView",
       "kotlin": "HybridGradientView"
     },
+    "BackdropView": {
+      "swift": "HybridBackdropView",
+      "kotlin": "HybridBackdropView"
+    },
     "GradientRegistry": {
       "cpp": "HybridGradientRegistry"
     }
