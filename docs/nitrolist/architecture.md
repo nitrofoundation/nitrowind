@@ -1,5 +1,15 @@
 # NitroList — Architecture
 
+> **2026-07 update:** see **[list-variants.md](./list-variants.md)** for the three planned variants
+> sharing this core, plus findings that refine this doc: (1) the container state is a **Fenwick
+> prefix-sum frame store** (we own layout, so no interval tree needed); (2) Lynx-grade sync fill is
+> achievable via **build-time compiled template cells** in our own Metro transformer (restricted JSX
+> subset → descriptor + binding bytecode; nitrocss style tables make bindings pure C++), with
+> `WorkletRuntime::runSync` (react-native-worklets) as a data-only escape hatch; (3) Valdi validates
+> the "virtualize views, keep fibers" model + a production-grade viewport-center scroll-anchoring
+> algorithm; (4) RN's `unstable_VirtualView` confirms the sync-Discrete reveal mechanism is
+> shipping-quality — borrow the mechanism, not the primitive.
+
 > Companion: [list-plan.md](./list-plan.md) (API/product). This doc: internals, threading, and how it
 > maps onto Fabric + the nitrocss engine. Facts below were verified against RN 0.86 sources, the Lynx
 > repo, FlashList v2 source, Wishlist source + post-mortem, Shadowlist, Texture, and Litho.

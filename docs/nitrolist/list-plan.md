@@ -1,5 +1,13 @@
 # NitroList (`@nitrofoundation/nitrolist`) — Product & API Plan
 
+> **2026-07 update:** follow-up research (Snapchat Valdi source, RN VirtualView/VirtualCollection
+> shipped source, Lynx-style-runtime feasibility incl. react-native-worklets `runSync`) produced
+> **[list-variants.md](./list-variants.md)** — three planned variants (Lynx-style compiled-template
+> sync fill; Valdi-style virtualize-views-not-components; VirtualView-style React-first default)
+> over one shared C++ core, with build order. This doc remains the base API/compat contract; the
+> "static template fast path" below is now a concrete compiled-template design (Variant A), not an
+> experiment.
+
 > Companion doc: [architecture.md](./architecture.md) (how it's built). This doc: what we ship, the API,
 > the compatibility contract, and the phased path. Based on deep research into LynxJS `<list>`,
 > FlashList v2, Legend List, Wishlist (post-mortem), Shadowlist, Meta's experimental `VirtualView`
