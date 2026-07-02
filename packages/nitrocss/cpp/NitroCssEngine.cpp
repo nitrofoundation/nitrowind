@@ -156,6 +156,58 @@ void normalizeShadow(folly::dynamic& style) {
       boxShadow->getString(), kBoxShadowColorPattern, color);
 }
 
+// Gradient marker props emitted by the parser; must match
+// src/compiler/parsers/gradient.ts and foldGradient in src/core/normalize.ts.
+constexpr const char* kGradientProps[] = {
+    "--nw-gradient-type",          "--nw-gradient-position",
+    "--nw-gradient-from",          "--nw-gradient-via",
+    "--nw-gradient-to",            "--nw-gradient-from-position",
+    "--nw-gradient-via-position",  "--nw-gradient-to-position",
+};
+
+/**
+ * Assemble the merged `--nw-gradient-*` marker props into RN's native
+ * `experimental_backgroundImage` string and erase the markers. Colors are
+ * already lowered to hex (literals at compile time, theme `var()` substituted
+ * above), so this is pure string composition. Mirrors the JS `foldGradient` so
+ * a native theme-swap commit matches a JS-resolved style exactly.
+ */
+void foldGradient(folly::dynamic& style) {
+  if (!style.isObject()) return;
+
+  auto get = [&](const char* key) -> std::string {
+    auto* v = style.get_ptr(key);
+    return (v != nullptr && v->isString()) ? v->getString() : std::string();
+  };
+  const std::string type = get("--nw-gradient-type");
+  const std::string position = get("--nw-gradient-position");
+  const std::string from = get("--nw-gradient-from");
+  const std::string via = get("--nw-gradient-via");
+  const std::string to = get("--nw-gradient-to");
+  const std::string fromPos = get("--nw-gradient-from-position");
+  const std::string viaPos = get("--nw-gradient-via-position");
+  const std::string toPos = get("--nw-gradient-to-position");
+
+  for (const char* key : kGradientProps) style.erase(key);
+
+  if (type != "linear" && type != "radial") return;
+
+  auto stop = [](const std::string& color, const std::string& fallbackColor,
+                 const std::string& pos, const std::string& fallbackPos) {
+    const std::string c = color.empty() ? fallbackColor : color;
+    const std::string p = pos.empty() ? fallbackPos : pos;
+    return p.empty() ? c : c + " " + p;
+  };
+
+  std::string stops = stop(from, "transparent", fromPos, "0%");
+  if (!via.empty()) stops += ", " + stop(via, via, viaPos, "50%");
+  stops += ", " + stop(to, "transparent", toPos, "100%");
+
+  const std::string prelude = position.empty() ? "" : position + ", ";
+  style["experimental_backgroundImage"] =
+      type + "-gradient(" + prelude + stops + ")";
+}
+
 /** Parse a compiled `container` descriptor (`{ axis, op, value, name? }`). */
 void parseContainerCondition(const folly::dynamic& obj, ContainerCondition& out) {
   if (!obj.isObject()) return;
@@ -465,6 +517,7 @@ folly::dynamic NitroCssEngine::resolve(const std::string& className,
   }
 
   foldTransform(style);
+  foldGradient(style);
   normalizeShadow(style);
   return style;
 }

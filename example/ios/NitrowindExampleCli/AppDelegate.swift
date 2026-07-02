@@ -22,6 +22,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeDelegate = delegate
     reactNativeFactory = factory
 
+    // Enable native CSS parsing (extends the Experimental release-level flags)
+    // so nitrowind gradients render on iOS. Must run before the RN runtime is
+    // initialized by `startReactNative` below.
+    NitrowindEnableNativeCSSParsing()
+
     window = UIWindow(frame: UIScreen.main.bounds)
 
     factory.startReactNative(

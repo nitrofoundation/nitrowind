@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		023460C590C722862695D516 /* NitrowindFeatureFlags.mm in Sources */ = {isa = PBXBuildFile; fileRef = E012E5706A22862F0A4A4CD6 /* NitrowindFeatureFlags.mm */; };
 		0C80B921A6F3F58F76C31292 /* libPods-NitrowindExampleCli.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-NitrowindExampleCli.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
@@ -22,8 +23,11 @@
 		3B4392A12AC88292D35C810B /* Pods-NitrowindExampleCli.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NitrowindExampleCli.debug.xcconfig"; path = "Target Support Files/Pods-NitrowindExampleCli/Pods-NitrowindExampleCli.debug.xcconfig"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-NitrowindExampleCli.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NitrowindExampleCli.release.xcconfig"; path = "Target Support Files/Pods-NitrowindExampleCli/Pods-NitrowindExampleCli.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-NitrowindExampleCli.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-NitrowindExampleCli.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		75969119AD26AF5FC34FCEC2 /* NitrowindFeatureFlags.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = NitrowindFeatureFlags.h; path = NitrowindExampleCli/NitrowindFeatureFlags.h; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = NitrowindExampleCli/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = NitrowindExampleCli/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		882276E7AC74A891EA21B297 /* NitrowindExampleCli-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "NitrowindExampleCli-Bridging-Header.h"; path = "NitrowindExampleCli/NitrowindExampleCli-Bridging-Header.h"; sourceTree = "<group>"; };
+		E012E5706A22862F0A4A4CD6 /* NitrowindFeatureFlags.mm */ = {isa = PBXFileReference; includeInIndex = 1; name = NitrowindFeatureFlags.mm; path = NitrowindExampleCli/NitrowindFeatureFlags.mm; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -47,6 +51,9 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				75969119AD26AF5FC34FCEC2 /* NitrowindFeatureFlags.h */,
+				882276E7AC74A891EA21B297 /* NitrowindExampleCli-Bridging-Header.h */,
+				E012E5706A22862F0A4A4CD6 /* NitrowindFeatureFlags.mm */,
 			);
 			name = NitrowindExampleCli;
 			sourceTree = "<group>";
@@ -247,6 +254,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				023460C590C722862695D516 /* NitrowindFeatureFlags.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -258,6 +266,7 @@
 			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-NitrowindExampleCli.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
@@ -276,6 +285,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = NitrowindExampleCli;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = "NitrowindExampleCli/NitrowindExampleCli-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -288,6 +298,7 @@
 			baseConfigurationReference = 5709B34CF0A7D63546082F79 /* Pods-NitrowindExampleCli.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = NitrowindExampleCli/Info.plist;
@@ -305,6 +316,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = NitrowindExampleCli;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = "NitrowindExampleCli/NitrowindExampleCli-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";

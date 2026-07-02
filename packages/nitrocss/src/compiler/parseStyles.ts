@@ -16,6 +16,7 @@ import {
   extractBoxShadow,
   extractFilter,
   extractFontVariant,
+  extractGradient,
   extractKeyframes,
   extractReanimatedVars,
   extractTextShadow,
@@ -26,12 +27,13 @@ import {
   isBoxShadowProp,
   isFilterProp,
   isFontVariantProp,
+  isGradientProp,
   isTextShadowProp,
   isTransitionProp,
   isTransformProp,
 } from "./parsers";
 import { platformFromSelector } from "./platform";
-import { toRNProperties, toRNValue } from "./toRNValue";
+import { resolveVarsInValue, toRNProperties, toRNValue } from "./toRNValue";
 import type {
   CompiledArtifact,
   CompiledClass,
@@ -326,6 +328,7 @@ const isParsedProp = (prop: string): boolean =>
   isTransformProp(prop) ||
   isBoxShadowProp(prop) ||
   isFilterProp(prop) ||
+  isGradientProp(prop) ||
   isTextShadowProp(prop) ||
   isFontVariantProp(prop) ||
   isAnimationProp(prop) ||
@@ -378,6 +381,11 @@ export function parseStyles(
     if (boxShadow !== undefined) Object.assign(style, boxShadow);
     const filter = extractFilter(rule.declarations, ruleResolve);
     if (filter !== undefined) Object.assign(style, filter);
+    // Gradient utilities (`bg-linear-*`, `from-*`, `via-*`, `to-*`, `bg-radial`)
+    // compile to `--nw-gradient-*` marker props that fold into RN's native
+    // `experimental_backgroundImage` once every matching class has merged.
+    const gradient = extractGradient(rule.declarations, ruleResolve);
+    if (gradient !== undefined) Object.assign(style, gradient);
     const textShadow = extractTextShadow(rule.declarations, ruleResolve);
     if (textShadow) Object.assign(style, textShadow);
     const fontVariant = extractFontVariant(rule.declarations, ruleResolve);
@@ -394,7 +402,12 @@ export function parseStyles(
       isAnimationProp(d.prop),
     );
     if (animationDecl) {
-      const folded = foldAnimation(animationDecl.value, keyframes);
+      // Tailwind's `--animate-*` theme tokens emit `animation: var(--animate-x)`;
+      // resolve the reference to its shorthand (`x 8s linear infinite`) so the
+      // keyframe name is visible to the folder. Inline shorthands (the built-in
+      // `animate-*` utilities) pass through unchanged.
+      const shorthand = resolveVarsInValue(animationDecl.value, ruleResolve);
+      const folded = foldAnimation(shorthand, keyframes);
       if (folded) Object.assign(style, folded);
     }
     for (const transitionDecl of rule.declarations.filter((d) =>
@@ -421,6 +434,13 @@ export function parseStyles(
       // Skip declarations the dedicated parsers above already consumed, every
       // custom property (`--tw-*`), and effects RN can't represent (filters).
       if (decl.prop === "--tw-shadow-color") {
+        mask = union(mask, dependencyFromValue(decl.value));
+      }
+      // Gradient color stops reference theme tokens (`from-primary` →
+      // `var(--color-primary)`). Those declarations are consumed by the gradient
+      // parser, so surface their var dependency here — otherwise a themed
+      // gradient never recomputes on a theme / color-scheme switch.
+      if (isGradientProp(decl.prop)) {
         mask = union(mask, dependencyFromValue(decl.value));
       }
       if (isParsedProp(decl.prop)) continue;

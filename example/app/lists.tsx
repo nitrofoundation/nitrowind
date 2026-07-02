@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'nitrowind';
-
+import { createVirtualCollectionView } from 'react-native/src/private/components/virtualcollection/VirtualCollectionView'
 import { Section } from '../components/ui';
 
 type DemoChip = {
@@ -8,6 +8,8 @@ type DemoChip = {
   title: string;
   tone: string;
 };
+
+const List = createVirtualCollectionView(1000, { initial: 0, size: 1000 })
 
 const TONES = [
   'bg-sky-500',
@@ -109,7 +111,8 @@ export default function Lists() {
                   </Pressable>
                 </View>
 
-                <FlatList
+                <List />
+                {/* <FlatList
                   data={chips}
                   horizontal
                   keyExtractor={item => item.id}
@@ -127,7 +130,7 @@ export default function Lists() {
                       </Text>
                     </View>
                   )}
-                />
+                /> */}
               </View>
             </Section>
           </View>

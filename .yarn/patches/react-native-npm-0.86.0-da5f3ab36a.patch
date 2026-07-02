@@ -1,0 +1,31 @@
+diff --git a/ReactCommon/react/featureflags/ReactNativeFeatureFlagsOverridesOSSExperimental.h b/ReactCommon/react/featureflags/ReactNativeFeatureFlagsOverridesOSSExperimental.h
+index 8c52948d3c02f65777e587f559302d82e710435e..98b07746015a182f209df35555470102f3785918 100644
+--- a/ReactCommon/react/featureflags/ReactNativeFeatureFlagsOverridesOSSExperimental.h
++++ b/ReactCommon/react/featureflags/ReactNativeFeatureFlagsOverridesOSSExperimental.h
+@@ -27,6 +27,26 @@ class ReactNativeFeatureFlagsOverridesOSSExperimental : public ReactNativeFeatur
+  public:
+     ReactNativeFeatureFlagsOverridesOSSExperimental() = default;
+ 
++  bool enableViewRecyclingForScrollView() override {
++    return true;
++  }
++
++  bool enableViewRecyclingForView() override {
++    return true;
++  }
++
++  bool enableVirtualViewContainerStateExperimental() override {
++    return true;
++  }
++
++  bool enableVirtualViewDebugFeatures() override {
++    return true;
++  }
++
++  bool hideOffscreenVirtualViewsOnIOS() override {
++    return true;
++  }
++
+   bool cxxNativeAnimatedEnabled() override {
+     return true;
+   }

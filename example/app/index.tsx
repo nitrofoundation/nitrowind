@@ -22,6 +22,7 @@ type RootStackParamList = {
   Layout: undefined;
   Pseudo: undefined;
   Grid: undefined;
+  Gradients: undefined;
   Lists: undefined;
 };
 
@@ -103,6 +104,13 @@ const PAGES: Page[] = [
     subtitle: 'RN gap support and Nitrowind grid engine status',
     icon: '#',
     tile: 'bg-cyan-500',
+  },
+  {
+    route: 'Gradients',
+    title: 'Gradients',
+    subtitle: 'Native linear, radial & animated gradients',
+    icon: '🌈',
+    tile: 'bg-linear-to-br from-fuchsia-500 to-cyan-400',
   },
   {
     route: 'Lists',

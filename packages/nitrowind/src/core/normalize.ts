@@ -1,6 +1,9 @@
 import { TRANSFORM_AXES } from "../compiler/parsers/transform";
+import { foldGradient } from "../compiler/parsers/gradient";
 import type { RNStyle } from "../compiler/types";
 import { Platform } from "react-native";
+
+export { foldGradient };
 
 /**
  * Fold the individual transform-axis props the compiler emits (`translateX`,

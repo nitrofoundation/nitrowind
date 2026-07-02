@@ -1,17 +1,29 @@
 require "json"
 require "open3"
+require "pathname"
+require "fileutils"
 
 package = JSON.parse(File.read(File.join(__dir__, "package.json")))
 
-def resolve_node_package(package_name)
+resolve_node_package = lambda do |package_name|
   script = "require.resolve(\"#{package_name}/package.json\", { paths: [#{JSON.generate(__dir__)}] })"
   stdout, status = Open3.capture2e("node", "--print", script)
-  return File.dirname(stdout.strip) if status.success? && !stdout.strip.empty?
+  next File.dirname(stdout.strip) if status.success? && !stdout.strip.empty?
 
   nil
 end
 
-nitrocss_dir = resolve_node_package("nitrocss") || File.expand_path("../nitrocss", __dir__)
+nitrocss_dir_absolute = resolve_node_package.call("nitrocss") || File.expand_path("../nitrocss", __dir__)
+
+# CocoaPods' Sandbox::PathList only discovers files that live inside the pod's own
+# root directory: it does not follow ".."-escaping glob patterns out to a sibling
+# package, nor does it traverse symlinks. Since nitrocss lives in a sibling package,
+# vendor its cpp sources into our own tree so CocoaPods can actually see them.
+nitrocss_vendor_dir = File.join(__dir__, "cpp", "nitrocss")
+FileUtils.rm_rf(nitrocss_vendor_dir)
+FileUtils.mkdir_p(nitrocss_vendor_dir)
+FileUtils.cp_r(Dir.glob(File.join(nitrocss_dir_absolute, "cpp", "*")), nitrocss_vendor_dir)
+nitrocss_dir = Pathname.new(nitrocss_vendor_dir).relative_path_from(Pathname.new(__dir__)).to_s
 
 Pod::Spec.new do |s|
   s.name         = "Nitrowind"
@@ -52,7 +64,7 @@ Pod::Spec.new do |s|
     "HEADER_SEARCH_PATHS" => [
       "\"$(PODS_TARGET_SRCROOT)/cpp\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/core\"",
-      "\"#{File.join(nitrocss_dir, 'cpp')}\"",
+      "\"$(PODS_TARGET_SRCROOT)/#{nitrocss_dir}\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/jsi\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/registry\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/fabric\"",

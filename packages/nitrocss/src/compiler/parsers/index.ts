@@ -13,6 +13,12 @@ export {
 export { extractBoxShadow, isBoxShadowProp } from "./boxShadow";
 export { extractFilter, isFilterProp } from "./filter";
 export {
+  extractGradient,
+  foldGradient,
+  isGradientProp,
+  GRADIENT_STYLE_PROPS,
+} from "./gradient";
+export {
   extractTextShadow,
   isTextShadowProp,
   type TextShadowStyle,

@@ -1,1 +1,0 @@
-{"version":3,"file":"nativeProps.d.ts","sourceRoot":"","sources":["../../../../src/core/nativeProps.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,OAAO,EAAE,MAAM,mBAAmB,CAAC;AAcjD,MAAM,WAAW,WAAW;IAC1B,KAAK,CAAC,EAAE,OAAO,CAAC;IAChB,CAAC,GAAG,EAAE,MAAM,GAAG,OAAO,CAAC;CACxB;AAoBD,wBAAgB,cAAc,CAAC,GAAG,EAAE,OAAO,EAAE,KAAK,EAAE,WAAW,GAAG,OAAO,CA6DxE"}

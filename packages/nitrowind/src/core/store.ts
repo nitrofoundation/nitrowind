@@ -8,7 +8,7 @@ import {
   type RuntimeSnapshot,
 } from "../specs/types";
 import { toList } from "./mask";
-import { foldTransform, normalizeShadow } from "./normalize";
+import { foldGradient, foldTransform, normalizeShadow } from "./normalize";
 import {
   buildEnteringAnimation,
   buildExitingAnimation,
@@ -305,6 +305,7 @@ function resolveStylesUncached(
         const cqStyle: RNStyle = {};
         applyBucketStyle(cqStyle, bucket.style);
         foldTransform(cqStyle);
+        foldGradient(cqStyle);
         normalizeShadow(cqStyle);
         (containerQueries ??= []).push({
           condition: bucket.container,
@@ -331,6 +332,9 @@ function resolveStylesUncached(
   foldTransform(styles);
   foldTransform(beforeStyle);
   foldTransform(afterStyle);
+  foldGradient(styles);
+  foldGradient(beforeStyle);
+  foldGradient(afterStyle);
   normalizeShadow(styles);
   normalizeShadow(beforeStyle);
   normalizeShadow(afterStyle);

@@ -6029,6 +6029,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nitrocss@workspace:*, nitrocss@workspace:packages/nitrocss":
+  version: 0.0.0-use.local
+  resolution: "nitrocss@workspace:packages/nitrocss"
+  dependencies:
+    "@tailwindcss/node": "npm:4.3.1"
+    "@tailwindcss/oxide": "npm:4.3.1"
+    "@types/culori": "npm:2.1.1"
+    "@types/node": "npm:^22.12.0"
+    culori: "npm:4.0.2"
+    lightningcss: "npm:1.32.0"
+    react-native-builder-bob: "npm:0.40.13"
+    rimraf: "npm:6.0.1"
+    tailwindcss: "npm:4.3.1"
+    typescript: "npm:5.9.2"
+    vitest: "npm:3.2.4"
+  peerDependencies:
+    tailwindcss: ">=4.0.0"
+  languageName: unknown
+  linkType: soft
+
 "nitrogen@npm:0.35.9":
   version: 0.35.9
   resolution: "nitrogen@npm:0.35.9"
@@ -6081,26 +6101,6 @@ __metadata:
   dependencies:
     turbo: "npm:2.5.4"
     typescript: "npm:5.9.2"
-  languageName: unknown
-  linkType: soft
-
-"nitrocss@workspace:*, nitrocss@workspace:packages/nitrocss":
-  version: 0.0.0-use.local
-  resolution: "nitrocss@workspace:packages/nitrocss"
-  dependencies:
-    "@tailwindcss/node": "npm:4.3.1"
-    "@tailwindcss/oxide": "npm:4.3.1"
-    "@types/culori": "npm:2.1.1"
-    "@types/node": "npm:^22.12.0"
-    culori: "npm:4.0.2"
-    lightningcss: "npm:1.32.0"
-    react-native-builder-bob: "npm:0.40.13"
-    rimraf: "npm:6.0.1"
-    tailwindcss: "npm:4.3.1"
-    typescript: "npm:5.9.2"
-    vitest: "npm:3.2.4"
-  peerDependencies:
-    tailwindcss: ">=4.0.0"
   languageName: unknown
   linkType: soft
 

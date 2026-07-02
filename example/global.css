@@ -1,4 +1,5 @@
 @import "tailwindcss";
+/* nitrowind gradient support — cache-bust v1 */
 
 /*
  * Tailwind v4 design tokens. `@theme` tokens become utilities, e.g.
@@ -21,6 +22,28 @@
   --color-border: #e5e7eb;
 
   --radius-card: 16px;
+
+  /*
+   * The classic web "animated gradient" animates `background-position` on an
+   * oversized (600%) gradient. React Native / Reanimated can't animate
+   * `experimental_backgroundPosition` yet (it's a no-op in Reanimated's style
+   * config), so we reproduce the exact same diagonal sweep by translating an
+   * oversized gradient layer — `translateX/Y` are fully animatable. This mirrors
+   * `background-position: 25% 0% → 76% 100% → 25% 0%`.
+   */
+  --animate-gradient-shift: gradient-shift 8s ease-in-out infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    transform: translateX(-70px) translateY(-28px);
+  }
+  50% {
+    transform: translateX(70px) translateY(28px);
+  }
+  100% {
+    transform: translateX(-70px) translateY(-28px);
+  }
 }
 
 .dark {

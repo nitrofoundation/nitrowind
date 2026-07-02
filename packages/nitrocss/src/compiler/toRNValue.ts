@@ -86,7 +86,7 @@ function splitVarBody(body: string): [string, string | undefined] {
   return [body.trim(), undefined];
 }
 
-function resolveVarsInValue(
+export function resolveVarsInValue(
   raw: string,
   resolveVar: VarResolver,
   depth = 0,
