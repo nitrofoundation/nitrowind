@@ -1,19 +1,66 @@
-# nitrocss
+# @nitrofoundation/nitrocss
 
-`nitrocss` is Nitrowind's CSS-to-native-style engine. It owns the Tailwind CSS v4 compiler bridge, the React Native style artifact format, and the C++ class-name resolver used by Nitrowind on Android and iOS.
+The core native CSS engine for React Native. `nitrocss` compiles **plain CSS** into a compact style artifact and resolves `className` strings through a fully native C++ ShadowTree engine — themes, color scheme, safe-area insets, `rem`, pseudo state, group state, and container queries all update without React re-renders.
+
+No Tailwind required. If you want Tailwind class names on top of this engine, use the wrapper package [`@nitrofoundation/nitrowind`](https://www.npmjs.com/package/@nitrofoundation/nitrowind), which plugs a Tailwind build pipeline into the same Metro transformer.
+
+## Quick start
+
+```bash
+npm install @nitrofoundation/nitrocss react-native-nitro-modules
+```
+
+```js
+// metro.config.js
+const { withNitroCssMetroConfig } = require("@nitrofoundation/nitrocss/metro");
+
+module.exports = withNitroCssMetroConfig(getDefaultConfig(__dirname), {
+  input: "./global.css", // plain CSS: classes + @theme variables
+});
+```
+
+```css
+/* global.css */
+@theme {
+  --color-brand: oklch(0.7 0.15 250);
+}
+.card {
+  background-color: var(--color-brand);
+  border-radius: 12px;
+  padding: 16px;
+}
+```
+
+```tsx
+import "./global.css";
+import { NitroCssProvider, View, Text } from "@nitrofoundation/nitrocss";
+
+export default function App() {
+  return (
+    <NitroCssProvider>
+      <View className="card">
+        <Text className="title">Hello</Text>
+      </View>
+    </NitroCssProvider>
+  );
+}
+```
 
 ## What it does
 
-- Reads a `.css` entry file that imports Tailwind and declares theme/custom utilities.
-- Scans project source for class-name candidates.
-- Compiles only the used Tailwind utilities.
-- Converts supported CSS declarations into React Native style buckets.
-- Ships the compiled artifact to a small C++ engine that resolves `className` strings against runtime state such as theme, color scheme, insets, rem, pseudo state, group state, and container size.
+- Reads a plain `.css` entry file (classes, `@theme` variables, media/container queries).
+- Flattens nested CSS with lightningcss and converts supported declarations into React Native style buckets with dependency masks.
+- Ships the compiled artifact to a small C++ engine that resolves `className` strings against runtime state and commits updates straight to the ShadowTree.
+- Falls back to a JS resolver when the native engine is unavailable (web, Expo Go, tests).
 
-## Entrypoints
+## Entry points
 
-- `nitrocss` / `nitrocss/compiler` — TypeScript compiler API.
-- `nitrocss/compiler/parsers` — parser helpers used by tests and advanced tooling.
-- `cpp/NitroCssEngine.hpp` — C++ runtime resolver linked by Nitrowind's Android and iOS targets.
+- `@nitrofoundation/nitrocss` — runtime API: `NitroCssProvider`, styled components (`View`, `Text`, …), `useNitroCss`, `withNitroCss`, `cssInterop`, `registerSerializedStyles`.
+- `@nitrofoundation/nitrocss/components` — styled component wrappers.
+- `@nitrofoundation/nitrocss/svg` — className-styled `react-native-svg` primitives (optional peer).
+- `@nitrofoundation/nitrocss/compiler` — build-time compiler API (node-only): `compileFromCss`, `flattenCss`, `scanCustomContainerCandidates`, `serializeArtifact`.
+- `@nitrofoundation/nitrocss/metro` — `withNitroCssMetroConfig` Metro plugin.
+- `@nitrofoundation/nitrocss/metro/pipeline` — the default plain-CSS pipeline; wrapper packages provide their own via the `pipeline` option.
+- `cpp/NitroCssEngine.hpp` — the C++ runtime resolver linked into the Android and iOS targets.
 
-The compiler intentionally skips native features that do not map cleanly to React Native yet, such as CSS `background-image`. Web builds should keep using Tailwind CSS directly so browser-only CSS features continue to work in the browser.
+The compiler intentionally skips features that do not map cleanly to React Native yet, such as CSS `background-image` URLs. On web builds the stylesheet is passed through untouched so the browser handles it directly.

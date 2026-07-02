@@ -5,7 +5,7 @@ import type { DiagnosticUpdate } from "./types";
  * Optional debugging hooks. When enabled on the `ShadowRegistry`, emits events
  * for node link/unlink and every shadow-tree mutation, with timing.
  */
-export interface NitrowindDiagnostics extends HybridObject<{
+export interface NitroCssDiagnostics extends HybridObject<{
   ios: "c++";
   android: "c++";
 }> {

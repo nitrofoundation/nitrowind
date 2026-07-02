@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { usePerformanceMonitorDevTools } from '@rozenite/performance-monitor-plugin';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NitrowindProvider } from 'nitrowind';
+import { NitrowindProvider } from '@nitrofoundation/nitrowind';
 
 import AnimationsScreen from './app/animations';
 import BackgroundsScreen from './app/backgrounds';

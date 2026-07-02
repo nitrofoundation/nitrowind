@@ -114,13 +114,13 @@ function parseFilterList(filter: string): RNStyle["filter"] | undefined {
  * support, so the value must NOT be folded into the `filter` prop (that
  * would filter the view's own content instead of what's behind it).
  *
- * Consumer: nitrowind's `View` reads the marker from the JS-resolved styles,
+ * Consumer: nitrocss's `View` reads the marker from the JS-resolved styles,
  * strips it, and renders the engine's own Nitro `BackdropView` (a
  * blur-what's-behind native layer) as its first child. The native C++
  * engine's resolve() still erases the marker at its tail so committed RN
  * props never carry it.
  */
-export const BACKDROP_FILTER_PROP = "--nitrowind-backdrop-filter";
+export const BACKDROP_FILTER_PROP = "--nitrocss-backdrop-filter";
 
 /**
  * Extract the effective blur radius (dp/pt) from a parsed backdrop-filter
@@ -150,7 +150,7 @@ export function backdropBlurRadius(filters: unknown): number {
 
 /**
  * React Native New Architecture accepts `filter` as an array of filter function
- * objects. Tailwind emits filters as composed `--tw-*` variables, so compile
+ * objects. The compiler emits filters as composed `--tw-*` variables, so compile
  * the resolved CSS functions to the native object form Fabric can consume.
  * `backdrop-filter` declarations compile to the separate
  * {@link BACKDROP_FILTER_PROP} marker instead of polluting `filter`.

@@ -10,7 +10,7 @@
  * Resize the container with the buttons below and watch the children respond.
  */
 import { useCallback, useRef } from "react";
-import { Text, View, setNativeProps } from "nitrowind";
+import { Text, View, setNativeProps } from "@nitrofoundation/nitrowind";
 
 import { Caption, Screen, Section } from "../components/ui";
 

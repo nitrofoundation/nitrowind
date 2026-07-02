@@ -5,8 +5,8 @@
  * through the native engine — there is no `StyleSheet` anywhere in the example.
  */
 import type { ReactNode } from 'react';
-import { ColorScheme, runtime } from 'nitrowind';
-import { Pressable, ScrollView, Text, View } from 'nitrowind';
+import { ColorScheme, runtime } from '@nitrofoundation/nitrowind';
+import { Pressable, ScrollView, Text, View } from '@nitrofoundation/nitrowind';
 
 /** Safe-area aware scrolling page wrapper used by every demo screen. */
 export function Screen({ children }: { children: ReactNode }) {

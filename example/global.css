@@ -4,7 +4,7 @@
 /*
  * Tailwind v4 design tokens. `@theme` tokens become utilities, e.g.
  * `--color-primary` → `bg-primary` / `text-primary`. The `.dark` block
- * overrides tokens when the dark color scheme is active; the nitrowind engine
+ * overrides tokens when the dark color scheme is active; the nitrocss engine
  * swaps these CSS variables natively (no React re-render).
  */
 @theme {

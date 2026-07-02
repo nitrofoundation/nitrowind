@@ -4,7 +4,7 @@
  * dependency: without it these degrade to plain views (no animation, no crash).
  */
 import { useState } from "react";
-import { Pressable, Text, View } from "nitrowind";
+import { Pressable, Text, View } from "@nitrofoundation/nitrowind";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,

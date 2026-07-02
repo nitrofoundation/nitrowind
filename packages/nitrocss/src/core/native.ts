@@ -22,7 +22,7 @@ export function getEngine(): SpecsModule | null {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { NativeModules } = require("react-native");
-      void NativeModules?.NitrowindInstaller;
+      void NativeModules?.NitroCssInstaller;
     } catch {
       /* interop layer absent — the C++ engine still self-installs via JSI */
     }

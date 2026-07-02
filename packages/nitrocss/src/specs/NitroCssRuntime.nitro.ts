@@ -15,7 +15,7 @@ export interface ResolveClassNamesPayload {
  * dependency-change events that the `ShadowRegistry` listens to in order to
  * recompute and commit styles.
  */
-export interface NitrowindRuntime extends HybridObject<{
+export interface NitroCssRuntime extends HybridObject<{
   ios: "c++";
   android: "c++";
 }> {

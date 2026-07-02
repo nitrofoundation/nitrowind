@@ -1,5 +1,7 @@
 # 06 — Native: iOS + Android
 
+> **2026-07:** paths/identifiers below predate the package restructure — native code now lives in `packages/nitrocss` (pod `NitroCss`, Android namespace `com.nitrofoundation.nitrocss`); see the note at the top of [11-nitrocss-engine-package.md](./11-nitrocss-engine-package.md).
+
 **Phase P5.** Compile the shared C++ engine on both platforms **from source**
 (unlike uniwind-pro, which ships a prebuilt `.xcframework`).
 

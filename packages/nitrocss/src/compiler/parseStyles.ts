@@ -55,7 +55,7 @@ const stripComments = (css: string): string =>
   css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 /**
- * A small, dependency-free CSS walker tuned for Tailwind's compiled output.
+ * A small, dependency-free CSS walker tuned for the utility compiler's compiled output.
  * Yields one record per (selector, at-rule context) with raw declarations so we
  * can faithfully coerce values to RN. Handles nested at-rules via a context
  * stack and ignores `@`-rules we don't care about.
@@ -87,7 +87,7 @@ function* walkRules(
         const atName = prelude.split(/\s+/, 1)[0] ?? "";
         if (atName === "@layer") {
           // `@layer name { … }` is a transparent grouping wrapper: recurse into
-          // its body WITHOUT adding it to the at-rule context. Tailwind v4 wraps
+          // its body WITHOUT adding it to the at-rule context. The compiler wraps
           // every utility in `@layer utilities` and theme vars in `@layer theme`.
           yield* walkRules(inner.body, inherited);
         } else if (
@@ -238,7 +238,7 @@ function classTokensFromSelector(selector: string): string[] {
 }
 
 /**
- * Extract the utility class-name token from a selector, unescaping Tailwind's
+ * Extract the utility class-name token from a selector, unescaping the utility compiler's
  * `\:` etc. Group selectors contain both `.group` and `.group-active\:*`; in
  * that shape the utility token is the descendant class, not the group root.
  */
@@ -299,7 +299,7 @@ const rnPropsForSelector = (selector: string, cssProp: string): string[] => {
   return toRNProperties(cssProp);
 };
 
-/** Tailwind emits a few implicit vars even when they are not in `:root`. */
+/** The compiler emits a few implicit vars even when they are not in `:root`. */
 const DEFAULT_VARS: Record<string, string> = {
   "--spacing": "0.25rem",
   "--tw-border-style": "solid",
@@ -320,7 +320,7 @@ const collectCustomProps = (
 /**
  * True for declarations handled by the dedicated value parsers (transform,
  * box-shadow, filter, text-shadow, font-variant), every custom property, and
- * backdrop filters that compile to the `--nitrowind-backdrop-filter` marker
+ * backdrop filters that compile to the `--nitrocss-backdrop-filter` marker
  * (see parsers/filter.ts). These are skipped by the generic value loop.
  */
 const isParsedProp = (prop: string): boolean =>
@@ -366,7 +366,7 @@ export function parseStyles(
       dependencyFromSelector(rule.selector),
     );
 
-    // Tailwind sets per-axis `--tw-*` helpers that are consumed within the same
+    // The compiler sets per-axis `--tw-*` helpers that are consumed within the same
     // rule (transforms, shadows). Resolve them with a view that sees the rule's
     // own custom properties first, then the global theme vars.
     const localVars = collectCustomProps(rule.declarations);
@@ -402,7 +402,7 @@ export function parseStyles(
       isAnimationProp(d.prop),
     );
     if (animationDecl) {
-      // Tailwind's `--animate-*` theme tokens emit `animation: var(--animate-x)`;
+      // The compiler's `--animate-*` theme tokens emit `animation: var(--animate-x)`;
       // resolve the reference to its shorthand (`x 8s linear infinite`) so the
       // keyframe name is visible to the folder. Inline shorthands (the built-in
       // `animate-*` utilities) pass through unchanged.

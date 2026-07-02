@@ -8,14 +8,14 @@ import React, {
 } from "react";
 import { StyleDependency, type Dimensions, type Insets } from "../specs/types";
 import { runtime } from "./runtime";
-import type { NitrowindContextValue } from "./types";
+import type { NitroCssContextValue } from "./types";
 
-interface NitrowindControls {
+interface NitroCssControls {
   setTheme: (name: string) => void;
   setColorScheme: (scheme: "light" | "dark" | "system") => void;
 }
 
-const NitrowindContext = createContext<NitrowindControls | null>(null);
+const NitroCssContext = createContext<NitroCssControls | null>(null);
 
 const ALL_RUNTIME_DEPENDENCIES = [
   StyleDependency.Theme,
@@ -29,7 +29,7 @@ const ALL_RUNTIME_DEPENDENCIES = [
   StyleDependency.ContainerSize,
 ];
 
-export interface NitrowindProviderProps {
+export interface NitroCssProviderProps {
   children: ReactNode;
 }
 
@@ -37,10 +37,10 @@ export interface NitrowindProviderProps {
  * Provides reactive access to the runtime snapshot and theme controls. Wrap
  * your app root with this once.
  */
-export function NitrowindProvider({
+export function NitroCssProvider({
   children,
-}: NitrowindProviderProps): React.JSX.Element {
-  const value = useMemo<NitrowindControls>(
+}: NitroCssProviderProps): React.JSX.Element {
+  const value = useMemo<NitroCssControls>(
     () => ({
       setTheme: (name) => runtime.setTheme(name),
       setColorScheme: (scheme) => runtime.setColorScheme(scheme),
@@ -49,9 +49,9 @@ export function NitrowindProvider({
   );
 
   return (
-    <NitrowindContext.Provider value={value}>
+    <NitroCssContext.Provider value={value}>
       {children}
-    </NitrowindContext.Provider>
+    </NitroCssContext.Provider>
   );
 }
 
@@ -69,13 +69,13 @@ export function useRuntimeSnapshot(
 }
 
 /** Access the current runtime snapshot and theme controls. */
-export function useNitrowind(): NitrowindContextValue {
-  const controls = useContext(NitrowindContext);
+export function useNitroCss(): NitroCssContextValue {
+  const controls = useContext(NitroCssContext);
   if (!controls) {
-    throw new Error("useNitrowind must be used within a <NitrowindProvider>");
+    throw new Error("useNitroCss must be used within a <NitroCssProvider>");
   }
   const snapshot = useRuntimeSnapshot();
-  return useMemo<NitrowindContextValue>(
+  return useMemo<NitroCssContextValue>(
     () => ({
       snapshot,
       themeName: snapshot.currentThemeName,
@@ -91,9 +91,9 @@ export function useColorScheme() {
 }
 
 export function useTheme() {
-  const controls = useContext(NitrowindContext);
+  const controls = useContext(NitroCssContext);
   if (!controls) {
-    throw new Error("useTheme must be used within a <NitrowindProvider>");
+    throw new Error("useTheme must be used within a <NitroCssProvider>");
   }
   const snapshot = useRuntimeSnapshot([StyleDependency.Theme]);
   return useMemo(

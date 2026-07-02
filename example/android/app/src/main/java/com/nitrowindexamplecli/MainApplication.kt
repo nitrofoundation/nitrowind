@@ -14,11 +14,11 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // nitrowind is a workspace package that the RN CLI does not autolink;
-          // it is included manually via settings.gradle (`:nitrowind`) and
-          // registered here (loads libNitrowind.so + registers HybridObjects
+          // nitrocss is a workspace package that the RN CLI does not autolink;
+          // it is included manually via settings.gradle (`:nitrocss`) and
+          // registered here (loads libNitroCss.so + registers HybridObjects
           // and the Gradient/Backdrop Nitro view managers).
-          add(com.nitrowind.NitrowindPackage())
+          add(com.nitrofoundation.nitrocss.NitroCssPackage())
         },
     )
   }

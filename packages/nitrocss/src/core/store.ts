@@ -382,7 +382,7 @@ export function resolveStyles(
 
 /**
  * Platform-aware resolver used by components. Web keeps CSS class names on the
- * host and lets Tailwind/browser CSS resolve them directly. Native resolves the
+ * host and lets browser CSS resolve them directly. Native resolves the
  * compiled artifact for first paint and native-engine fallback.
  */
 export function resolveStylesForPlatform(

@@ -1,5 +1,5 @@
 /**
- * Value parsers that fold Tailwind's CSS output into React Native style shapes:
+ * Value parsers that fold the utility compiler's CSS output into React Native style shapes:
  * transforms (per-axis → `transform` array), shadows, and font variants. The
  * transform axes are emitted as individual props and folded at resolve time
  * (see `core/normalize`); the rest produce their final RN props at compile time.

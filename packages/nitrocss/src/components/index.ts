@@ -1,5 +1,5 @@
-export { View, type NitrowindViewProps } from "./View";
-export { Text, type NitrowindTextProps } from "./Text";
+export { View, type NitroCssViewProps } from "./View";
+export { Text, type NitroCssTextProps } from "./Text";
 export {
   ActivityIndicator,
   Image,
@@ -15,7 +15,7 @@ export {
   FlatList,
   ScrollView,
   SectionList,
-  type NitrowindFlatListProps,
-  type NitrowindScrollViewProps,
-  type NitrowindSectionListProps,
+  type NitroCssFlatListProps,
+  type NitroCssScrollViewProps,
+  type NitroCssSectionListProps,
 } from "./scrollables";

@@ -163,7 +163,7 @@ Notes:
 
 ### 2a. What we already have
 
-**`ShadowTreeMutator`** (`packages/nitrowind/cpp/fabric/ShadowTreeMutator.{hpp,cpp}`) —
+**`ShadowTreeMutator`** (`packages/nitrocss/cpp/fabric/ShadowTreeMutator.{hpp,cpp}`) —
 our commit model. It applies a batch of `NodeMutation{ family, surfaceId, props }`
 straight into the Fabric ShadowTree, bypassing React reconciliation:
 
@@ -180,7 +180,7 @@ straight into the Fabric ShadowTree, bypassing React reconciliation:
   ShadowNode instances are replaced on every commit but families are not (see
   `LinkedNode.hpp:27-29`).
 
-**`LayoutObserver`** (`packages/nitrowind/cpp/fabric/LayoutObserver.{hpp,cpp}`) — our
+**`LayoutObserver`** (`packages/nitrocss/cpp/fabric/LayoutObserver.{hpp,cpp}`) — our
 post-layout hook. It implements `facebook::react::UIManagerMountHook` and overrides
 `shadowTreeDidMount(rootShadowNode, mountTime)` (`LayoutObserver.hpp:58`), which fires
 *after* a tree is laid out and mounted. In it we:
@@ -195,7 +195,7 @@ post-layout hook. It implements `facebook::react::UIManagerMountHook` and overri
   `shadowTree.getCurrentRevision().rootShadowNode` — useful when a container/list is
   linked on a static screen with no subsequent commit.
 
-**Node linking** (`packages/nitrowind/cpp/registry/LinkedNode.hpp`,
+**Node linking** (`packages/nitrocss/cpp/registry/LinkedNode.hpp`,
 `core/NitrowindCore.hpp`): `NitrowindCore::link(tag, family, surfaceId, …)` registers a
 node keyed by Fabric `Tag`, holding its stable `ShadowNodeFamily`, surface, and a
 `containerTag` (nearest ancestor container). `NitrowindCore` already keeps per-tag maps

@@ -116,9 +116,10 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
-    // nitrowind is a workspace package the RN CLI does not autolink — it is
-    // included manually via settings.gradle and registered in MainApplication.
-    implementation(project(":nitrowind"))
+    // nitrocss (the native engine behind @nitrofoundation/nitrowind) is a
+    // workspace package the RN CLI does not autolink — it is included manually
+    // via settings.gradle and registered in MainApplication.
+    implementation(project(":nitrocss"))
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

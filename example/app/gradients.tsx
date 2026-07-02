@@ -15,7 +15,7 @@
  * keyframe (see `global.css`) — the same Reanimated native CSS-animation path
  * as `animate-*`; the gradient layer rides on the translated view.
  */
-import { Text, View } from 'nitrowind';
+import { Text, View } from '@nitrofoundation/nitrowind';
 
 import { Caption, Screen, Section, ThemeToggle } from '../components/ui';
 

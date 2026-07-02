@@ -4,13 +4,13 @@ import { resolveStyles } from "../core/store";
 import type { ComponentState, RuntimeSnapshot } from "../specs/types";
 
 export interface PseudoStateProp {
-  __nitrowindPseudoState?: Partial<ComponentState>;
+  __nitrocssPseudoState?: Partial<ComponentState>;
 }
 
 function hasClassName(props: unknown): props is {
   className: string;
   style?: StyleProp<unknown>;
-  __nitrowindPseudoState?: Partial<ComponentState>;
+  __nitrocssPseudoState?: Partial<ComponentState>;
 } {
   return (
     !!props &&
@@ -58,14 +58,14 @@ export function withChildPseudoState(
   const last = styledIndexes[styledIndexes.length - 1];
   return items.map((child, index) => {
     if (!isValidElement(child) || !hasClassName(child.props)) return child;
-    const existing = child.props.__nitrowindPseudoState ?? {};
+    const existing = child.props.__nitrocssPseudoState ?? {};
     const state = {
       ...existing,
       isFirstChild: index === first,
       isLastChild: index === last,
     };
     return cloneElement(child, {
-      __nitrowindPseudoState: state,
+      __nitrocssPseudoState: state,
       ...mergePseudoStyle(child.props, snapshot, state),
     } as PseudoStateProp);
   });
@@ -79,13 +79,13 @@ export function withComponentPseudoState(
   if (Platform.OS === "web") return children;
   return Children.map(children, (child) => {
     if (!isValidElement(child) || !hasClassName(child.props)) return child;
-    const existing = child.props.__nitrowindPseudoState ?? {};
+    const existing = child.props.__nitrocssPseudoState ?? {};
     const nextState = {
       ...existing,
       ...state,
     };
     return cloneElement(child, {
-      __nitrowindPseudoState: nextState,
+      __nitrocssPseudoState: nextState,
       ...mergePseudoStyle(child.props, snapshot, nextState),
     } as PseudoStateProp);
   });

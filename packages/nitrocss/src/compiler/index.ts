@@ -1,22 +1,19 @@
-import { compileCss, scanCandidates } from "./compileCss";
-import { applyCustomContainerTokens } from "./container";
 import { parseStyles } from "./parseStyles";
 import { extractThemes } from "./themes";
-import type { CompileOptions, CompiledArtifact } from "./types";
+import type { CompiledArtifact } from "./types";
 
 export * from "./types";
-export { compileCss, scanCandidates } from "./compileCss";
+export { flattenCss } from "./flatten";
+export {
+  scanCustomContainerCandidates,
+  collectFiles,
+  filesForPattern,
+} from "./scanSources";
 export { parseStyles, classTokenFromSelector } from "./parseStyles";
 export { extractThemes } from "./themes";
 export { toRNProperty, toRNValue } from "./toRNValue";
 export { parseInsetValue, lengthToPx } from "./insetValue";
-export { INSETS_CSS, generateInsetsCss } from "./insets";
-export {
-  PLATFORMS,
-  PLATFORM_CSS,
-  PLATFORM_MARKER,
-  platformFromSelector,
-} from "./platform";
+export { PLATFORMS, PLATFORM_MARKER, platformFromSelector } from "./platform";
 export type { PlatformName } from "./platform";
 export {
   parseContainerQuery,
@@ -32,25 +29,12 @@ export type {
   ContainerOp,
   CustomContainerToken,
 } from "./container";
+export { ENTERING_EXITING_PRESETS, LAYOUT_PRESETS } from "./reanimated";
 
 /**
- * Compile a Tailwind stylesheet + the app's class usage into the nitrocss
- * runtime artifact (class → RN style buckets + dependency masks + themes).
+ * Compile flattened CSS into the nitrocss runtime artifact
+ * (class → RN style buckets + dependency masks + themes).
  */
-export async function compile(
-  options: CompileOptions,
-): Promise<CompiledArtifact> {
-  const rem = options.rem ?? 16;
-  const candidates = scanCandidates(options);
-  const css = await compileCss(options, candidates);
-  const artifact = compileFromCss(css, rem);
-  // Materialize the custom container syntax (`[parent-w>230px]:hidden`) by
-  // cloning each base utility's compiled style under a container-gated bucket.
-  applyCustomContainerTokens(artifact, candidates, rem);
-  return artifact;
-}
-
-/** Same as `compile`, but from already-built CSS (useful for tests). */
 export function compileFromCss(css: string, rem = 16): CompiledArtifact {
   const { themes, themeNames } = extractThemes(css);
   // Resolve `--spacing` (and other vars) from the base theme so safe-area
@@ -71,7 +55,7 @@ export function compileFromCss(css: string, rem = 16): CompiledArtifact {
 
 /**
  * Serialize the artifact for shipping to the native engine
- * (`NitrowindConfig.setCompiledStyles` in Nitrowind).
+ * (`NitroCssConfig.setCompiledStyles`).
  */
 export function serializeArtifact(artifact: CompiledArtifact): string {
   return JSON.stringify(artifact);

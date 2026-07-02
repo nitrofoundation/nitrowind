@@ -4,7 +4,7 @@
  * engine resolves against live window insets.
  */
 import { Platform } from "react-native";
-import { Text, View } from "nitrowind";
+import { Text, View } from "@nitrofoundation/nitrowind";
 
 import { Card, Caption, Screen, Section } from "../components/ui";
 function Box({ className = "" }: { className?: string }) {

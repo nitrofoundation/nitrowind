@@ -2,7 +2,7 @@ import type { ContainerCondition, ContainerMarker } from "./container";
 
 /**
  * Which runtime values a compiled style depends on. The numeric values are a
- * stable ABI shared by nitrocss, Nitrowind's Nitro specs, and the C++ engine.
+ * stable ABI shared by nitrocss, NitroCss's Nitro specs, and the C++ engine.
  */
 export enum StyleDependency {
   Theme = 0,
@@ -129,7 +129,7 @@ export interface CompiledArtifact {
 }
 
 export interface CompileOptions {
-  /** Path to the entry stylesheet (`@import "tailwindcss"` + `@theme`). */
+  /** Path to the entry stylesheet (plain CSS with `@theme` blocks). */
   input: string;
   /** Globs/paths to scan for `className` candidates. */
   content: string[];

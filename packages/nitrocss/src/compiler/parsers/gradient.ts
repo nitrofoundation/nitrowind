@@ -8,16 +8,16 @@ interface Decl {
 }
 
 /**
- * Tailwind v4 splits a gradient across several utilities: `bg-linear-*` /
+ * The compiler splits a gradient across several utilities: `bg-linear-*` /
  * `bg-radial` set the gradient *type* + geometry, while `from-*` / `via-*` /
  * `to-*` each contribute a color stop through the `--tw-gradient-*` custom-prop
- * chain. Those tokens compile to *separate* class buckets in nitrowind, so the
+ * chain. Those tokens compile to *separate* class buckets in nitrocss, so the
  * pieces can only be reassembled once every matching class has merged — exactly
  * like the per-axis transform props. We therefore emit the atomic pieces as our
  * own `--nw-gradient-*` custom props and fold them at resolve time into the
  * compact numeric {@link GradientDescriptor} consumed by the engine's own
  * native `GradientView` (see the runtime `foldGradient` in
- * `nitrowind/src/core/normalize.ts`, which delegates to {@link foldGradient};
+ * `nitrocss/src/core/normalize.ts`, which delegates to {@link foldGradient};
  * web folds to a real CSS `backgroundImage` string instead).
  */
 export const GRADIENT_TYPE_PROP = "--nw-gradient-type";
@@ -63,7 +63,7 @@ const gradientTypeFromImage = (value: string): "linear" | "radial" | undefined =
   return undefined;
 };
 
-// Tailwind appends a color-interpolation method (`in oklab`, `in oklch`, …) to
+// The compiler appends a color-interpolation method (`in oklab`, `in oklch`, …) to
 // the gradient position under an `@supports` guard. RN interpolates in its own
 // space, so strip it — otherwise the position keyword is unparseable.
 const INTERPOLATION_RE =
@@ -85,7 +85,7 @@ const lowerColorLiteral = (value: string): string => {
 };
 
 /**
- * Fold Tailwind's gradient utilities into our `--nw-gradient-*` marker props.
+ * Fold the utility compiler's gradient utilities into our `--nw-gradient-*` marker props.
  * `resolveVar` is currently unused (colors stay as `var()`/literal for the
  * runtime), but kept for signature parity with the other parsers.
  */
@@ -142,13 +142,13 @@ const stop = (color: string, position: string | undefined): string =>
  * mirror fold in `nitrocss/cpp/NitroCssEngine.cpp` emits the identical object
  * so native theme-swap commits match JS-resolved styles exactly.
  */
-export const GRADIENT_DESCRIPTOR_PROP = "--nitrowind-gradient";
+export const GRADIENT_DESCRIPTOR_PROP = "--nitrocss-gradient";
 
 export interface GradientDescriptor {
   gradientType: "linear" | "radial";
   /**
    * Linear sweep angle in CSS degrees (`0` = to top, `90` = to right,
-   * `180` = to bottom — the default when Tailwind gave no direction).
+   * `180` = to bottom — the default when the utility compiler gave no direction).
    * `0` for radial gradients (unused).
    */
   angle: number;
@@ -184,7 +184,7 @@ export function parseStopLocation(
 }
 
 /**
- * Resolve Tailwind's `--tw-gradient-position` for a LINEAR gradient into a CSS
+ * Resolve the utility compiler's `--tw-gradient-position` for a LINEAR gradient into a CSS
  * angle in degrees. Keyword corners use the fixed 45°-diagonal table (the Lynx
  * convention — aspect-ratio-exact corner targeting is a fidelity follow-up).
  * Mirrored byte-for-byte by the C++ fold.
@@ -267,7 +267,7 @@ export function radialCenterFromPosition(position: string | undefined): {
  *   `View` host strips it from the RN style and feeds it to the engine's own
  *   Nitro `GradientView`; the C++ engine re-emits it on theme/scheme change.
  * - `target === "css"` (web): emits a real CSS `backgroundImage` string so
- *   non-Tailwind web consumers keep a browser-paintable gradient.
+ *   plain-CSS web consumers keep a browser-paintable gradient.
  *
  * Colors have already been lowered to hex (literals at compile time, `var()`
  * at resolve time). Runs once after every matching class has merged — the same

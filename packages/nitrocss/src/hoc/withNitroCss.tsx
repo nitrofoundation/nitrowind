@@ -37,44 +37,44 @@ import {
   withComponentPseudoState,
 } from "../components/pseudo";
 
-export interface WithNitrowindProps {
+export interface WithNitroCssProps {
   className?: string;
   style?: StyleProp<unknown>;
 }
 
-export interface NitrowindPropMapping {
+export interface NitroCssPropMapping {
   fromClassName: string;
   styleProperty?: keyof RNStyle;
   nativeProp?: string;
 }
 
-export type WithNitrowindPropOptions<P> = Partial<
-  Record<keyof P & string, NitrowindPropMapping>
+export type WithNitroCssPropOptions<P> = Partial<
+  Record<keyof P & string, NitroCssPropMapping>
 >;
 
-export interface WithNitrowindAdvancedOptions<P> {
-  props?: Partial<Record<keyof P & string, NitrowindPropMapping>>;
+export interface WithNitroCssAdvancedOptions<P> {
+  props?: Partial<Record<keyof P & string, NitroCssPropMapping>>;
   nativeColorProps?: Record<string, string>;
 }
 
-export type WithNitrowindOptions<P> =
-  | WithNitrowindPropOptions<P>
-  | WithNitrowindAdvancedOptions<P>;
+export type WithNitroCssOptions<P> =
+  | WithNitroCssPropOptions<P>
+  | WithNitroCssAdvancedOptions<P>;
 
 const isAdvancedOptions = <P,>(
-  options: WithNitrowindOptions<P> | undefined,
-): options is WithNitrowindAdvancedOptions<P> =>
+  options: WithNitroCssOptions<P> | undefined,
+): options is WithNitroCssAdvancedOptions<P> =>
   !!options && ("props" in options || "nativeColorProps" in options);
 
 const propOptionsFor = <P,>(
-  options: WithNitrowindOptions<P> | undefined,
-): WithNitrowindPropOptions<P> | undefined => {
+  options: WithNitroCssOptions<P> | undefined,
+): WithNitroCssPropOptions<P> | undefined => {
   if (!options) return undefined;
   return isAdvancedOptions(options) ? options.props : options;
 };
 
 const nativeColorPropsFor = <P,>(
-  options: WithNitrowindOptions<P> | undefined,
+  options: WithNitroCssOptions<P> | undefined,
 ): Record<string, string> =>
   isAdvancedOptions(options) ? (options.nativeColorProps ?? {}) : {};
 
@@ -173,7 +173,7 @@ function hasGroupMarker(className: string): boolean {
 export function resolveGeneratedProps<P>(
   props: Record<string, unknown>,
   snapshot: RuntimeSnapshot,
-  options?: WithNitrowindOptions<P>,
+  options?: WithNitroCssOptions<P>,
   hostClassName?: string,
 ): Record<string, unknown> {
   const generated: Record<string, unknown> = {};
@@ -190,7 +190,7 @@ export function resolveGeneratedProps<P>(
 
   if (propOptions) {
     for (const [propName, option] of Object.entries(
-      propOptions as Record<string, NitrowindPropMapping | undefined>,
+      propOptions as Record<string, NitroCssPropMapping | undefined>,
     )) {
       if (!option) continue;
       const className = source[option.fromClassName];
@@ -251,7 +251,7 @@ function resolveHostColorProps(
 function resolveNativeAccents<P>(
   props: Record<string, unknown>,
   snapshot: RuntimeSnapshot,
-  options?: WithNitrowindOptions<P>,
+  options?: WithNitroCssOptions<P>,
   native = false,
 ): NativeAccentDescriptor[] {
   const accents: NativeAccentDescriptor[] = [];
@@ -259,7 +259,7 @@ function resolveNativeAccents<P>(
 
   if (native && propOptions) {
     for (const [propName, option] of Object.entries(
-      propOptions as Record<string, NitrowindPropMapping | undefined>,
+      propOptions as Record<string, NitroCssPropMapping | undefined>,
     )) {
       if (!option || props[propName] !== undefined) continue;
       const className = props[option.fromClassName];
@@ -322,25 +322,25 @@ function resolveNativeAccents<P>(
 /**
  * Wrap any component that accepts a `style` prop so it understands `className`.
  * Use this for third-party components (e.g. `Pressable`, `Image`, custom views)
- * that you want to drive with nitrowind classes.
+ * that you want to drive with nitrocss classes.
  */
-export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
+export function withNitroCss<P extends { style?: StyleProp<unknown> }>(
   Component: ComponentType<P>,
   componentName: string = Component.displayName ||
     Component.name ||
     "Component",
-  options?: WithNitrowindOptions<P>,
+  options?: WithNitroCssOptions<P>,
 ): ComponentType<
-  P & WithNitrowindProps & PseudoStateProp & { ref?: Ref<unknown> }
+  P & WithNitroCssProps & PseudoStateProp & { ref?: Ref<unknown> }
 > {
   type WrappedProps = P &
-    WithNitrowindProps &
+    WithNitroCssProps &
     PseudoStateProp & {
       children?: React.ReactNode;
     };
 
-  const Wrapped = forwardRef<unknown, WrappedProps>(function NitrowindComponent(
-    { className = "", style, __nitrowindPseudoState, children, ...rest },
+  const Wrapped = forwardRef<unknown, WrappedProps>(function NitroCssComponent(
+    { className = "", style, __nitrocssPseudoState, children, ...rest },
     forwardedRef,
   ) {
     const snapshot = useReactiveSnapshot();
@@ -349,8 +349,8 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
     const nativeHandleRef = useRef<ShadowNodeHandle | undefined>(undefined);
     const resolved = useMemo(
       () =>
-        resolveStylesForPlatform(className, snapshot, __nitrowindPseudoState),
-      [className, snapshot, __nitrowindPseudoState],
+        resolveStylesForPlatform(className, snapshot, __nitrocssPseudoState),
+      [className, snapshot, __nitrocssPseudoState],
     );
     const generatedProps = useMemo<Record<string, unknown>>(
       () =>
@@ -398,7 +398,7 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
       snapshot,
       forwardedRef,
       nativeAccents,
-      __nitrowindPseudoState,
+      __nitrocssPseudoState,
       useCallback((handle: ShadowNodeHandle | undefined) => {
         nativeHandleRef.current = handle;
       }, []),
@@ -503,7 +503,7 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
             return [
               needsPressableState
                 ? resolveStyles(className, snapshot, {
-                    ...__nitrowindPseudoState,
+                    ...__nitrocssPseudoState,
                     ...stateFromPressable(state, disabled),
                   }).styles
                 : resolved.styles,
@@ -523,7 +523,7 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
       return (state: unknown) => {
         updateNativePressableState(state);
         const pressableState = {
-          ...__nitrowindPseudoState,
+          ...__nitrocssPseudoState,
           ...(needsPressableState ? stateFromPressable(state, disabled) : {}),
           ...(needsGroupState ? groupStateFromPressable(state, disabled) : {}),
         };
@@ -580,14 +580,14 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
     );
   });
 
-  Wrapped.displayName = `withNitrowind(${componentName})`;
+  Wrapped.displayName = `withNitroCss(${componentName})`;
   return Wrapped as unknown as ComponentType<
-    P & WithNitrowindProps & PseudoStateProp & { ref?: Ref<unknown> }
+    P & WithNitroCssProps & PseudoStateProp & { ref?: Ref<unknown> }
   >;
 }
 
 /**
- * Native-first variant of `withNitrowind` for third-party host components.
+ * Native-first variant of `withNitroCss` for third-party host components.
  *
  * JS registers className/prop mapping metadata; when the native engine is
  * present, C++ resolves and commits the mapped props/styles directly.
@@ -595,9 +595,9 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
 export function withNativeExtending<P extends object>(
   Component: ComponentType<P>,
   componentName?: string,
-  options?: WithNitrowindOptions<P>,
+  options?: WithNitroCssOptions<P>,
 ): ComponentType<
-  P & WithNitrowindProps & PseudoStateProp & { ref?: Ref<unknown> }
+  P & WithNitroCssProps & PseudoStateProp & { ref?: Ref<unknown> }
 > {
-  return withNitrowind(Component, componentName, options);
+  return withNitroCss(Component, componentName, options);
 }

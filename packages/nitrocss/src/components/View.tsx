@@ -20,8 +20,8 @@ import { serializeGridConfig, useGridFallback } from "./grid";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
 
-export interface NitrowindViewProps extends ViewProps, PseudoStateProp {
-  /** Tailwind class names resolved by the nitrowind engine. */
+export interface NitroCssViewProps extends ViewProps, PseudoStateProp {
+  /** Class names resolved by the nitrocss engine. */
   className?: string;
 }
 
@@ -37,15 +37,15 @@ interface AnimationIdentity {
 /**
  * Drop-in replacement for RN's `View` that accepts a `className`. Native builds
  * resolve first-paint styles through nitrocss; web leaves `className` on the
- * host so Tailwind CSS/browser CSS owns styling directly.
+ * host so browser CSS owns styling directly.
  */
-export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
+export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   {
     className = "",
     style,
     onLayout,
     children,
-    __nitrowindPseudoState,
+    __nitrocssPseudoState,
     ...rest
   },
   forwardedRef,
@@ -53,8 +53,8 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
   const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
-    () => resolveStylesForPlatform(className, snapshot, __nitrowindPseudoState),
-    [className, snapshot, __nitrowindPseudoState],
+    () => resolveStylesForPlatform(className, snapshot, __nitrocssPseudoState),
+    [className, snapshot, __nitrocssPseudoState],
   );
   // Native grid config, serialized once so the C++ engine can lay the grid out
   // from the measured container width (no `onLayout` reflow). `undefined` on web,
@@ -70,20 +70,20 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
     snapshot,
     forwardedRef,
     [],
-    __nitrowindPseudoState,
+    __nitrocssPseudoState,
     undefined,
     style,
     gridConfig,
   );
 
   // Gradient: the fold emits the compact numeric descriptor under
-  // `--nitrowind-gradient`. It is NOT a real RN style key and it is NOT a
+  // `--nitrocss-gradient`. It is NOT a real RN style key and it is NOT a
   // child component either — the C++ engine registers `tag → descriptor` at
   // link/resolve time and the native applier paints it as a CAGradientLayer on
   // this view's own layer (RN backgroundImage-style). All JS does is strip the
   // marker from the host style.
   // Backdrop: `backdrop-filter` compiles to the parsed filter array under
-  // `--nitrowind-backdrop-filter` (parsers/filter.ts). Strip it too; the
+  // `--nitrocss-backdrop-filter` (parsers/filter.ts). Strip it too; the
   // BackdropLayer child needs `overflow: hidden` + the uniform borderRadius so
   // the absolutely-filling blur surface clips to the box.
   const hasGradient =
@@ -154,8 +154,8 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
   let layoutAnim = resolved.layout;
   let hostStyles = viewStyles;
   if (Animated) {
-    const animationKey = __nitrowindPseudoState
-      ? `${className}|${JSON.stringify(__nitrowindPseudoState)}`
+    const animationKey = __nitrocssPseudoState
+      ? `${className}|${JSON.stringify(__nitrocssPseudoState)}`
       : className;
     const cached = animationRef.current;
     if (cached && cached.key === animationKey) {

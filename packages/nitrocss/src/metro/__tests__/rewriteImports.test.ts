@@ -8,15 +8,15 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       `import { processColor } from "react-native";\n` +
-        `import { View, Text } from "nitrowind";`,
+        `import { View, Text } from "@nitrofoundation/nitrocss";`,
     );
   });
 
-  it("rewrites a fully-styled import to nitrowind only", () => {
+  it("rewrites a fully-styled import to nitrocss only", () => {
     const out = rewriteReactNativeImports(
       `import { View } from 'react-native';`,
     );
-    expect(out).toBe(`import { View } from "nitrowind";`);
+    expect(out).toBe(`import { View } from "@nitrofoundation/nitrocss";`);
   });
 
   it("handles multi-line import statements", () => {
@@ -31,7 +31,7 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       `import { StyleSheet } from "react-native";\n` +
-        `import { View, Pressable } from "nitrowind";`,
+        `import { View, Pressable } from "@nitrofoundation/nitrocss";`,
     );
   });
 
@@ -41,7 +41,7 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       `import { Platform } from "react-native";\n` +
-        `import { View as RNView, Text as RNText } from "nitrowind";`,
+        `import { View as RNView, Text as RNText } from "@nitrofoundation/nitrocss";`,
     );
   });
 
@@ -57,7 +57,7 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       `import { Platform } from "react-native";\n` +
-        `import { View as RNView } from "nitrowind";`,
+        `import { View as RNView } from "@nitrofoundation/nitrocss";`,
     );
   });
 
@@ -67,7 +67,7 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       `import ReactNative, { processColor } from "react-native";\n` +
-        `import { View } from "nitrowind";`,
+        `import { View } from "@nitrofoundation/nitrocss";`,
     );
   });
 
@@ -77,7 +77,7 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       `import ReactNative from "react-native";\n` +
-        `import { View } from "nitrowind";`,
+        `import { View } from "@nitrofoundation/nitrocss";`,
     );
   });
 
@@ -87,7 +87,7 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       `import { type ViewProps, type TextStyle } from "react-native";\n` +
-        `import { View } from "nitrowind";`,
+        `import { View } from "@nitrofoundation/nitrocss";`,
     );
   });
 
@@ -116,7 +116,7 @@ describe("rewriteReactNativeImports", () => {
     expect(out).toBe(
       [
         `import { View } from './my-view'`,
-        `import { Platform } from "react-native";\nimport { Text } from "nitrowind";`,
+        `import { Platform } from "react-native";\nimport { Text } from "@nitrofoundation/nitrocss";`,
         `const x = 1`,
       ].join("\n"),
     );
@@ -133,7 +133,7 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       `import { processColor } from "react-native";\n` +
-        `import { View } from "nitrowind";`,
+        `import { View } from "@nitrofoundation/nitrocss";`,
     );
   });
 
@@ -143,7 +143,7 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       `import { Platform } from "react-native";\n` +
-        `import { View } from "nitrowind";`,
+        `import { View } from "@nitrofoundation/nitrocss";`,
     );
   });
 
@@ -162,9 +162,9 @@ describe("rewriteReactNativeImports", () => {
     );
     expect(out).toBe(
       [
-        `import { View } from "nitrowind";`,
+        `import { View } from "@nitrofoundation/nitrocss";`,
         `const a = 1;`,
-        `import { Platform } from "react-native";\nimport { Text } from "nitrowind";`,
+        `import { Platform } from "react-native";\nimport { Text } from "@nitrofoundation/nitrocss";`,
       ].join("\n"),
     );
   });

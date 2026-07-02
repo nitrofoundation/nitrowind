@@ -7,7 +7,7 @@
     "moduleResolution": "Bundler",
     "allowArbitraryExtensions": true,
     "noEmit": true,
-    "types": ["react", "react-native", "nitrowind"]
+    "types": ["react", "react-native", "@nitrofoundation/nitrowind"]
   },
   "include": ["app", "components", "*.ts", "*.tsx", "*.d.ts"]
 }

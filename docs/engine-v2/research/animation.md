@@ -96,7 +96,7 @@ variants (`dark:`, `md:`, `ios:`) for free.
 
 ### 1b. Runtime resolve: `--reanimated-*` → animation objects; `isAnimated` flag
 
-`packages/nitrowind/src/core/store.ts`, `resolveStylesUncached` (lines 233–367):
+`packages/nitrocss/src/core/store.ts`, `resolveStylesUncached` (lines 233–367):
 
 - A per-node `reanimatedVars: Record<string,string>` accumulator collects the
   `--reanimated-*` props out of the RN style object (they aren't valid style
@@ -115,7 +115,7 @@ const layout   = hasReanimatedVars(reanimatedVars) ? buildLayoutAnimation(reanim
 
 `GetStylesResult` carries `{ styles, isAnimated, entering?, exiting?, layout? }`.
 
-**The builders** (`packages/nitrowind/src/core/reanimated.ts`):
+**The builders** (`packages/nitrocss/src/core/reanimated.ts`):
 
 - `react-native-reanimated` is an **optional peer dep**; `loadReanimated()`
   `require`s it in a `try/catch` and caches `null` on failure — so every entry
@@ -135,7 +135,7 @@ const layout   = hasReanimatedVars(reanimatedVars) ? buildLayoutAnimation(reanim
 
 ### 1c. Component swap: `View.tsx` → Reanimated `Animated.View`
 
-`packages/nitrowind/src/components/animated.ts` — lazy, cached accessors:
+`packages/nitrocss/src/components/animated.ts` — lazy, cached accessors:
 
 - `getAnimatedView()` → `require("react-native-reanimated").default.View` or
   `null`.
@@ -143,7 +143,7 @@ const layout   = hasReanimatedVars(reanimatedVars) ? buildLayoutAnimation(reanim
   per-input in a `WeakMap` (line 42). The comment (41) is load-bearing:
   recreating the wrapper on every render "breaks Reanimated + remounts the tree."
 
-`packages/nitrowind/src/components/View.tsx` (lines 67–88):
+`packages/nitrocss/src/components/View.tsx` (lines 67–88):
 
 ```tsx
 const Animated = resolved.isAnimated ? getAnimatedView() : null;
@@ -228,7 +228,7 @@ it to `Animated.View` via the `isAnimated` path in §1c.
 
 The gradient itself (`bg-linear-[144deg] from-primary … to-danger`) is folded to
 one native `experimental_backgroundImage` at resolve time via `foldGradient`
-(`packages/nitrowind/src/core/normalize.ts` re-exports it; `store.ts` calls it in
+(`packages/nitrocss/src/core/normalize.ts` re-exports it; `store.ts` calls it in
 the fold pass, lines 335–337). Theme tokens (`from-primary`, `to-danger`) mean
 the gradient re-resolves on theme change.
 

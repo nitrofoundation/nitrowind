@@ -39,7 +39,7 @@ describe("toRNValue", () => {
     expect(toRNValue("fontSize", "1.5rem", { rem: 16 })).toBe(24);
   });
 
-  it("evaluates Tailwind spacing calc expressions", () => {
+  it("evaluates spacing calc expressions", () => {
     expect(
       toRNValue("padding", "calc(var(--spacing) * 4)", {
         rem: 16,
@@ -48,7 +48,7 @@ describe("toRNValue", () => {
     ).toBe(16);
   });
 
-  it("resolves nested Tailwind var fallbacks", () => {
+  it("resolves nested var fallbacks", () => {
     expect(
       toRNValue(
         "lineHeight",
@@ -121,7 +121,7 @@ describe("classTokenFromSelector", () => {
 });
 
 describe("compileFromCss", () => {
-  it("resolves Tailwind default border style", () => {
+  it("resolves the default border style", () => {
     const artifact = compileFromCss(
       `.border { border-style: var(--tw-border-style); border-width: 1px; }`,
     );
@@ -172,7 +172,7 @@ describe("compileFromCss", () => {
     ).toEqual({ placeholderTextColor: "#ef4444" });
   });
 
-  it("converts Tailwind text utility line-height ratios to absolute values", () => {
+  it("converts text utility line-height ratios to absolute values", () => {
     const artifact = compileFromCss(
       `
         @theme { --text-sm--line-height: calc(1.25 / .875); }
@@ -245,36 +245,36 @@ describe("compileFromCss", () => {
       { filter: [{ blur: 24 }] },
     );
     // backdrop-filter must NOT fold into RN's `filter` (that would filter the
-    // view's own content). It compiles to the `--nitrowind-backdrop-filter`
+    // view's own content). It compiles to the `--nitrocss-backdrop-filter`
     // marker, which SURVIVES JS resolution so `View` can consume it and
     // render the native BackdropLayer (the C++ engine still strips it from
     // committed RN props at its resolve() tail).
     expect(artifact.classes["backdrop-blur-sm"]?.[0]?.style).toEqual({
-      "--nitrowind-backdrop-filter": [{ blur: 8 }],
+      "--nitrocss-backdrop-filter": [{ blur: 8 }],
     });
     expect(artifact.classes["backdrop-brightness-125"]?.[0]?.style).toEqual({
-      "--nitrowind-backdrop-filter": [{ brightness: 1.25 }],
+      "--nitrocss-backdrop-filter": [{ brightness: 1.25 }],
     });
     expect(resolveStyles("backdrop-blur-sm", makeSnapshot()).styles).toEqual({
-      "--nitrowind-backdrop-filter": [{ blur: 8 }],
+      "--nitrocss-backdrop-filter": [{ blur: 8 }],
     });
     expect(
       resolveStyles("backdrop-brightness-125", makeSnapshot()).styles,
-    ).toEqual({ "--nitrowind-backdrop-filter": [{ brightness: 1.25 }] });
+    ).toEqual({ "--nitrocss-backdrop-filter": [{ brightness: 1.25 }] });
     // A rule carrying both keeps `filter` intact and routes backdrop-filter to
     // the marker.
     expect(artifact.classes["frosted"]?.[0]?.style).toEqual({
       filter: [{ blur: 4 }],
-      "--nitrowind-backdrop-filter": [{ blur: 8 }],
+      "--nitrocss-backdrop-filter": [{ blur: 8 }],
     });
     expect(resolveStyles("frosted", makeSnapshot()).styles).toEqual({
       filter: [{ blur: 4 }],
-      "--nitrowind-backdrop-filter": [{ blur: 8 }],
+      "--nitrocss-backdrop-filter": [{ blur: 8 }],
     });
   });
 
-  it("compiles Tailwind v4 backdrop-blur-* utilities to the backdrop marker", () => {
-    // The exact shape Tailwind v4 emits for `backdrop-blur-md`: the blur rides
+  it("compiles backdrop-blur-* utilities to the backdrop marker", () => {
+    // The exact shape the utility compiler emits for `backdrop-blur-md`: the blur rides
     // on a composed `--tw-backdrop-blur` variable referencing the theme's
     // `--blur-md`, and both the -webkit- and standard properties carry the
     // full empty-fallback var chain.
@@ -292,10 +292,10 @@ describe("compileFromCss", () => {
     registerStyles(artifact);
 
     expect(artifact.classes["backdrop-blur-md"]?.[0]?.style).toEqual({
-      "--nitrowind-backdrop-filter": [{ blur: 12 }],
+      "--nitrocss-backdrop-filter": [{ blur: 12 }],
     });
     expect(resolveStyles("backdrop-blur-md", makeSnapshot()).styles).toEqual({
-      "--nitrowind-backdrop-filter": [{ blur: 12 }],
+      "--nitrocss-backdrop-filter": [{ blur: 12 }],
     });
   });
 

@@ -49,7 +49,7 @@ export interface UseContainerResult {
 }
 
 /**
- * Wire container-query behavior for a nitrowind component:
+ * Wire container-query behavior for a nitrocss component:
  *
  * - When the className marks a container (`@container` / `@container/name`),
  *   register it, report its measured size via `onLayout`, and provide a context
@@ -63,7 +63,7 @@ export interface UseContainerResult {
  * with no re-render, so the JS measurement below is skipped entirely. The JS
  * path is the fallback only (Expo Go, tests, or before the native module is
  * linked), where it reports size via `onLayout` and re-renders on change. Web
- * leaves container queries to Tailwind/browser CSS directly.
+ * leaves container queries to browser CSS directly.
  */
 export function useContainer(
   resolved: GetStylesResult,
@@ -76,7 +76,7 @@ export function useContainer(
   const queries = isWeb ? undefined : resolved.containerQueries;
   // In native mode the LayoutObserver owns container queries; disable the JS
   // path so it stays a pure fallback and honors the no-re-render guarantee.
-  // On web, Tailwind/browser CSS owns container queries directly.
+  // On web, browser CSS owns container queries directly.
   const native = !isWeb && hasNativeEngine();
 
   // --- Marker side: register the container + provide context. ---

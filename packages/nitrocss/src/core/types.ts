@@ -45,8 +45,8 @@ export interface GetStylesResult {
   layout?: ReanimatedAnimation;
 }
 
-/** Value exposed by {@link NitrowindProvider} via {@link useNitrowind}. */
-export interface NitrowindContextValue {
+/** Value exposed by {@link NitroCssProvider} via {@link useNitroCss}. */
+export interface NitroCssContextValue {
   snapshot: RuntimeSnapshot;
   themeName: string;
   setTheme: (name: string) => void;

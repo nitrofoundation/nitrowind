@@ -4,8 +4,8 @@
  * tree restyles without a React re-render. `dark:` variants are also resolved
  * natively.
  */
-import { Text, View } from "nitrowind";
-import { runtime } from "nitrowind";
+import { Text, View } from "@nitrofoundation/nitrowind";
+import { runtime } from "@nitrofoundation/nitrowind";
 
 import { Caption, Card, Screen, Section } from "../components/ui";
 

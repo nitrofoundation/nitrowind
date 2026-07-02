@@ -7,6 +7,9 @@ import { defineConfig } from "vitest/config";
  * so alias the whole module to a tiny stub (`test/mocks/react-native.ts`).
  */
 export default defineConfig({
+  test: {
+    include: ["src/**/__tests__/**/*.test.{ts,tsx}"],
+  },
   resolve: {
     alias: [
       {

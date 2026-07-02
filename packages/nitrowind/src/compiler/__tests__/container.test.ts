@@ -3,25 +3,25 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compile as tailwindCompile } from "@tailwindcss/node";
-import { transform } from "lightningcss";
+import {
+  ColorScheme,
+  Orientation,
+  StyleDependency,
+  registerStyles,
+  resolveStyles,
+  type RuntimeSnapshot,
+} from "@nitrofoundation/nitrocss";
 import {
   applyCustomContainerTokens,
   compileFromCss,
   containerMarkerFromDeclarations,
+  flattenCss,
   isCustomContainerToken,
   parseContainerQuery,
   parseCustomContainerToken,
   scanCandidates,
   type CompiledArtifact,
 } from "../index";
-import { registerStyles } from "../../core/registry";
-import { resolveStyles } from "../../core/store";
-import {
-  ColorScheme,
-  Orientation,
-  StyleDependency,
-  type RuntimeSnapshot,
-} from "../../specs/types";
 
 /** The flattened shape Tailwind v4 emits for container utilities/queries. */
 const CSS = String.raw`
@@ -86,14 +86,7 @@ async function buildCss(candidates: string[]): Promise<string> {
     base: process.cwd(),
     onDependency: () => {},
   });
-  const built = compiler.build(candidates);
-  const { code } = transform({
-    filename: "container.css",
-    code: Buffer.from(built),
-    targets: { chrome: 111 << 16 },
-    minify: false,
-  });
-  return code.toString();
+  return flattenCss(compiler.build(candidates));
 }
 
 describe("container queries", () => {

@@ -1728,6 +1728,67 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@nitrofoundation/nitrocss@workspace:*, @nitrofoundation/nitrocss@workspace:packages/nitrocss":
+  version: 0.0.0-use.local
+  resolution: "@nitrofoundation/nitrocss@workspace:packages/nitrocss"
+  dependencies:
+    "@types/culori": "npm:2.1.1"
+    "@types/node": "npm:^22.12.0"
+    "@types/react": "npm:19.2.17"
+    culori: "npm:4.0.2"
+    lightningcss: "npm:1.32.0"
+    nitrogen: "npm:0.35.9"
+    react: "npm:19.2.3"
+    react-native: "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch"
+    react-native-builder-bob: "npm:0.40.13"
+    react-native-nitro-modules: "npm:0.35.9"
+    rimraf: "npm:6.0.1"
+    typescript: "npm:5.9.2"
+    vitest: "npm:3.2.4"
+  peerDependencies:
+    react: ">=19.0.0"
+    react-native: ">=0.85.0"
+    react-native-nitro-modules: ">=0.35.0"
+    react-native-reanimated: ">=3.0.0"
+    react-native-svg: ">=15.0.0"
+  peerDependenciesMeta:
+    react-native-reanimated:
+      optional: true
+    react-native-svg:
+      optional: true
+  languageName: unknown
+  linkType: soft
+
+"@nitrofoundation/nitrowind@workspace:*, @nitrofoundation/nitrowind@workspace:packages/nitrowind":
+  version: 0.0.0-use.local
+  resolution: "@nitrofoundation/nitrowind@workspace:packages/nitrowind"
+  dependencies:
+    "@nitrofoundation/nitrocss": "workspace:*"
+    "@tailwindcss/node": "npm:4.3.1"
+    "@tailwindcss/oxide": "npm:4.3.1"
+    "@types/node": "npm:^22.12.0"
+    "@types/react": "npm:19.2.17"
+    react: "npm:19.2.3"
+    react-native: "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch"
+    react-native-builder-bob: "npm:0.40.13"
+    rimraf: "npm:6.0.1"
+    tailwindcss: "npm:4.3.1"
+    typescript: "npm:5.9.2"
+    vitest: "npm:3.2.4"
+  peerDependencies:
+    react: ">=19.0.0"
+    react-native: ">=0.85.0"
+    react-native-nitro-modules: ">=0.35.0"
+    react-native-svg: ">=15.0.0"
+    tailwindcss: ">=4.0.0"
+  peerDependenciesMeta:
+    react-native-reanimated:
+      optional: true
+    react-native-svg:
+      optional: true
+  languageName: unknown
+  linkType: soft
+
 "@nodelib/fs.scandir@npm:2.1.5":
   version: 2.1.5
   resolution: "@nodelib/fs.scandir@npm:2.1.5"
@@ -6029,26 +6090,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nitrocss@workspace:*, nitrocss@workspace:packages/nitrocss":
-  version: 0.0.0-use.local
-  resolution: "nitrocss@workspace:packages/nitrocss"
-  dependencies:
-    "@tailwindcss/node": "npm:4.3.1"
-    "@tailwindcss/oxide": "npm:4.3.1"
-    "@types/culori": "npm:2.1.1"
-    "@types/node": "npm:^22.12.0"
-    culori: "npm:4.0.2"
-    lightningcss: "npm:1.32.0"
-    react-native-builder-bob: "npm:0.40.13"
-    rimraf: "npm:6.0.1"
-    tailwindcss: "npm:4.3.1"
-    typescript: "npm:5.9.2"
-    vitest: "npm:3.2.4"
-  peerDependencies:
-    tailwindcss: ">=4.0.0"
-  languageName: unknown
-  linkType: soft
-
 "nitrogen@npm:0.35.9":
   version: 0.35.9
   resolution: "nitrogen@npm:0.35.9"
@@ -6070,6 +6111,7 @@ __metadata:
   dependencies:
     "@babel/core": "npm:^7.25.0"
     "@babel/runtime": "npm:^8.0.0"
+    "@nitrofoundation/nitrowind": "workspace:*"
     "@react-native-community/cli": "npm:20.1.0"
     "@react-native/babel-preset": "npm:0.86.0"
     "@react-native/metro-config": "npm:0.86.0"
@@ -6079,7 +6121,6 @@ __metadata:
     "@rozenite/performance-monitor-plugin": "npm:^1.13.0"
     "@types/react": "npm:^19.2.0"
     "@welldone-software/why-did-you-render": "npm:^10.0.1"
-    nitrowind: "workspace:*"
     react: "npm:19.2.7"
     react-native: "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch"
     react-native-gesture-handler: "npm:^3.0.2"
@@ -6101,37 +6142,6 @@ __metadata:
   dependencies:
     turbo: "npm:2.5.4"
     typescript: "npm:5.9.2"
-  languageName: unknown
-  linkType: soft
-
-"nitrowind@workspace:*, nitrowind@workspace:packages/nitrowind":
-  version: 0.0.0-use.local
-  resolution: "nitrowind@workspace:packages/nitrowind"
-  dependencies:
-    "@tailwindcss/node": "npm:4.3.1"
-    "@tailwindcss/oxide": "npm:4.3.1"
-    "@types/culori": "npm:2.1.1"
-    "@types/node": "npm:^22.12.0"
-    "@types/react": "npm:19.2.17"
-    lightningcss: "npm:1.32.0"
-    nitrocss: "workspace:*"
-    nitrogen: "npm:0.35.9"
-    react: "npm:19.2.3"
-    react-native: "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch"
-    react-native-builder-bob: "npm:0.40.13"
-    react-native-nitro-modules: "npm:0.35.9"
-    rimraf: "npm:6.0.1"
-    tailwindcss: "npm:4.3.1"
-    typescript: "npm:5.9.2"
-    vitest: "npm:3.2.4"
-  peerDependencies:
-    react: ">=19.0.0"
-    react-native: ">=0.85.0"
-    react-native-nitro-modules: ">=0.35.0"
-    tailwindcss: ">=4.0.0"
-  peerDependenciesMeta:
-    react-native-reanimated:
-      optional: true
   languageName: unknown
   linkType: soft
 

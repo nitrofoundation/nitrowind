@@ -15,7 +15,7 @@ const resolveVars = (expr: string, resolveVar: VarResolver): string =>
 
 /**
  * Map CSS `font-variant` / `font-variant-numeric` (and the other
- * `font-variant-*` longhands) onto RN's `fontVariant` array. Tailwind composes
+ * `font-variant-*` longhands) onto RN's `fontVariant` array. The compiler composes
  * these from per-feature `--tw-*` helpers, so the value is resolved first and
  * the empty placeholders are dropped.
  */

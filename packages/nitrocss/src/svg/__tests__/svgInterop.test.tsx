@@ -7,13 +7,13 @@ import {
   cssInterop,
   normalizeCssInteropMapping,
 } from "../../hoc/cssInterop";
-import { resolveGeneratedProps } from "../../hoc/withNitrowind";
+import { resolveGeneratedProps } from "../../hoc/withNitroCss";
 import { ColorScheme, Orientation } from "../../specs/types";
 import { SVG_CSS_INTEROP_MAPPING, SVG_PAINT_PROPS } from "../index";
 import * as SvgPreset from "../index";
 
 /**
- * The shapes Tailwind v4 emits for the svg paint utilities (verified against
+ * The shapes the utility compiler emits for the svg paint utilities (verified against
  * the real `nitrocss` compile pipeline):
  *   fill-red-500        → fill: <color>
  *   stroke-blue-500     → stroke: <color>
@@ -121,15 +121,15 @@ describe("cssInterop", () => {
     return null;
   }
 
-  it("wraps a component via withNitrowind", () => {
+  it("wraps a component via withNitroCss", () => {
     const Styled = cssInterop(Mock);
     expect(Styled).toBeTruthy();
     expect(
       (Styled as { displayName?: string }).displayName,
-    ).toBe("withNitrowind(Mock)");
+    ).toBe("withNitroCss(Mock)");
   });
 
-  it("normalizes shorthand mappings to withNitrowind prop options", () => {
+  it("normalizes shorthand mappings to withNitroCss prop options", () => {
     expect(
       normalizeCssInteropMapping({
         className: "style",
@@ -142,7 +142,7 @@ describe("cssInterop", () => {
     });
   });
 
-  it("passes full withNitrowind options through untouched", () => {
+  it("passes full withNitroCss options through untouched", () => {
     const options = {
       props: { fill: { fromClassName: "className", styleProperty: "fill" } },
     };

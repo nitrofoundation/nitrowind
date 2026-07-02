@@ -19,5 +19,5 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 rootProject.name = 'NitrowindExampleCli'
 
 include ':app'
-include ':nitrowind'
-project(':nitrowind').projectDir = new File(rootProject.projectDir, '../../packages/nitrowind/android')
+include ':nitrocss'
+project(':nitrocss').projectDir = new File(rootProject.projectDir, '../../packages/nitrocss/android')

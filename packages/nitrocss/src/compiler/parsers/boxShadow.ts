@@ -39,7 +39,7 @@ export type BoxShadowValue = {
 };
 
 /**
- * Build RN's `boxShadow` from Tailwind's `--tw-shadow` helper (the
+ * Build RN's `boxShadow` from the utility compiler's `--tw-shadow` helper (the
  * `box-shadow` longhand only composes ring/inset placeholders). Layers we can
  * fully lower are emitted as processed `BoxShadowValue[]` — the only form
  * RN's native parser accepts without `enableNativeCSSParsing` — so the C++
@@ -55,7 +55,7 @@ export function extractBoxShadow(
   const raw = declarations.find((d) => d.prop === "--tw-shadow")?.value;
   if (raw === undefined) return shadowColor;
   const resolved = resolveVars(raw, resolveVar).trim();
-  // `0 0 #0000` is Tailwind's transparent placeholder (shadow-none / unset).
+  // `0 0 #0000` is the utility compiler's transparent placeholder (shadow-none / unset).
   if (!resolved || resolved === "0 0 #0000") return shadowColor;
   const layers = parseBoxShadowLayers(resolved);
   if (layers === undefined) {
@@ -77,7 +77,7 @@ function extractShadowColor(
     return {
       shadowColor: raw,
       shadowOpacity: 1,
-      "--nitrowind-shadow-color": raw,
+      "--nitrocss-shadow-color": raw,
     };
   }
   const resolved = resolveVars(raw, resolveVar).trim();
@@ -87,7 +87,7 @@ function extractShadowColor(
   return {
     shadowColor: formatHex({ ...parsed, alpha: 1 }),
     shadowOpacity: alpha,
-    "--nitrowind-shadow-color":
+    "--nitrocss-shadow-color":
       alpha < 1 ? formatHex8(parsed) : formatHex({ ...parsed, alpha: 1 }),
   };
 }
@@ -168,7 +168,7 @@ function parseBoxShadowLayer(rawLayer: string): BoxShadowValue | undefined {
 
 /**
  * Return new layers with every layer's `color` replaced by the theme-resolved
- * `--nitrowind-shadow-color` marker value. Never mutates the input — the
+ * `--nitrocss-shadow-color` marker value. Never mutates the input — the
  * layer objects are shared compiled-artifact state. The native C++ engine
  * performs the identical splice (NitroCssEngine.cpp `normalizeShadow`).
  */

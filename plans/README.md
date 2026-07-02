@@ -51,6 +51,10 @@ See [01-architecture.md](./01-architecture.md) for the full breakdown. Short ver
 
 ## Repo layout (target)
 
+> **2026-07:** this layout predates the package restructure — the engine/runtime/native code now
+> lives in `packages/nitrocss` (`@nitrofoundation/nitrocss`) with `packages/nitrowind` as the
+> Tailwind wrapper; see the note at the top of [11-nitrocss-engine-package.md](./11-nitrocss-engine-package.md).
+
 ```
 nitrowind/
 ├── plans/                    # this folder

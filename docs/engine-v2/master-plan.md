@@ -1,5 +1,11 @@
 # nitrocss engine v2 — own the native styling stack (research-first master plan)
 
+> **2026-07 note:** the package restructure landed on this branch — the engine now ships as
+> **`@nitrofoundation/nitrocss`** (`packages/nitrocss`: native engine + runtime + components +
+> plain-CSS compiler) with **`@nitrofoundation/nitrowind`** as the Tailwind wrapper. Historical
+> `packages/nitrowind/...` paths below map to `packages/nitrocss/...`. Plan text otherwise
+> preserved as written.
+
 ## Context & intent (corrected)
 
 This is a **major** initiative to make nitrowind/nitrocss a **self-contained native styling
@@ -60,11 +66,11 @@ Segment by concern; each worker deeply reads RN's implementation and writes a st
 ### Step 3 — Implement per docs (later, after research review)
 Build order (each its own engine, shadow-node-integrated, rename-agnostic):
 1. **Native grid engine** — wire the existing C++ `GridLayoutEngine`
-   (`packages/nitrowind/cpp/grid/`) via `LayoutObserver` (reads `LayoutMetrics`) → engine →
+   (`packages/nitrocss/cpp/grid/`) via `LayoutObserver` (reads `LayoutMetrics`) → engine →
    `ShadowTreeMutator::commit` per-item `{left,top,width,height}`; remove the `onLayout` JS
    fallback on native (keep for web). Kills the reflow/flicker.
 2. **Own gradient engine** — a Nitro HybridView gradient component (iOS CAGradientLayer / Android
-   shader), fed a structured `--nitrowind-gradient` descriptor from the compiler fold; rendered as
+   shader), fed a structured `--nitrocss-gradient` descriptor from the compiler fold; rendered as
    an absolutely-filling background child of `View` with border-radius clipping; **Reanimated**
    drives its transform/position animation. Drops `experimental_backgroundImage` +
    `enableNativeCSSParsing`.

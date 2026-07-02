@@ -10,25 +10,25 @@ import { getAnimatedText } from "./animated";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
 
-export interface NitrowindTextProps extends TextProps, PseudoStateProp {
-  /** Tailwind class names resolved by the nitrowind engine. */
+export interface NitroCssTextProps extends TextProps, PseudoStateProp {
+  /** Class names resolved by the nitrocss engine. */
   className?: string;
 }
 
 /**
  * Drop-in replacement for RN's `Text` that accepts a `className`. Native builds
  * resolve first-paint styles through nitrocss; web leaves `className` on the
- * host so Tailwind CSS/browser CSS owns styling directly.
+ * host so browser CSS owns styling directly.
  */
-export const Text = forwardRef<RNTextType, NitrowindTextProps>(function Text(
-  { className = "", style, children, __nitrowindPseudoState, ...rest },
+export const Text = forwardRef<RNTextType, NitroCssTextProps>(function Text(
+  { className = "", style, children, __nitrocssPseudoState, ...rest },
   forwardedRef,
 ) {
   const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
-    () => resolveStylesForPlatform(className, snapshot, __nitrowindPseudoState),
-    [className, snapshot, __nitrowindPseudoState],
+    () => resolveStylesForPlatform(className, snapshot, __nitrocssPseudoState),
+    [className, snapshot, __nitrocssPseudoState],
   );
   const ref = useLinkedRef<RNTextType>(
     className,
@@ -37,7 +37,7 @@ export const Text = forwardRef<RNTextType, NitrowindTextProps>(function Text(
     snapshot,
     forwardedRef,
     [],
-    __nitrowindPseudoState,
+    __nitrocssPseudoState,
     undefined,
     style,
   );

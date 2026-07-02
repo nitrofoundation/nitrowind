@@ -33,4 +33,10 @@ export const I18nManager = { isRTL: false };
 
 export const PixelRatio = { get: () => 3 };
 
-export const StyleSheet = { hairlineWidth: 1 };
+export const StyleSheet = {
+  hairlineWidth: 1,
+  create: <T,>(styles: T): T => styles,
+  flatten: (style: unknown) => style,
+  absoluteFill: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
+  absoluteFillObject: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
+};

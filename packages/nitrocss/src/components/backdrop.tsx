@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
 
 /**
  * The absolutely-filling blur-behind surface, rendered as the VERY FIRST child
- * of a `View` whose resolved style carried `--nitrowind-backdrop-filter`
+ * of a `View` whose resolved style carried `--nitrocss-backdrop-filter`
  * (before `GradientLayer`, which must paint over it; RN paints children in
  * source order). Pointer-events off.
  *

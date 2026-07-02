@@ -3,7 +3,7 @@
  * transform array by the compiler) plus box-shadow utilities resolved by the
  * native shadow parser.
  */
-import { Text, View } from "nitrowind";
+import { Text, View } from "@nitrofoundation/nitrowind";
 
 import { Caption, Screen, Section } from "../components/ui";
 

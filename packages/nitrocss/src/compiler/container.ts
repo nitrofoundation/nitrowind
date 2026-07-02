@@ -6,7 +6,7 @@ import type { CompiledArtifact, CompiledClass } from "./types";
 /** The two axes a container query can read. */
 export type ContainerAxis = "width" | "height";
 
-/** Comparison operators supported by both Tailwind-native and custom syntax. */
+/** Comparison operators supported by both range-query and custom syntax. */
 export type ContainerOp = ">" | "<" | ">=" | "<=";
 
 /**
@@ -50,7 +50,7 @@ const toAxis = (raw: string): ContainerAxis =>
 
 /**
  * Parse a `@container` at-rule prelude into a {@link ContainerCondition}.
- * Handles both the range form Tailwind v4 emits (`@container (width >= 230px)`,
+ * Handles both the range form the utility compiler emits (`@container (width >= 230px)`,
  * named `@container sidebar (width < 400px)`) and the `min-width`/`max-width`
  * form. Returns `undefined` for an unrecognized prelude.
  */
@@ -138,7 +138,7 @@ export interface CustomContainerToken {
   /** The original class token (key under which the bucket is stored). */
   token: string;
   condition: ContainerCondition;
-  /** The Tailwind utility to apply when the condition holds (e.g. `hidden`). */
+  /** The base utility to apply when the condition holds (e.g. `hidden`). */
   baseUtility: string;
 }
 

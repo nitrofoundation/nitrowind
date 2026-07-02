@@ -21,12 +21,12 @@ describe("pseudo child state helpers", () => {
     ]);
 
     const props = propsOf(children);
-    expect(props[0]?.__nitrowindPseudoState).toMatchObject({
+    expect(props[0]?.__nitrocssPseudoState).toMatchObject({
       isFirstChild: true,
       isLastChild: false,
     });
-    expect(props[1]?.__nitrowindPseudoState).toBeUndefined();
-    expect(props[2]?.__nitrowindPseudoState).toMatchObject({
+    expect(props[1]?.__nitrocssPseudoState).toBeUndefined();
+    expect(props[2]?.__nitrocssPseudoState).toMatchObject({
       isFirstChild: false,
       isLastChild: true,
     });
@@ -38,7 +38,7 @@ describe("pseudo child state helpers", () => {
       { isActive: true, isHovered: true },
     );
 
-    expect(propsOf(children)[0]?.__nitrowindPseudoState).toMatchObject({
+    expect(propsOf(children)[0]?.__nitrocssPseudoState).toMatchObject({
       isActive: true,
       isHovered: true,
     });

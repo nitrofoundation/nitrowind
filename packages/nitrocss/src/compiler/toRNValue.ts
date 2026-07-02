@@ -220,7 +220,7 @@ const COLOR_FUNCTION_RE = /^(rgb|rgba|hsl|hsla|oklch|oklab|lab|lch|color)\(/i;
  * Lower a CSS color to a hex string the *native* color parser understands.
  *
  * React Native's native (Fabric C++) color parser handles hex and named colors
- * but not the modern CSS color functions Tailwind v4 emits (`oklch`, `oklab`,
+ * but not the modern CSS color functions the utility compiler emits (`oklch`, `oklab`,
  * `lab`, `lch`, `color()`) — nor `rgb()/hsl()` function syntax in every path.
  * Theme variable values are substituted verbatim on the native side (they never
  * go through {@link toRNValue}), so any such value is dropped at commit time

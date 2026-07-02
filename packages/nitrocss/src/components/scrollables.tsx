@@ -5,7 +5,7 @@
  *
  * Native builds link the outer node to the native engine and resolve the inner
  * content container in JS. Web builds keep class names on the host props so
- * Tailwind/browser CSS can handle styling directly.
+ * browser CSS can handle styling directly.
  */
 import React, {
   forwardRef,
@@ -25,7 +25,7 @@ import {
 import { resolveStylesForPlatform } from "../core/store";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 
-export interface NitrowindScrollViewProps extends ScrollViewProps {
+export interface NitroCssScrollViewProps extends ScrollViewProps {
   /** Class names for the scroll view itself. */
   className?: string;
   /** Class names for the inner content container. */
@@ -44,7 +44,7 @@ function webScrollableProps(
 }
 
 /** Drop-in replacement for RN's `ScrollView` that accepts `className`. */
-export const ScrollView = forwardRef<RNScrollView, NitrowindScrollViewProps>(
+export const ScrollView = forwardRef<RNScrollView, NitroCssScrollViewProps>(
   function ScrollView(
     {
       className = "",
@@ -97,7 +97,7 @@ export const ScrollView = forwardRef<RNScrollView, NitrowindScrollViewProps>(
   },
 );
 
-export interface NitrowindFlatListProps<ItemT> extends FlatListProps<ItemT> {
+export interface NitroCssFlatListProps<ItemT> extends FlatListProps<ItemT> {
   /** Class names for the list's outer scroll view. */
   className?: string;
   /** Class names for the inner content container. */
@@ -111,7 +111,7 @@ function FlatListInner<ItemT>(
     style,
     contentContainerStyle,
     ...rest
-  }: NitrowindFlatListProps<ItemT>,
+  }: NitroCssFlatListProps<ItemT>,
   forwardedRef: ForwardedRef<RNFlatList<ItemT>>,
 ) {
   const isWeb = Platform.OS === "web";
@@ -156,16 +156,16 @@ function FlatListInner<ItemT>(
 }
 
 const FlatListImpl = forwardRef(FlatListInner);
-FlatListImpl.displayName = "Nitrowind(FlatList)";
+FlatListImpl.displayName = "NitroCss(FlatList)";
 
 /** Drop-in replacement for RN's `FlatList` that accepts `className`. */
 export const FlatList = FlatListImpl as unknown as <ItemT>(
-  props: NitrowindFlatListProps<ItemT> & {
+  props: NitroCssFlatListProps<ItemT> & {
     ref?: ForwardedRef<RNFlatList<ItemT>>;
   },
 ) => ReactElement;
 
-export interface NitrowindSectionListProps<
+export interface NitroCssSectionListProps<
   ItemT,
   SectionT = unknown,
 > extends SectionListProps<ItemT, SectionT> {
@@ -182,7 +182,7 @@ function SectionListInner<ItemT, SectionT>(
     style,
     contentContainerStyle,
     ...rest
-  }: NitrowindSectionListProps<ItemT, SectionT>,
+  }: NitroCssSectionListProps<ItemT, SectionT>,
   forwardedRef: ForwardedRef<RNSectionList<ItemT, SectionT>>,
 ) {
   const isWeb = Platform.OS === "web";
@@ -227,14 +227,14 @@ function SectionListInner<ItemT, SectionT>(
 }
 
 const SectionListImpl = forwardRef(SectionListInner);
-SectionListImpl.displayName = "Nitrowind(SectionList)";
+SectionListImpl.displayName = "NitroCss(SectionList)";
 
 /** Drop-in replacement for RN's `SectionList` that accepts `className`. */
 export const SectionList = SectionListImpl as unknown as <
   ItemT,
   SectionT = unknown,
 >(
-  props: NitrowindSectionListProps<ItemT, SectionT> & {
+  props: NitroCssSectionListProps<ItemT, SectionT> & {
     ref?: ForwardedRef<RNSectionList<ItemT, SectionT>>;
   },
 ) => ReactElement;

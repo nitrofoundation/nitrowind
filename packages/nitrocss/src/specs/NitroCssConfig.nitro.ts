@@ -4,7 +4,7 @@ import type { HybridObject } from "react-native-nitro-modules";
  * One-time configuration / bootstrap surface. Receives the compiled style
  * tables from the build step and exposes the active theme.
  */
-export interface NitrowindConfig extends HybridObject<{
+export interface NitroCssConfig extends HybridObject<{
   ios: "c++";
   android: "c++";
 }> {

@@ -3,7 +3,7 @@
  * tokens. The opacity row shows nitrowind resolving `/<alpha>` color modifiers
  * natively.
  */
-import { Text, View } from 'nitrowind';
+import { Text, View } from '@nitrofoundation/nitrowind';
 
 import { Caption, Screen, Section } from '../components/ui';
 
@@ -135,7 +135,7 @@ export default function Backgrounds() {
             <View className="size-8 rounded-lg bg-indigo-400" />
           </View>
           {/* The glass card: backdrop-blur-md compiles to the
-              --nitrowind-backdrop-filter marker → native BackdropView. */}
+              --nitrocss-backdrop-filter marker → native BackdropView. */}
           <View className="w-3/4 items-center gap-1 rounded-2xl border border-white/30 bg-white/10 p-4 backdrop-blur-md">
             <Text className="text-sm font-bold text-white">Glass card</Text>
             <Text className="text-xs text-white/80">

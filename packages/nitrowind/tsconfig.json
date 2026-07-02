@@ -5,6 +5,6 @@
     "types": ["node", "react", "react-native"],
     "noEmit": true
   },
-  "include": ["src", "nitro.json"],
-  "exclude": ["node_modules", "lib", "nitrogen/generated", "**/__tests__"]
+  "include": ["src"],
+  "exclude": ["node_modules", "lib", "**/__tests__"]
 }

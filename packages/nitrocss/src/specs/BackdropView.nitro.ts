@@ -10,7 +10,7 @@ import type {
  * semantics — the one thing RN's `filter` prop cannot express; folding
  * backdrop-filter into `filter` would blur the view's own content instead).
  *
- * Fed by the `--nitrowind-backdrop-filter` marker the compiler emits for
+ * Fed by the `--nitrocss-backdrop-filter` marker the compiler emits for
  * `backdrop-filter` / `-webkit-backdrop-filter` declarations (see
  * `nitrocss/src/compiler/parsers/filter.ts`). The JS side extracts the blur
  * radius from the marker's parsed filter array (`backdropBlurRadius`).

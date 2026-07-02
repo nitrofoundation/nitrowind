@@ -1,18 +1,20 @@
 {
-  "name": "nitrocss",
+  "name": "@nitrofoundation/nitrocss",
   "version": "0.1.0",
-  "description": "CSS-to-native-style compiler and C++ resolver engine used by Nitrowind.",
+  "description": "Core native CSS engine for React Native — compiles plain CSS to native styles and commits them through a C++ ShadowTree engine.",
   "license": "MIT",
-  "author": "Nitrowind contributors",
-  "repository": "https://github.com/nitrowind/nitrowind",
-  "homepage": "https://github.com/nitrowind/nitrowind",
+  "author": "NitroFoundation contributors",
+  "repository": "https://github.com/nitrofoundation/nitrocss",
+  "homepage": "https://github.com/nitrofoundation/nitrocss",
   "type": "module",
   "source": "./src/index.ts",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",
   "types": "./lib/typescript/commonjs/index.d.ts",
   "react-native": "./src/index.ts",
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
     ".": {
       "source": "./src/index.ts",
@@ -24,6 +26,30 @@
       "require": {
         "types": "./lib/typescript/commonjs/index.d.ts",
         "default": "./lib/commonjs/index.js"
+      }
+    },
+    "./components": {
+      "source": "./src/components/index.ts",
+      "react-native": "./src/components/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/components/index.d.ts",
+        "default": "./lib/module/components/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/components/index.d.ts",
+        "default": "./lib/commonjs/components/index.js"
+      }
+    },
+    "./svg": {
+      "source": "./src/svg/index.tsx",
+      "react-native": "./src/svg/index.tsx",
+      "import": {
+        "types": "./lib/typescript/module/svg/index.d.ts",
+        "default": "./lib/module/svg/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/svg/index.d.ts",
+        "default": "./lib/commonjs/svg/index.js"
       }
     },
     "./compiler": {
@@ -74,41 +100,80 @@
         "default": "./lib/commonjs/compiler/*.js"
       }
     },
+    "./metro": {
+      "source": "./src/metro/index.ts",
+      "types": "./lib/typescript/commonjs/metro/index.d.ts",
+      "default": "./lib/commonjs/metro/index.js"
+    },
+    "./metro/transformer": {
+      "source": "./src/metro/transformer.ts",
+      "default": "./lib/commonjs/metro/transformer.js"
+    },
+    "./metro/pipeline": {
+      "source": "./src/metro/pipeline.ts",
+      "default": "./lib/commonjs/metro/pipeline.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
     "src",
     "lib",
     "cpp",
+    "ios",
+    "android",
+    "nitrogen/generated",
+    "nitro.json",
+    "NitroCss.podspec",
+    "react-native.config.js",
     "README.md",
     "LICENSE",
     "!**/__tests__",
     "!**/*.tsbuildinfo"
   ],
   "scripts": {
+    "nitrogen": "nitrogen",
     "build": "bob build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "lint": "oxlint src",
-    "clean": "rimraf lib"
+    "clean": "rimraf lib nitrogen/generated"
   },
   "dependencies": {
-    "@tailwindcss/node": "4.3.1",
-    "@tailwindcss/oxide": "4.3.1",
     "culori": "4.0.2",
     "lightningcss": "1.32.0"
   },
   "peerDependencies": {
-    "tailwindcss": ">=4.0.0"
+    "react": ">=19.0.0",
+    "react-native": ">=0.85.0",
+    "react-native-nitro-modules": ">=0.35.0",
+    "react-native-reanimated": ">=3.0.0",
+    "react-native-svg": ">=15.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native-reanimated": {
+      "optional": true
+    },
+    "react-native-svg": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/culori": "2.1.1",
     "@types/node": "^22.12.0",
+    "@types/react": "19.2.17",
+    "nitrogen": "0.35.9",
+    "react": "19.2.3",
+    "react-native": "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch",
     "react-native-builder-bob": "0.40.13",
+    "react-native-nitro-modules": "0.35.9",
     "rimraf": "6.0.1",
-    "tailwindcss": "4.3.1",
     "typescript": "5.9.2",
     "vitest": "3.2.4"
+  },
+  "codegenConfig": {
+    "name": "TurboNitroCss",
+    "type": "modules",
+    "jsSrcsDir": "./src/specs"
   },
   "react-native-builder-bob": {
     "source": "src",
@@ -130,11 +195,15 @@
     ]
   },
   "keywords": [
-    "tailwindcss",
     "react-native",
     "css",
     "native",
     "cpp",
-    "nitrowind"
+    "nitro",
+    "nitro-modules",
+    "fabric",
+    "shadowtree",
+    "styling",
+    "theme"
   ]
 }

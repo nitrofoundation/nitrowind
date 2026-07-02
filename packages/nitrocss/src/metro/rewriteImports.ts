@@ -1,6 +1,6 @@
 /**
  * Source rewrite that redirects the styled subset of `react-native` named
- * imports to `nitrowind`, so `import { View } from "react-native"` transparently
+ * imports to `nitrocss`, so `import { View } from "react-native"` transparently
  * becomes the className-aware wrapper. Extracted from the Metro transformer so
  * it can be unit-tested without resolving `metro-transform-worker`.
  *
@@ -21,7 +21,7 @@
  * `react-native`.
  */
 
-/** Components whose `react-native` named imports are redirected to nitrowind. */
+/** Components whose `react-native` named imports are redirected to nitrocss. */
 export const STYLED_IMPORTS = new Set([
   "ActivityIndicator",
   "FlatList",
@@ -63,7 +63,7 @@ export function rewriteReactNativeImports(source: string): string {
       const named = stripComments(clause).match(/\{([\s\S]*)\}/);
       if (!named) return full;
 
-      const nitrowind: string[] = [];
+      const nitrocss: string[] = [];
       const reactNative: string[] = [];
 
       for (const rawSpecifier of (named[1] ?? "").split(",")) {
@@ -74,13 +74,13 @@ export function rewriteReactNativeImports(source: string): string {
         const withoutType = isType ? specifier.slice(5).trim() : specifier;
         const importedName = withoutType.split(/\s+as\s+/i)[0]?.trim();
         if (!isType && importedName && STYLED_IMPORTS.has(importedName)) {
-          nitrowind.push(withoutType);
+          nitrocss.push(withoutType);
         } else {
           reactNative.push(specifier);
         }
       }
 
-      if (nitrowind.length === 0) return full;
+      if (nitrocss.length === 0) return full;
       const imports: string[] = [];
       if (defaultImport && reactNative.length > 0) {
         imports.push(
@@ -93,7 +93,7 @@ export function rewriteReactNativeImports(source: string): string {
           `import { ${reactNative.join(", ")} } from "react-native";`,
         );
       }
-      imports.push(`import { ${nitrowind.join(", ")} } from "nitrowind";`);
+      imports.push(`import { ${nitrocss.join(", ")} } from "@nitrofoundation/nitrocss";`);
       return imports.join("\n");
     },
   );

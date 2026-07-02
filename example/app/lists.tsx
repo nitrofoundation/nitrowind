@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Pressable, Text, View } from 'nitrowind';
+import { FlatList, Pressable, Text, View } from '@nitrofoundation/nitrowind';
 import { createVirtualCollectionView } from 'react-native/src/private/components/virtualcollection/VirtualCollectionView'
 import { Section } from '../components/ui';
 

@@ -91,7 +91,7 @@ sequenced (shared files), built + verified between.
 - ~~Grid `offsetFor` probable off-by-one (C++ engine never executed).~~ **FIXED** — `offsetFor`
   under-counted gaps by one (`start - 1` instead of `start`); confirmed against the JS
   `templateOffset` oracle and corrected. Container-height calc switched to a new `tracksExtent`
-  helper (which keeps `count - 1` gaps). Parity harness: `packages/nitrowind/cpptests/grid_layout_test.cpp`.
+  helper (which keeps `count - 1` gaps). Parity harness: `packages/nitrocss/cpptests/grid_layout_test.cpp`.
 - `backdrop-filter` wrongly folded into `filter`.
 
 ## Recommended build order (unchanged, now evidence-backed)
@@ -150,3 +150,23 @@ SurfacePresenter to the applier from AppDelegate (KVC: rootViewFactory.reactHost
 (2) Fabric view flattening removed gradient hosts whose committed props looked layout-only —
 `View` now pins `collapsable={false}` when a gradient/backdrop marker is present.
 Android applier (Drawable-on-view, same registry) is the queued follow-up.
+
+## 2026-07-03 — Package restructure (landed on `feat/nitrocss-engine-v2`)
+- Core moved to **`@nitrofoundation/nitrocss`** (`packages/nitrocss`): the full native styling
+  engine (C++ engine, iOS, Android), the TS runtime, the components
+  (`NitroCssProvider` / `withNitroCss` / `useNitroCss`), a **plain-CSS compiler** (no Tailwind
+  deps), and the generic Metro plugin `withNitroCssMetroConfig`.
+- **`@nitrofoundation/nitrowind`** (`packages/nitrowind`) is now a **thin Tailwind wrapper**: it
+  owns the Tailwind v4 compile pipeline (`@tailwindcss/node` + oxide) and
+  `withNitrowindMetroConfig`, and re-exports nitrocss's runtime with back-compat aliases
+  (`NitrowindProvider`, `withNitrowind`, …).
+- Native identifiers renamed Nitrowind→NitroCss: Nitro module `NitroCss`, pod `NitroCss`,
+  Android namespace `com.nitrofoundation.nitrocss`, RN legacy module `NitroCssInstaller`.
+- Artifact markers renamed to `--nitrocss-*` (e.g. `--nitrocss-gradient`; inline grid key is
+  `__nitrocssGrid`).
+- **Path mapping for older entries above** (history not rewritten):
+  `packages/nitrowind/{cpp,ios,android,cpptests}` and
+  `packages/nitrowind/src/{core,specs,components,hoc,svg,metro}` now live under
+  `packages/nitrocss/...`; `NitrowindCore` is now `NitroCssCore`
+  (`packages/nitrocss/cpp/core/NitroCssCore.cpp`), and the iOS gradient applier is
+  `NitroCssGradientApplier`.

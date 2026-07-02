@@ -1,11 +1,11 @@
 /**
- * `nitrowind/svg` — className-styled `react-native-svg` primitives.
+ * `@nitrofoundation/nitrocss/svg` — className-styled `react-native-svg` primitives.
  *
- * Pre-wraps the common svg elements with {@link cssInterop} so Tailwind's svg
+ * Pre-wraps the common svg elements with {@link cssInterop} so the utility compiler's svg
  * utilities drive them directly:
  *
  * ```tsx
- * import { Svg, Path } from "nitrowind/svg";
+ * import { Svg, Path } from "@nitrofoundation/nitrocss/svg";
  *
  * <Svg viewBox="0 0 24 24" className="h-6 w-6">
  *   <Path d={ICON} className="fill-primary stroke-white/50 stroke-2" />
@@ -16,7 +16,7 @@
  * `style`, so on top of the usual `className → style` behavior each wrapped
  * element hoists the resolved svg paint values out of the class styles onto
  * the matching props (extending the `colorFromStyle`/`HOST_COLOR_PROPS`
- * approach in `withNitrowind`). Verified compiled output:
+ * approach in `withNitroCss`). Verified compiled output:
  *
  * - `fill-red-500` / `fill-primary` / `fill-none` → style key `fill`  → `fill` prop
  * - `stroke-blue-500` / `stroke-none`             → style key `stroke` → `stroke` prop
@@ -36,11 +36,11 @@ import {
   cssInterop,
   type CssInteropComponent,
 } from "../hoc/cssInterop";
-import type { WithNitrowindAdvancedOptions } from "../hoc/withNitrowind";
+import type { WithNitroCssAdvancedOptions } from "../hoc/withNitroCss";
 
 /**
  * The svg paint properties hoisted from resolved className styles onto
- * `react-native-svg` props. Tailwind's `fill-*` / `stroke-*` utilities compile
+ * `react-native-svg` props. the utility compiler's `fill-*` / `stroke-*` utilities compile
  * to these exact style keys (see the module docblock for the verified table).
  */
 export const SVG_PAINT_PROPS = [
@@ -62,7 +62,7 @@ type SvgHostProps = { style?: StyleProp<unknown>; [prop: string]: unknown };
  * (an explicit prop always wins). Exported so callers can wrap additional
  * svg elements (`TSpan`, `Use`, …) with identical behavior.
  */
-export const SVG_CSS_INTEROP_MAPPING: WithNitrowindAdvancedOptions<SvgHostProps> =
+export const SVG_CSS_INTEROP_MAPPING: WithNitroCssAdvancedOptions<SvgHostProps> =
   {
     props: Object.fromEntries(
       SVG_PAINT_PROPS.map((prop) => [
@@ -79,7 +79,7 @@ let svgModule: SvgModule | null | undefined;
 function loadSvgModule(): SvgModule {
   if (svgModule === undefined) {
     try {
-      // Lazy so apps that never import `nitrowind/svg` components at runtime
+      // Lazy so apps that never import `@nitrofoundation/nitrocss/svg` components at runtime
       // don't need react-native-svg installed.
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       svgModule = require("react-native-svg") as SvgModule;
@@ -89,7 +89,7 @@ function loadSvgModule(): SvgModule {
   }
   if (!svgModule) {
     throw new Error(
-      "nitrowind/svg requires the optional peer dependency 'react-native-svg'. " +
+      "@nitrofoundation/nitrocss/svg requires the optional peer dependency 'react-native-svg'. " +
         "Install it (e.g. `yarn add react-native-svg`) and rebuild the app to " +
         "use className-styled svg components.",
     );
@@ -106,7 +106,7 @@ function baseComponent(exportName: string): ComponentType<SvgHostProps> {
       : undefined);
   if (!base) {
     throw new Error(
-      `nitrowind/svg: the installed react-native-svg does not export "${exportName}".`,
+      `@nitrofoundation/nitrocss/svg: the installed react-native-svg does not export "${exportName}".`,
     );
   }
   return base;
@@ -122,7 +122,7 @@ function styledSvg(
 ): CssInteropComponent<SvgHostProps> {
   let Styled: CssInteropComponent<SvgHostProps> | null = null;
   const Lazy = forwardRef<unknown, SvgHostProps & { className?: string }>(
-    function NitrowindSvg(props, ref) {
+    function NitroCssSvg(props, ref) {
       Styled ??= cssInterop(
         baseComponent(exportName),
         SVG_CSS_INTEROP_MAPPING,
@@ -132,21 +132,21 @@ function styledSvg(
       return <Comp ref={ref} {...props} />;
     },
   );
-  Lazy.displayName = `Nitrowind(${displayName})`;
+  Lazy.displayName = `NitroCss(${displayName})`;
   return Lazy as CssInteropComponent<SvgHostProps>;
 }
 
 /** Re-export a `react-native-svg` component as-is (still lazily resolved). */
 function passthroughSvg(exportName: string): ComponentType<SvgHostProps> {
   const Lazy = forwardRef<unknown, SvgHostProps>(
-    function NitrowindSvgPassthrough(props, ref) {
+    function NitroCssSvgPassthrough(props, ref) {
       const Base = baseComponent(exportName) as ComponentType<
         SvgHostProps & { ref?: unknown }
       >;
       return <Base ref={ref} {...props} />;
     },
   );
-  Lazy.displayName = `Nitrowind(${exportName})`;
+  Lazy.displayName = `NitroCss(${exportName})`;
   return Lazy as ComponentType<SvgHostProps>;
 }
 
@@ -160,7 +160,7 @@ export function withSvgClassName<P extends SvgHostProps>(
 ): CssInteropComponent<P> {
   return cssInterop(
     Component,
-    SVG_CSS_INTEROP_MAPPING as WithNitrowindAdvancedOptions<P>,
+    SVG_CSS_INTEROP_MAPPING as WithNitroCssAdvancedOptions<P>,
     componentName,
   );
 }

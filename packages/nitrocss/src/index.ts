@@ -1,9 +1,10 @@
 /**
- * nitrowind — a fully open-source, native C++ ShadowTree styling engine for
- * React Native, driven by Tailwind class names.
+ * nitrocss — a fully open-source, native C++ ShadowTree styling engine for
+ * React Native, driven by plain-CSS class names.
  *
- * Public runtime API. `nitrowind/compiler` is a compatibility re-export of
- * `nitrocss/compiler`; the Metro plugin lives under `nitrowind/metro`.
+ * Public runtime API only — the build-time compiler lives under
+ * `@nitrofoundation/nitrocss/compiler` (node-only; never import it from app
+ * code) and the Metro plugin under `@nitrofoundation/nitrocss/metro`.
  */
 
 import "./types/react-native";
@@ -25,31 +26,31 @@ export {
   SectionList,
 } from "./components";
 export type {
-  NitrowindViewProps,
-  NitrowindTextProps,
-  NitrowindScrollViewProps,
-  NitrowindFlatListProps,
-  NitrowindSectionListProps,
+  NitroCssViewProps,
+  NitroCssTextProps,
+  NitroCssScrollViewProps,
+  NitroCssFlatListProps,
+  NitroCssSectionListProps,
 } from "./components";
 
 export {
-  NitrowindProvider,
+  NitroCssProvider,
   useColorScheme,
   useDimensions,
   useFontScale,
   useInsets,
-  useNitrowind,
+  useNitroCss,
   useRuntimeSnapshot,
   useTheme,
 } from "./core/context";
-export type { NitrowindProviderProps } from "./core/context";
+export type { NitroCssProviderProps } from "./core/context";
 
-export { withNativeExtending, withNitrowind } from "./hoc/withNitrowind";
+export { withNativeExtending, withNitroCss } from "./hoc/withNitroCss";
 export type {
-  NitrowindPropMapping,
-  WithNitrowindOptions,
-  WithNitrowindProps,
-} from "./hoc/withNitrowind";
+  NitroCssPropMapping,
+  WithNitroCssOptions,
+  WithNitroCssProps,
+} from "./hoc/withNitroCss";
 
 export { cssInterop } from "./hoc/cssInterop";
 export type {
@@ -64,6 +65,6 @@ export type { NativeProps } from "./core/nativeProps";
 export { runtime } from "./core/runtime";
 export { resolveStyles, resolveStylesForPlatform } from "./core/store";
 
-export type { GetStylesResult, NitrowindContextValue } from "./core/types";
+export type { GetStylesResult, NitroCssContextValue } from "./core/types";
 export type { RuntimeSnapshot, Dimensions, Insets } from "./specs/types";
 export { ColorScheme, Orientation, StyleDependency } from "./specs/types";

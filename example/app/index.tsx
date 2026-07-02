@@ -7,7 +7,7 @@
  */
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { FlatList, Pressable, Text, View } from 'nitrowind';
+import { FlatList, Pressable, Text, View } from '@nitrofoundation/nitrowind';
 import { ThemeToggle } from '../components/ui';
 
 type RootStackParamList = {

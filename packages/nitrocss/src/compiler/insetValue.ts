@@ -140,7 +140,7 @@ export function lengthToPx(
 
 /**
  * Parse a single declaration value into a dynamic inset descriptor, or
- * `undefined` if it is not a safe-area value. Handles the three shapes Tailwind
+ * `undefined` if it is not a safe-area value. Handles the three shapes the utility compiler
  * emits for the safe-area utility families:
  *
  *   env(safe-area-inset-top)                                  -> { add: 0,  floor: 0 }

@@ -2,7 +2,7 @@
  * Typography — sizes, weights, tracking, leading, decoration and text color,
  * all resolved on the native `Text` shadow node.
  */
-import { Text, View } from "nitrowind";
+import { Text, View } from "@nitrofoundation/nitrowind";
 
 import { Card, Screen, Section } from "../components/ui";
 

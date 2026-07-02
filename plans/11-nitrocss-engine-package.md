@@ -1,5 +1,17 @@
 # 11 · nitrocss engine package
 
+> **Superseded / Implemented (2026-07, `feat/nitrocss-engine-v2`):** this split was implemented
+> and extended beyond the plan below. **All** native code (C++ engine, iOS, Android), the TS
+> runtime, and the components moved into `nitrocss` — not just the compiler + resolver — and the
+> Tailwind v4 compile pipeline (`@tailwindcss/node` + oxide) was extracted into the wrapper.
+> Packages are scoped under `@nitrofoundation`: **`@nitrofoundation/nitrocss`** is the core
+> (plain-CSS, no Tailwind deps; `NitroCssProvider`/`withNitroCss`/`useNitroCss`,
+> `withNitroCssMetroConfig`), **`@nitrofoundation/nitrowind`** is the thin Tailwind wrapper
+> (`withNitrowindMetroConfig`, back-compat re-exports like `NitrowindProvider`). Native
+> identifiers were renamed Nitrowind→NitroCss (Nitro module `NitroCss`, pod `NitroCss`, Android
+> namespace `com.nitrofoundation.nitrocss`, artifact markers `--nitrocss-*`). The original plan
+> text is kept unchanged below.
+
 ## Goal
 
 Split the CSS compiler and native class-name resolver out of `nitrowind` into a reusable sibling package named `nitrocss`.

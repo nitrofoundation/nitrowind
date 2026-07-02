@@ -9,13 +9,13 @@ import { resolveStyles } from "../../core/store";
 import { StyleDependency } from "../../specs/types";
 import { compileFromCss, parseInsetValue } from "../index";
 
-/** Resolves Tailwind v4's default `--spacing` so offsets reduce to px. */
+/** Resolves the utility compiler's default `--spacing` so offsets reduce to px. */
 const resolveVar = (name: string): string | undefined =>
   name === "--spacing" ? "0.25rem" : undefined;
 
 const INSETS_FLAG = 1 << StyleDependency.Insets; // 8
 
-/** The exact declarations Tailwind v4 emits for the safe-area utilities. */
+/** The exact declarations the utility compiler emits for the safe-area utilities. */
 const SAFE_AREA_CSS = `
   .p-safe {
     padding-top: env(safe-area-inset-top);

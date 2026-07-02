@@ -11,22 +11,22 @@ import {
 } from "../../specs/types";
 
 /**
- * The exact (flattened) shapes Tailwind v4 + lightningcss emit for platform
+ * The exact (flattened) shapes a utility compiler + lightningcss emit for platform
  * variants: every utility lives inside `@layer utilities {}` and the platform
- * variant adds a `:where([data-nitrowind-os="…"], …)` marker to the selector.
+ * variant adds a `:where([data-nitrocss-os="…"], …)` marker to the selector.
  */
 const PLATFORM_CSS = `
 @layer utilities {
-  .ios\\:gap-2:where([data-nitrowind-os="ios"], [data-nitrowind-os="ios"] *) {
+  .ios\\:gap-2:where([data-nitrocss-os="ios"], [data-nitrocss-os="ios"] *) {
     gap: 8px;
   }
-  .android\\:gap-3:where([data-nitrowind-os="android"], [data-nitrowind-os="android"] *) {
+  .android\\:gap-3:where([data-nitrocss-os="android"], [data-nitrocss-os="android"] *) {
     gap: 12px;
   }
-  .web\\:gap-4:where([data-nitrowind-os="web"], [data-nitrowind-os="web"] *) {
+  .web\\:gap-4:where([data-nitrocss-os="web"], [data-nitrocss-os="web"] *) {
     gap: 16px;
   }
-  .native\\:gap-5:where([data-nitrowind-os="native"], [data-nitrowind-os="native"] *) {
+  .native\\:gap-5:where([data-nitrocss-os="native"], [data-nitrocss-os="native"] *) {
     gap: 20px;
   }
   .gap-1 {
@@ -57,10 +57,10 @@ describe("platformFromSelector", () => {
   it("reads the platform marker off a compiled selector", () => {
     expect(
       platformFromSelector(
-        '.ios\\:gap-2:where([data-nitrowind-os="ios"], [data-nitrowind-os="ios"] *)',
+        '.ios\\:gap-2:where([data-nitrocss-os="ios"], [data-nitrocss-os="ios"] *)',
       ),
     ).toBe("ios");
-    expect(platformFromSelector('[data-nitrowind-os="android"] .x')).toBe(
+    expect(platformFromSelector('[data-nitrocss-os="android"] .x')).toBe(
       "android",
     );
   });
@@ -72,7 +72,7 @@ describe("platformFromSelector", () => {
 
   it("ignores unknown platform names", () => {
     expect(
-      platformFromSelector('[data-nitrowind-os="solaris"] .x'),
+      platformFromSelector('[data-nitrocss-os="solaris"] .x'),
     ).toBeUndefined();
   });
 });
@@ -102,7 +102,7 @@ describe("platform variants · compiler", () => {
       `
       @layer utilities {
         @media (prefers-color-scheme: dark) {
-          .ios\\:dark\\:gap-2:where([data-nitrowind-os="ios"], [data-nitrowind-os="ios"] *) {
+          .ios\\:dark\\:gap-2:where([data-nitrocss-os="ios"], [data-nitrocss-os="ios"] *) {
             gap: 8px;
           }
         }
@@ -210,7 +210,7 @@ describe("resolveStyles · platform filter", () => {
     );
   });
 
-  it("keeps native color fallbacks when Tailwind emits color-mix overrides", () => {
+  it("keeps native color fallbacks when the compiler emits color-mix overrides", () => {
     const css = `
       .bg-primary\/15 { background-color: #6d28d926; }
       .bg-primary\/15 { background-color: color-mix(in oklab, var(--color-primary) 15%, transparent); }

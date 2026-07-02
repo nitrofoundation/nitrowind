@@ -1,11 +1,15 @@
 /**
- * Metro transform worker that compiles the nitrowind stylesheet on the fly.
+ * Metro transform worker that compiles the nitrocss stylesheet on the fly.
  *
  * Registered as Metro's `transformerPath`, so Metro calls us with the worker
- * signature \u2014 `transform(config, projectRoot, filename, data, options)` \u2014 for
+ * signature — `transform(config, projectRoot, filename, data, options)` — for
  * every module. For the configured `input` stylesheet we swap native builds to
  * a tiny module that registers the compiled native style tables. Web builds are
- * delegated unchanged so Tailwind/browser CSS handles the stylesheet directly.
+ * delegated unchanged so browser CSS handles the stylesheet directly.
+ *
+ * The CSS itself is produced by a *pipeline* module (`NITROCSS_PIPELINE`): the
+ * built-in one (`./pipeline`) reads plain CSS; wrapper packages supply their
+ * own pipeline for richer toolchains.
  *
  * Intercepting at the worker layer (rather than the babel transformer) is what
  * makes this work on Expo, whose worker routes `*.css` through lightningcss
@@ -14,17 +18,50 @@
  * Authored in CommonJS because Metro loads transformers via `require`.
  */
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { rewriteReactNativeImports } from "./rewriteImports";
 
+/** Options handed to the pipeline (mirrors the `withNitroCssMetroConfig` env). */
+export interface NitroCssPipelineOptions {
+  /** Absolute path to the entry stylesheet. */
+  input: string;
+  /** Globs/paths to scan for `className` candidates. */
+  content?: string[];
+  /** Project root used to resolve relative paths. */
+  cwd: string;
+  /** Root rem in px. */
+  rem: number;
+}
+
+/**
+ * The seam between the generic Metro transformer and a concrete CSS toolchain.
+ * A pipeline module must export these two functions:
+ *
+ * - `scan` inspects the project and returns the candidate class tokens plus a
+ *   deterministic `signature`; the transformer only rebuilds the CSS when the
+ *   signature changes.
+ * - `buildCss` produces the final flattened CSS for those candidates.
+ */
+export interface NitroCssPipeline {
+  scan(options: NitroCssPipelineOptions): {
+    candidates: string[];
+    signature: string;
+  };
+  buildCss(
+    options: NitroCssPipelineOptions,
+    candidates: string[],
+  ): Promise<string>;
+}
+
 const upstreamPath = require.resolve(
-  process.env.NITROWIND_UPSTREAM_TRANSFORMER || "metro-transform-worker",
+  process.env.NITROCSS_UPSTREAM_TRANSFORMER || "metro-transform-worker",
 );
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const upstream = require(upstreamPath);
 
 // Expo's worker (`transform-worker.js`) routes `*.css` to lightningcss, so the
-// compiled stylesheet \u2014 which is now JS \u2014 has to go through a worker that treats
+// compiled stylesheet — which is now JS — has to go through a worker that treats
 // it as JS. Expo ships exactly that as a sibling `metro-transform-worker.js`; on
 // bare React Native the upstream already is such a worker, so we fall back to it.
 let jsWorker = upstream;
@@ -44,42 +81,57 @@ try {
 /** Per-process nonce so a cold Metro start always recompiles the stylesheet. */
 const NONCE = String(Date.now());
 
+let pipelinePromise: Promise<NitroCssPipeline> | null = null;
 let bootstrapPromise: Promise<string> | null = null;
 let candidateSignature: string | null = null;
 
+/**
+ * Load the configured pipeline module. A dynamic `import()` of a `file://` URL
+ * keeps (possibly ESM-only) toolchains out of Metro's synchronous require
+ * graph and works for both CJS and ESM pipeline modules.
+ */
+function loadPipeline(): Promise<NitroCssPipeline> {
+  if (pipelinePromise) return pipelinePromise;
+  const pipelinePath =
+    process.env.NITROCSS_PIPELINE ?? require.resolve("./pipeline");
+  pipelinePromise = import(pathToFileURL(pipelinePath).href).then(
+    // CJS pipelines surface their exports under `default`; ESM ones directly.
+    (mod) => (mod.scan ? mod : mod.default) as NitroCssPipeline,
+  );
+  return pipelinePromise;
+}
+
 async function buildBootstrap(): Promise<string> {
-  // Dynamic import keeps the (ESM-only) Tailwind toolchain out of Metro's
-  // synchronous require graph. The specifier is held in a variable so the
-  // typechecker doesn't try to resolve the package's built types here; the
-  // shape is asserted against the local source instead.
-  const compilerSpecifier = "nitrocss/compiler";
+  const pipeline = await loadPipeline();
+  // Held in a variable so the typechecker doesn't try to resolve the package's
+  // built types here; the shape is asserted against the local source instead.
+  const compilerSpecifier = "@nitrofoundation/nitrocss/compiler";
   const compiler = (await import(
     compilerSpecifier
-  )) as unknown as typeof import("nitrocss/compiler");
-  const compileOptions = {
-    input: process.env.NITROWIND_INPUT as string,
-    content: JSON.parse(process.env.NITROWIND_CONTENT || "[]"),
-    rem: Number(process.env.NITROWIND_REM || 16),
-    cwd: process.env.NITROWIND_CWD,
+  )) as unknown as typeof import("../compiler");
+  const pipelineOptions: NitroCssPipelineOptions = {
+    input: process.env.NITROCSS_INPUT as string,
+    content: JSON.parse(process.env.NITROCSS_CONTENT || "[]"),
+    rem: Number(process.env.NITROCSS_REM || 16),
+    cwd: process.env.NITROCSS_CWD || process.cwd(),
   };
-  const candidates = compiler.scanCandidates(compileOptions);
-  const nextSignature = candidates.slice().sort().join("\0");
-  if (bootstrapPromise && candidateSignature === nextSignature) {
+  const { candidates, signature } = pipeline.scan(pipelineOptions);
+  if (bootstrapPromise && candidateSignature === signature) {
     return bootstrapPromise;
   }
-  candidateSignature = nextSignature;
+  candidateSignature = signature;
   bootstrapPromise = (async () => {
-    const css = await compiler.compileCss(compileOptions, candidates);
-    const artifact = compiler.compileFromCss(css, compileOptions.rem);
+    const css = await pipeline.buildCss(pipelineOptions, candidates);
+    const artifact = compiler.compileFromCss(css, pipelineOptions.rem);
     compiler.applyCustomContainerTokens(
       artifact,
       candidates,
-      compileOptions.rem,
+      pipelineOptions.rem,
     );
     const serialized = compiler.serializeArtifact(artifact);
     return (
-      "import { registerSerializedStyles as __nitrowindRegisterSerializedStyles } from 'nitrowind';\n" +
-      `__nitrowindRegisterSerializedStyles(${JSON.stringify(serialized)}, ${JSON.stringify(
+      "import { registerSerializedStyles as __nitrocssRegisterSerializedStyles } from '@nitrofoundation/nitrocss';\n" +
+      `__nitrocssRegisterSerializedStyles(${JSON.stringify(serialized)}, ${JSON.stringify(
         artifact.themeNames,
       )}, ${JSON.stringify(artifact.rem)});\n`
     );
@@ -121,8 +173,8 @@ function shouldRefreshDevStyles(
   );
 }
 
-const inputAbs = process.env.NITROWIND_INPUT
-  ? path.resolve(process.env.NITROWIND_INPUT)
+const inputAbs = process.env.NITROCSS_INPUT
+  ? path.resolve(process.env.NITROCSS_INPUT)
   : null;
 
 /** True when `filename` (relative to `projectRoot`) is the configured input. */
@@ -135,11 +187,12 @@ function isStylesheet(projectRoot: string, filename: string): boolean {
 }
 
 function shouldRewriteReactNativeImports(filename: string): boolean {
-  if (process.env.NITROWIND_REWRITE_REACT_NATIVE_IMPORTS === "0") return false;
+  if (process.env.NITROCSS_REWRITE_REACT_NATIVE_IMPORTS === "0") return false;
   if (!filename) return false;
   const normalized = filename.split(path.sep).join("/");
   return !(
     normalized.includes("/node_modules/") ||
+    normalized.includes("/packages/nitrocss/") ||
     normalized.includes("/packages/nitrowind/")
   );
 }
@@ -185,7 +238,7 @@ function getCacheKey(...args: unknown[]): string {
     typeof upstream.getCacheKey === "function"
       ? upstream.getCacheKey(...args)
       : "";
-  return `${upstreamKey}-nitrowind-${NONCE}`;
+  return `${upstreamKey}-nitrocss-${NONCE}`;
 }
 
 module.exports = Object.assign({}, upstream, { transform, getCacheKey });

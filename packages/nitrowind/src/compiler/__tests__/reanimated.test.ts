@@ -1,20 +1,19 @@
 import { compile as tailwindCompile } from "@tailwindcss/node";
-import { transform } from "lightningcss";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   ColorScheme,
   Orientation,
+  registerStyles,
+  resolveStyles,
   type RuntimeSnapshot,
-} from "../../specs/types";
-import { registerStyles } from "../../core/registry";
-import { resolveStyles } from "../../core/store";
-import { compileFromCss } from "../index";
+} from "@nitrofoundation/nitrocss";
 import {
   extractKeyframes,
   extractReanimatedVars,
   foldAnimation,
   parseTransformString,
-} from "../parsers/animations";
+} from "@nitrofoundation/nitrocss/compiler/parsers";
+import { compileFromCss, flattenCss } from "../index";
 import { REANIMATED_CSS } from "../reanimated";
 
 function makeSnapshot(): RuntimeSnapshot {
@@ -33,21 +32,14 @@ function makeSnapshot(): RuntimeSnapshot {
   };
 }
 
-/** Run the real Tailwind v4 + lightningcss pipeline over the given candidates. */
+/** Run the real Tailwind v4 + flatten pipeline over the given candidates. */
 async function buildCss(candidates: string[]): Promise<string> {
   const input = `@import "tailwindcss";\n@theme { --spacing: 0.25rem; }\n${REANIMATED_CSS}`;
   const compiler = await tailwindCompile(input, {
     base: process.cwd(),
     onDependency: () => {},
   });
-  const built = compiler.build(candidates);
-  const { code } = transform({
-    filename: "reanimated.css",
-    code: Buffer.from(built),
-    targets: { chrome: 111 << 16 },
-    minify: false,
-  });
-  return code.toString();
+  return flattenCss(compiler.build(candidates));
 }
 
 describe("REANIMATED_CSS generation", () => {

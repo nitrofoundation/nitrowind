@@ -22,7 +22,7 @@ export type ShadowNodeRef = CustomType<
  */
 export type FollyDynamic = CustomType<
   AnyObject,
-  "::nitrowind::SharedFolly",
+  "::nitrocss::SharedFolly",
   { include: "JSIConverter+SharedFolly.hpp" }
 >;
 

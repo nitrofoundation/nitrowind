@@ -14,8 +14,8 @@ import {
 } from "../../specs/types";
 
 /**
- * The exact (flattened) shapes Tailwind v4 + lightningcss emit for transform,
- * shadow and font-variant utilities. Tailwind sets per-axis `--tw-*` helpers
+ * The exact (flattened) shapes a utility compiler + lightningcss emit for transform,
+ * shadow and font-variant utilities. The compiler sets per-axis `--tw-*` helpers
  * and composes them in the `transform` / `scale` / `translate` / `box-shadow`
  * longhands; the parsers reduce all of that to RN style shapes.
  */
@@ -240,7 +240,7 @@ describe("value parsers", () => {
       });
     });
 
-    it("applies Tailwind shadow color utilities to legacy and boxShadow props", () => {
+    it("applies shadow color utilities to legacy and boxShadow props", () => {
       const styles = stylesFor("shadow-md shadow-red-500");
       expect(styles.shadowColor).toBe("#ef4444");
       expect(styles.shadowOpacity).toBe(1);

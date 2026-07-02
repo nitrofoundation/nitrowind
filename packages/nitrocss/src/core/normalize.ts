@@ -44,13 +44,13 @@ const BOX_SHADOW_COLOR_RE =
   /#(?:[0-9a-f]{3,8})\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)|oklab\([^)]*\)|lab\([^)]*\)|lch\([^)]*\)|color\([^)]*\)/gi;
 
 export function normalizeShadow(style: RNStyle): void {
-  // NOTE: the `--nitrowind-backdrop-filter` marker (parsers/filter.ts) is
+  // NOTE: the `--nitrocss-backdrop-filter` marker (parsers/filter.ts) is
   // intentionally NOT stripped here anymore: `View` consumes it from the
   // JS-resolved styles to render the native `BackdropLayer`, then strips it
   // before the style reaches RN. The native C++ engine still erases it at its
   // resolve() tail so COMMITTED RN props never carry it.
-  const marker = style["--nitrowind-shadow-color"];
-  delete style["--nitrowind-shadow-color"];
+  const marker = style["--nitrocss-shadow-color"];
+  delete style["--nitrocss-shadow-color"];
   if (Platform.OS !== "web") {
     // The JS render path paints native shadows via the legacy iOS `shadow*` /
     // Android `elevation` fallbacks the compiler emits alongside `boxShadow`.

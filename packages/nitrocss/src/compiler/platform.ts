@@ -1,9 +1,9 @@
 /**
- * Platform variants — `ios:`, `android:`, `web:`, `native:`, … — registered as
- * Tailwind v4 `@custom-variant`s. Each variant gates a utility behind a marker
- * attribute (`data-nitrowind-os`); nitrocss reads that marker back off the
- * generated selector and tags the bucket with its target platform. The runtime
- * + native engine then keep only the buckets matching the current device.
+ * Platform variants — `ios:`, `android:`, `web:`, `native:`, … Each variant
+ * gates a utility behind a marker attribute (`data-nitrocss-os`); nitrocss
+ * reads that marker back off the compiled selector and tags the bucket with
+ * its target platform. The runtime + native engine then keep only the buckets
+ * matching the current device.
  *
  * Because the platform never changes at runtime, platform buckets carry no
  * dependency flag: the decision is made once, at resolve time.
@@ -22,17 +22,7 @@ export const PLATFORMS = [
 export type PlatformName = (typeof PLATFORMS)[number];
 
 /** The data-attribute marker embedded in compiled platform selectors. */
-export const PLATFORM_MARKER = "data-nitrowind-os";
-
-/**
- * `@custom-variant` definitions appended to the user stylesheet so Tailwind
- * emits rules for `ios:*`, `android:*`, … Each compiles (after flattening) to a
- * selector like `.ios\:bg-red-500:where([data-nitrowind-os="ios"], …)`.
- */
-export const PLATFORM_CSS = PLATFORMS.map(
-  (platform) =>
-    `@custom-variant ${platform} (&:where([${PLATFORM_MARKER}="${platform}"], [${PLATFORM_MARKER}="${platform}"] *));`,
-).join("\n");
+export const PLATFORM_MARKER = "data-nitrocss-os";
 
 const PLATFORM_RE = new RegExp(`\\[${PLATFORM_MARKER}="?([a-z-]+)"?\\]`);
 const PLATFORM_SET = new Set<string>(PLATFORMS);

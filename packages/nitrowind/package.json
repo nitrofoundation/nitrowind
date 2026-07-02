@@ -1,7 +1,7 @@
 {
-  "name": "nitrowind",
+  "name": "@nitrofoundation/nitrowind",
   "version": "0.1.0",
-  "description": "The fastest Tailwind bindings for React Native — fully open-source native C++ ShadowTree engine. Free for everyone.",
+  "description": "The fastest Tailwind bindings for React Native — a thin Tailwind CSS wrapper around @nitrofoundation/nitrocss, the fully open-source native C++ ShadowTree styling engine.",
   "license": "MIT",
   "author": "Nitrowind contributors",
   "repository": "https://github.com/nitrowind/nitrowind",
@@ -53,8 +53,8 @@
       }
     },
     "./svg": {
-      "source": "./src/svg/index.tsx",
-      "react-native": "./src/svg/index.tsx",
+      "source": "./src/svg/index.ts",
+      "react-native": "./src/svg/index.ts",
       "import": {
         "types": "./lib/typescript/module/svg/index.d.ts",
         "default": "./lib/module/svg/index.js"
@@ -69,36 +69,32 @@
       "types": "./lib/typescript/commonjs/metro/index.d.ts",
       "default": "./lib/commonjs/metro/index.js"
     },
-    "./metro/transformer": {
-      "source": "./src/metro/transformer.ts",
-      "default": "./lib/commonjs/metro/transformer.js"
+    "./metro/pipeline": {
+      "source": "./src/metro/pipeline.ts",
+      "types": "./lib/typescript/commonjs/metro/pipeline.d.ts",
+      "default": "./lib/commonjs/metro/pipeline.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
     "src",
     "lib",
-    "cpp",
-    "ios",
-    "android",
-    "nitrogen/generated",
-    "nitro.json",
-    "Nitrowind.podspec",
-    "react-native.config.js",
+    "README.md",
     "LICENSE",
     "!**/__tests__",
     "!**/*.tsbuildinfo"
   ],
   "scripts": {
-    "nitrogen": "nitrogen",
     "build": "bob build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "oxlint src",
-    "clean": "rimraf lib nitrogen/generated"
+    "clean": "rimraf lib"
   },
   "dependencies": {
-    "nitrocss": "workspace:*"
+    "@nitrofoundation/nitrocss": "workspace:*",
+    "@tailwindcss/node": "4.3.1",
+    "@tailwindcss/oxide": "4.3.1"
   },
   "peerDependencies": {
     "react": ">=19.0.0",
@@ -116,26 +112,15 @@
     }
   },
   "devDependencies": {
-    "@tailwindcss/node": "4.3.1",
-    "@tailwindcss/oxide": "4.3.1",
-    "@types/culori": "2.1.1",
     "@types/node": "^22.12.0",
     "@types/react": "19.2.17",
-    "lightningcss": "1.32.0",
-    "nitrogen": "0.35.9",
     "react": "19.2.3",
     "react-native": "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch",
     "react-native-builder-bob": "0.40.13",
-    "react-native-nitro-modules": "0.35.9",
     "rimraf": "6.0.1",
     "tailwindcss": "4.3.1",
     "typescript": "5.9.2",
     "vitest": "3.2.4"
-  },
-  "codegenConfig": {
-    "name": "TurboNitrowind",
-    "type": "modules",
-    "jsSrcsDir": "./src/specs"
   },
   "react-native-builder-bob": {
     "source": "src",

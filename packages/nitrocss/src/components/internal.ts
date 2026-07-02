@@ -119,10 +119,10 @@ export function linkNode(
     const inline = engine.createFollyStyle();
     const inlineObject = flattenInlineStyle(inlineStyle);
     // Native grid: piggyback the serialized grid config on the inline style under
-    // a reserved key. `NitrowindCore::link` extracts it into the grid registry
+    // a reserved key. `NitroCssCore::link` extracts it into the grid registry
     // and strips the key before the style is committed, so it never reaches props.
     if (gridConfig) {
-      inlineObject.__nitrowindGrid = gridConfig;
+      inlineObject.__nitrocssGrid = gridConfig;
     }
     inline.fromJSObject(inlineObject);
 

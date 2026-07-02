@@ -41,7 +41,7 @@ function diffSnapshots(a: RuntimeSnapshot, b: RuntimeSnapshot): number {
 
 /**
  * The JS-side runtime. In native mode it mirrors the engine's snapshot (used
- * for first paint + `useNitrowind`); in fallback mode it is the source of truth
+ * for first paint + `useNitroCss`); in fallback mode it is the source of truth
  * and drives re-renders via {@link dependencyEmitter}.
  */
 class RuntimeManager {

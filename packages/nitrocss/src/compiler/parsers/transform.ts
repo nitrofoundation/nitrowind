@@ -2,7 +2,7 @@ import { lengthToPx, type VarResolver } from "../insetValue";
 
 /**
  * RN `transform`-array axis keys, in the canonical order the engine emits them.
- * The compiler pulls each axis out of Tailwind's per-axis `--tw-*` helpers and
+ * The compiler pulls each axis out of the utility compiler's per-axis `--tw-*` helpers and
  * the `rotate`/`scale`/`translate`/`transform` longhands, storing them as
  * individual style props. They are folded back into a single `transform` array
  * at resolve time (see `core/normalize`), which makes multi-class composition

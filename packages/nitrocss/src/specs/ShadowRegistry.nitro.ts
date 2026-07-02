@@ -1,6 +1,6 @@
 import type { HybridObject } from "react-native-nitro-modules";
 import type { FollyStyle } from "./FollyStyle.nitro";
-import type { NitrowindDiagnostics } from "./NitrowindDiagnostics.nitro";
+import type { NitroCssDiagnostics } from "./NitroCssDiagnostics.nitro";
 import type { ShadowNodeHandle } from "./ShadowNodeHandle.nitro";
 import type {
   ComponentContext,
@@ -85,5 +85,5 @@ export interface ShadowRegistry extends HybridObject<{
   ): boolean;
 
   /** Attach a diagnostics instance to receive link/mutation events. */
-  enableDiagnostics(instance: NitrowindDiagnostics): void;
+  enableDiagnostics(instance: NitroCssDiagnostics): void;
 }

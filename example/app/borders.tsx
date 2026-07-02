@@ -3,7 +3,7 @@
  * nitrowind `View`; the border properties are resolved natively from the class
  * names.
  */
-import { Text, View } from "nitrowind";
+import { Text, View } from "@nitrofoundation/nitrowind";
 
 import { Caption, Screen, Section } from "../components/ui";
 

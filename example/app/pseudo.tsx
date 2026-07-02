@@ -1,4 +1,4 @@
-import { Pressable, Text, TextInput, View } from "nitrowind";
+import { Pressable, Text, TextInput, View } from "@nitrofoundation/nitrowind";
 
 import { Card, Caption, Screen, Section } from "../components/ui";
 

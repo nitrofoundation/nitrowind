@@ -1,6 +1,6 @@
 /**
  * Drop-in styled wrappers for the common React Native host components. Each is
- * produced by {@link withNitrowind}, so it accepts a `className`, resolves the
+ * produced by {@link withNitroCss}, so it accepts a `className`, resolves the
  * first paint in JS, and then hands all subsequent style updates to the native
  * engine (no React re-render on theme / colorScheme / dimension / inset change).
  *
@@ -18,13 +18,13 @@ import {
   TouchableHighlight as RNTouchableHighlight,
   TouchableOpacity as RNTouchableOpacity,
 } from "react-native";
-import { withNitrowind } from "../hoc/withNitrowind";
+import { withNitroCss } from "../hoc/withNitroCss";
 
 /** RN `Pressable` driven by `className` (callback `style` is preserved). */
-export const Pressable = withNitrowind(RNPressable, "Pressable");
+export const Pressable = withNitroCss(RNPressable, "Pressable");
 
 /** RN `Image` driven by `className`. */
-export const Image = withNitrowind(RNImage, "Image", {
+export const Image = withNitroCss(RNImage, "Image", {
   nativeColorProps: {
     fillClassName: "tintColor",
     tintColorClassName: "tintColor",
@@ -32,7 +32,7 @@ export const Image = withNitrowind(RNImage, "Image", {
 });
 
 /** RN `ImageBackground` driven by `className` (styles the container). */
-export const ImageBackground = withNitrowind(
+export const ImageBackground = withNitroCss(
   RNImageBackground,
   "ImageBackground",
   {
@@ -44,7 +44,7 @@ export const ImageBackground = withNitrowind(
 );
 
 /** RN `TextInput` driven by `className`. */
-export const TextInput = withNitrowind(RNTextInput, "TextInput", {
+export const TextInput = withNitroCss(RNTextInput, "TextInput", {
   nativeColorProps: {
     cursorColorClassName: "cursorColor",
     placeholderTextColorClassName: "placeholderTextColor",
@@ -55,19 +55,19 @@ export const TextInput = withNitrowind(RNTextInput, "TextInput", {
 });
 
 /** RN `TouchableOpacity` driven by `className`. */
-export const TouchableOpacity = withNitrowind(
+export const TouchableOpacity = withNitroCss(
   RNTouchableOpacity,
   "TouchableOpacity",
 );
 
 /** RN `TouchableHighlight` driven by `className`. */
-export const TouchableHighlight = withNitrowind(
+export const TouchableHighlight = withNitroCss(
   RNTouchableHighlight,
   "TouchableHighlight",
 );
 
 /** RN `Switch` driven by `className`. */
-export const Switch = withNitrowind(RNSwitch, "Switch", {
+export const Switch = withNitroCss(RNSwitch, "Switch", {
   nativeColorProps: {
     thumbColorClassName: "thumbColor",
     trackColorFalseClassName: "trackColorFalse",
@@ -76,7 +76,7 @@ export const Switch = withNitrowind(RNSwitch, "Switch", {
 });
 
 /** RN `ActivityIndicator` driven by `className`. */
-export const ActivityIndicator = withNitrowind(
+export const ActivityIndicator = withNitroCss(
   RNActivityIndicator,
   "ActivityIndicator",
   {
@@ -88,7 +88,7 @@ export const ActivityIndicator = withNitrowind(
 );
 
 /** RN `KeyboardAvoidingView` driven by `className`. */
-export const KeyboardAvoidingView = withNitrowind(
+export const KeyboardAvoidingView = withNitroCss(
   RNKeyboardAvoidingView,
   "KeyboardAvoidingView",
 );

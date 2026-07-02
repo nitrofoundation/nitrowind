@@ -45,7 +45,7 @@ export function extractThemes(
     return themes[name]!;
   };
 
-  // 1) `@theme { … }` base variables (Tailwind v4).
+  // 1) `@theme { … }` base variables (the utility compiler).
   let m: RegExpExecArray | null;
   while ((m = THEME_BLOCK_RE.exec(css))) {
     const target = ensure(baseThemeName);
