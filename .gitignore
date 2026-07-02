@@ -49,3 +49,6 @@ coverage/
 .env*.local
 # Vendored by Nitrowind.podspec at pod-install time (copied from packages/nitrocss/cpp)
 packages/nitrowind/cpp/nitrocss/
+
+# Android SDK location (machine-specific)
+local.properties
