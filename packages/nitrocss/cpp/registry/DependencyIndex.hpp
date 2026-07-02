@@ -11,7 +11,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace nitrowind {
+namespace nitrocss {
 
 /**
  * Tracks every linked node and indexes them by the dependencies they read, so
@@ -66,4 +66,4 @@ private:
   std::array<std::unordered_set<facebook::react::Tag>, 32> byBit_;
 };
 
-} // namespace nitrowind
+} // namespace nitrocss

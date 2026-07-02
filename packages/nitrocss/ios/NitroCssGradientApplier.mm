@@ -1,4 +1,4 @@
-#import "NitrowindGradientApplier.h"
+#import "NitroCssGradientApplier.h"
 
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
@@ -24,14 +24,14 @@
  */
 namespace {
 
-using nitrowind::GradientTargets;
+using nitrocss::GradientTargets;
 
 // Matches RN's BACKGROUND_COLOR_ZPOSITION in RCTViewComponentView.mm: the
 // background-image layers sit at the background color's z-position — below all
 // content (subviews are at z 0), above nothing else needing to shine through.
-constexpr CGFloat kNitrowindGradientZPosition = -1024.0f;
+constexpr CGFloat kNitroCssGradientZPosition = -1024.0f;
 
-NSString *const kNitrowindGradientLayerName = @"nitrowind.gradient";
+NSString *const kNitroCssGradientLayerName = @"nitrocss.gradient";
 
 // Associated-object keys recording what was painted onto a view.
 const void *kAppliedTagKey = &kAppliedTagKey;
@@ -340,7 +340,7 @@ ParsedDescriptor parseDescriptor(const folly::dynamic &descriptor) {
 
 CAGradientLayer *findGradientLayer(UIView *view) {
   for (CALayer *sublayer in view.layer.sublayers) {
-    if ([sublayer.name isEqualToString:kNitrowindGradientLayerName] &&
+    if ([sublayer.name isEqualToString:kNitroCssGradientLayerName] &&
         [sublayer isKindOfClass:[CAGradientLayer class]]) {
       return (CAGradientLayer *)sublayer;
     }
@@ -350,7 +350,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 
 } // namespace
 
-@implementation NitrowindGradientApplier {
+@implementation NitroCssGradientApplier {
   __weak RCTSurfacePresenter *_surfacePresenter;
   /** Views currently carrying our layer, weakly held for the prune pass. */
   NSHashTable<UIView *> *_paintedViews;
@@ -365,10 +365,10 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 }
 
 + (instancetype)shared {
-  static NitrowindGradientApplier *instance;
+  static NitroCssGradientApplier *instance;
   static dispatch_once_t once;
   dispatch_once(&once, ^{
-    instance = [NitrowindGradientApplier new];
+    instance = [NitroCssGradientApplier new];
   });
   return instance;
 }
@@ -390,7 +390,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   static dispatch_once_t once;
   dispatch_once(&once, ^{
     GradientTargets::shared().setInvalidationListener([]() {
-      [[NitrowindGradientApplier shared] setNeedsFlush];
+      [[NitroCssGradientApplier shared] setNeedsFlush];
     });
   });
   [self setNeedsFlush];
@@ -407,9 +407,9 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   if (!_flushScheduled.compare_exchange_strong(expected, true)) return;
   // Lynx-style coalescing: N invalidations between now and the main-queue turn
   // collapse into one flush.
-  __weak NitrowindGradientApplier *weakSelf = self;
+  __weak NitroCssGradientApplier *weakSelf = self;
   dispatch_async(dispatch_get_main_queue(), ^{
-    NitrowindGradientApplier *strongSelf = weakSelf;
+    NitroCssGradientApplier *strongSelf = weakSelf;
     if (strongSelf == nil) return;
     strongSelf->_flushScheduled.store(false);
     [strongSelf flushOnMainThread];
@@ -466,7 +466,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
     _retriesLeft.store(5);
   } else if (_retriesLeft.load() > 0) {
     _retriesLeft.fetch_sub(1);
-    __weak NitrowindGradientApplier *weakSelf = self;
+    __weak NitroCssGradientApplier *weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
                      [weakSelf setNeedsFlush];
@@ -502,11 +502,11 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 
   if (layer == nil) {
     layer = [CAGradientLayer layer];
-    layer.name = kNitrowindGradientLayerName;
+    layer.name = kNitroCssGradientLayerName;
     // RN parks background-image layers at the background color's z-position:
     // below all content (subviews render at z 0), painted after (above) the
     // solid background color layer because it is added later.
-    layer.zPosition = kNitrowindGradientZPosition;
+    layer.zPosition = kNitroCssGradientZPosition;
     [view.layer addSublayer:layer];
   }
 

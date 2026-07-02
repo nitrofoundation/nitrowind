@@ -12,7 +12,7 @@
 
 namespace nitrocss {
 
-/** Bit positions mirror the `StyleDependency` enum in `src/compiler/types.ts` and Nitrowind specs. */
+/** Bit positions mirror the `StyleDependency` enum in `src/compiler/types.ts` and NitroCss specs. */
 enum class Dependency : uint32_t {
   Theme = 0,
   ColorScheme = 1,
@@ -94,7 +94,7 @@ struct CompiledBucket {
 /**
  * Holds the compiled style tables (shipped from JS as JSON) and resolves a
  * `className` string into a `folly::dynamic` style object + a dependency mask.
- * This is the C++ counterpart of Nitrowind's JS first-paint resolver.
+ * This is the C++ counterpart of NitroCss's JS first-paint resolver.
  */
 class NitroCssEngine {
 public:

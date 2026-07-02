@@ -2,10 +2,10 @@
 
 #include "NitroCssEngine.hpp"
 
-namespace nitrowind {
+namespace nitrocss {
 
 // Backwards-compatible aliases for the engine now owned by the nitrocss package.
-// The ABI intentionally stays the same for the rest of Nitrowind's native core.
+// The ABI intentionally stays the same for the rest of NitroCss's native core.
 using Dependency = nitrocss::Dependency;
 using ContainerAxis = nitrocss::ContainerAxis;
 using ContainerOp = nitrocss::ContainerOp;
@@ -15,4 +15,4 @@ using CompiledBucket = nitrocss::CompiledBucket;
 using StyleEngine = nitrocss::NitroCssEngine;
 using nitrocss::depFlag;
 
-} // namespace nitrowind
+} // namespace nitrocss

@@ -26,7 +26,7 @@ FileUtils.cp_r(Dir.glob(File.join(nitrocss_dir_absolute, "cpp", "*")), nitrocss_
 nitrocss_dir = Pathname.new(nitrocss_vendor_dir).relative_path_from(Pathname.new(__dir__)).to_s
 
 Pod::Spec.new do |s|
-  s.name         = "Nitrowind"
+  s.name         = "NitroCss"
   s.version      = package["version"]
   s.summary      = package["description"]
   s.homepage     = package["homepage"]
@@ -34,17 +34,17 @@ Pod::Spec.new do |s|
   s.authors      = package["author"]
 
   s.platforms    = { :ios => min_ios_version_supported }
-  s.source       = { :git => "https://github.com/nitrowind/nitrowind.git", :tag => "#{s.version}" }
+  s.source       = { :git => "https://github.com/nitrocss/nitrocss.git", :tag => "#{s.version}" }
 
-  # Compiled from source — NOT a prebuilt binary. This is the whole point of nitrowind.
+  # Compiled from source — NOT a prebuilt binary. This is the whole point of nitrocss.
   #
   # Only the hand-written sources are listed here. All nitrogen-generated files
   # (and, crucially, their public/private header split) are added by
   # `add_nitrogen_files` below. Do NOT glob `nitrogen/generated/**` into
   # `source_files` directly: that makes the Swift<->C++ bridge umbrella
-  # (`Nitrowind-Swift-Cxx-Umbrella.hpp`, which references the Xcode-generated
-  # `Nitrowind-Swift.h`) a PUBLIC header. Swift then parses it via
-  # `-import-underlying-module` before `Nitrowind-Swift.h` exists and trips the
+  # (`NitroCss-Swift-Cxx-Umbrella.hpp`, which references the Xcode-generated
+  # `NitroCss-Swift.h`) a PUBLIC header. Swift then parses it via
+  # `-import-underlying-module` before `NitroCss-Swift.h` exists and trips the
   # umbrella's `#error`, so the Swift header is never emitted (build deadlock).
   s.source_files = [
     "ios/**/*.{swift,h,m,mm}",
@@ -53,11 +53,11 @@ Pod::Spec.new do |s|
   ]
 
   # The hand-written Objective-C++ seam that the Swift HybridObject calls into
-  # must be a public (umbrella) header so Swift can see `NitrowindBridge` via
+  # must be a public (umbrella) header so Swift can see `NitroCssBridge` via
   # `-import-underlying-module`. It only imports Foundation, so exposing it is
   # safe and does NOT pull the Swift<->C++ bridge umbrella back into scope.
   s.public_header_files = [
-    "ios/NitrowindBridge.h"
+    "ios/NitroCssBridge.h"
   ]
 
   s.pod_target_xcconfig = {
@@ -86,7 +86,7 @@ Pod::Spec.new do |s|
   # split and the required Swift<->C++ interop xcconfig
   # (SWIFT_OBJC_INTEROP_MODE=objcxx, DEFINES_MODULE=YES,
   # SWIFT_INSTALL_OBJC_HEADER=NO, C++20). Keeps the bridge umbrella private.
-  load File.join(__dir__, "nitrogen/generated/ios/Nitrowind+autolinking.rb")
+  load File.join(__dir__, "nitrogen/generated/ios/NitroCss+autolinking.rb")
   add_nitrogen_files(s)
 
   install_modules_dependencies(s)

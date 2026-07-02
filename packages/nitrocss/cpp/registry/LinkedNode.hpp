@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace nitrowind {
+namespace nitrocss {
 
 struct LinkedAccent {
   facebook::react::ShadowNodeFamily::Shared family;
@@ -64,4 +64,4 @@ struct LinkedNode {
   bool suspended = false;
 };
 
-} // namespace nitrowind
+} // namespace nitrocss

@@ -1,6 +1,6 @@
 #include "LayoutObserver.hpp"
 
-#include "../core/NitrowindCore.hpp"
+#include "../core/NitroCssCore.hpp"
 #include "../gradient/GradientTargets.hpp"
 
 #include <react/renderer/core/LayoutableShadowNode.h>
@@ -12,7 +12,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace nitrowind {
+namespace nitrocss {
 
 using namespace facebook::react;
 
@@ -52,11 +52,11 @@ void walk(const ShadowNode& node,
           const std::unordered_set<Tag>& queryTags,
           const std::unordered_set<Tag>& groupDependentTags,
           const std::unordered_set<Tag>& gridTags,
-          std::vector<NitrowindCore::ContainerMeasurement>& measurements,
+          std::vector<NitroCssCore::ContainerMeasurement>& measurements,
           std::unordered_map<Tag, Tag>& nodeToContainer,
           std::unordered_map<Tag, Tag>& nodeToGroup,
-          std::unordered_map<Tag, NitrowindCore::StructuralPseudoState>& structuralState,
-          std::vector<NitrowindCore::GridMeasurement>& gridMeasurements) {
+          std::unordered_map<Tag, NitroCssCore::StructuralPseudoState>& structuralState,
+          std::vector<NitroCssCore::GridMeasurement>& gridMeasurements) {
   const Tag tag = node.getTag();
 
   // Bind this query node to the nearest container found above it.
@@ -92,7 +92,7 @@ void walk(const ShadowNode& node,
   // frames. Placements travel positionally with these families (see grid.tsx).
   if (gridTags.find(tag) != gridTags.end()) {
     if (auto* layoutable = dynamic_cast<const LayoutableShadowNode*>(&node)) {
-      NitrowindCore::GridMeasurement measurement;
+      NitroCssCore::GridMeasurement measurement;
       measurement.tag = tag;
       measurement.family = node.getFamilyShared();
       measurement.surfaceId = node.getSurfaceId();
@@ -142,7 +142,7 @@ void walk(const ShadowNode& node,
  * the mount hook and the out-of-band {@link LayoutObserver::remeasure} path.
  */
 void measureAndSync(const ShadowNode& root, bool forceRecompute) {
-  auto& core = NitrowindCore::shared();
+  auto& core = NitroCssCore::shared();
   const auto containers = core.containerTags();
   const auto groups = core.groupTags();
     const auto structuralPseudoTags = core.structuralPseudoTags();
@@ -153,11 +153,11 @@ void measureAndSync(const ShadowNode& root, bool forceRecompute) {
   const auto groupDependentTags = core.groupDependentTags();
     const auto linkedTags = core.linkedTags();
 
-  std::vector<NitrowindCore::ContainerMeasurement> measurements;
+  std::vector<NitroCssCore::ContainerMeasurement> measurements;
   std::unordered_map<Tag, Tag> nodeToContainer;
   std::unordered_map<Tag, Tag> nodeToGroup;
-    std::unordered_map<Tag, NitrowindCore::StructuralPseudoState> structuralState;
-    std::vector<NitrowindCore::GridMeasurement> gridMeasurements;
+    std::unordered_map<Tag, NitroCssCore::StructuralPseudoState> structuralState;
+    std::vector<NitroCssCore::GridMeasurement> gridMeasurements;
   walk(root, /*nearestContainer=*/0, /*nearestGroup=*/0, containers, groups,
       linkedTags, structuralPseudoTags, queryTags, groupDependentTags,
       gridTags, measurements, nodeToContainer, nodeToGroup, structuralState,
@@ -204,11 +204,11 @@ void LayoutObserver::remeasure() noexcept {
   if (uiManager_ == nullptr) return;
 
   // Same containment rationale as `shadowTreeDidMount`: never let a failure
-  // escape onto the JS thread that calls us from `NitrowindCore::link`.
+  // escape onto the JS thread that calls us from `NitroCssCore::link`.
   try {
     // Cheap pre-check so the registry walk is skipped entirely when the app
     // uses no container queries.
-    auto& core = NitrowindCore::shared();
+    auto& core = NitroCssCore::shared();
     if (core.containerTags().empty() && core.groupTags().empty() &&
       core.structuralPseudoTags().empty() && core.gridTags().empty()) return;
 
@@ -224,4 +224,4 @@ void LayoutObserver::remeasure() noexcept {
   }
 }
 
-} // namespace nitrowind
+} // namespace nitrocss

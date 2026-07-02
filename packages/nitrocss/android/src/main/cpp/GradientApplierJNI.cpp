@@ -13,7 +13,7 @@
 
 /**
  * Android JNI sink for the engine's gradient registry (the mirror of the iOS
- * `NitrowindGradientApplier` attach path).
+ * `NitroCssGradientApplier` attach path).
  *
  * Two responsibilities, both deliberately tiny:
  *
@@ -38,10 +38,10 @@
 
 namespace {
 
-using nitrowind::GradientTargets;
+using nitrocss::GradientTargets;
 
 struct JGradientApplier : facebook::jni::JavaClass<JGradientApplier> {
-  static constexpr auto kJavaDescriptor = "Lcom/nitrowind/GradientApplier;";
+  static constexpr auto kJavaDescriptor = "Lcom/nitrofoundation/nitrocss/GradientApplier;";
 
   /** Forward the invalidation ping to Kotlin's `GradientApplier.onNativeInvalidate()`. */
   static void onNativeInvalidate() {
@@ -54,7 +54,7 @@ struct JGradientApplier : facebook::jni::JavaClass<JGradientApplier> {
 } // namespace
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_nitrowind_GradientApplier_nativeInstall(JNIEnv*, jobject) {
+Java_com_nitrofoundation_nitrocss_GradientApplier_nativeInstall(JNIEnv*, jobject) {
   // Warm fbjni's class cache while we are on a Java-attached thread with the
   // application class loader; later listener fires may come from natively
   // attached threads that cannot resolve app classes themselves.
@@ -74,7 +74,7 @@ Java_com_nitrowind_GradientApplier_nativeInstall(JNIEnv*, jobject) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_nitrowind_GradientApplier_nativeSnapshotJson(JNIEnv* env, jobject) {
+Java_com_nitrofoundation_nitrocss_GradientApplier_nativeSnapshotJson(JNIEnv* env, jobject) {
   const auto snapshot = GradientTargets::shared().snapshot();
   folly::dynamic payload = folly::dynamic::array();
   for (const auto& [tag, entry] : snapshot) {

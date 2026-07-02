@@ -4,11 +4,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 /**
  * Thin Objective-C++ seam between the platform code (Swift `NativePlatform` and
- * the React Native host) and the C++ engine (`NitrowindCore` /
- * `NitrowindInstaller`). Swift talks to this class; the `.mm` translation unit
+ * the React Native host) and the C++ engine (`NitroCssCore` /
+ * `NitroCssInstaller`). Swift talks to this class; the `.mm` translation unit
  * is the only iOS file that includes the C++ headers.
  */
-@interface NitrowindBridge : NSObject
+@interface NitroCssBridge : NSObject
 
 /** Push a fresh runtime snapshot into the C++ core (triggers recompute). */
 + (void)pushRuntimeStateWithColorScheme:(NSInteger)colorScheme

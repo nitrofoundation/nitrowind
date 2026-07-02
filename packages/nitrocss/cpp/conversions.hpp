@@ -5,9 +5,9 @@
 #include <cstdint>
 #include <vector>
 
-namespace nitrowind {
+namespace nitrocss {
 
-using GeneratedDependency = margelo::nitro::nitrowind::StyleDependency;
+using GeneratedDependency = margelo::nitro::nitrocss::StyleDependency;
 
 /** Pack a list of generated `StyleDependency` enum values into a bitmask. */
 inline uint32_t maskFromDeps(const std::vector<GeneratedDependency>& deps) {
@@ -29,4 +29,4 @@ inline std::vector<GeneratedDependency> depsFromMask(uint32_t mask) {
   return deps;
 }
 
-} // namespace nitrowind
+} // namespace nitrocss

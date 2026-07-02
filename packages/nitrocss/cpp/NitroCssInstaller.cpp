@@ -1,19 +1,19 @@
-#include "NitrowindInstaller.hpp"
+#include "NitroCssInstaller.hpp"
 
 #include "fabric/LayoutObserver.hpp"
 
 #include <react/renderer/uimanager/UIManagerBinding.h>
 
-namespace nitrowind {
+namespace nitrocss {
 
 using namespace facebook;
 
-NitrowindInstaller& NitrowindInstaller::shared() {
-  static NitrowindInstaller instance;
+NitroCssInstaller& NitroCssInstaller::shared() {
+  static NitroCssInstaller instance;
   return instance;
 }
 
-void NitrowindInstaller::installWithRuntimeExecutor(react::RuntimeExecutor executor) {
+void NitroCssInstaller::installWithRuntimeExecutor(react::RuntimeExecutor executor) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
     runtimeExecutor_ = executor;
@@ -26,7 +26,7 @@ void NitrowindInstaller::installWithRuntimeExecutor(react::RuntimeExecutor execu
   });
 }
 
-void NitrowindInstaller::ensureCaptured(jsi::Runtime& runtime) {
+void NitroCssInstaller::ensureCaptured(jsi::Runtime& runtime) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
     if (uiManager_ != nullptr) return; // already captured
@@ -36,7 +36,7 @@ void NitrowindInstaller::ensureCaptured(jsi::Runtime& runtime) {
   captureFromRuntime(runtime);
 }
 
-void NitrowindInstaller::captureFromRuntime(jsi::Runtime& runtime) {
+void NitroCssInstaller::captureFromRuntime(jsi::Runtime& runtime) {
   auto binding = react::UIManagerBinding::getBinding(runtime);
   if (binding == nullptr) return;
   auto& uiManager = binding->getUIManager();
@@ -59,30 +59,30 @@ void NitrowindInstaller::captureFromRuntime(jsi::Runtime& runtime) {
   }
 }
 
-void NitrowindInstaller::setContextContainer(
+void NitroCssInstaller::setContextContainer(
     std::shared_ptr<const react::ContextContainer> contextContainer) {
   std::lock_guard<std::mutex> lock(mutex_);
   contextContainer_ = std::move(contextContainer);
 }
 
-bool NitrowindInstaller::isReady() const {
+bool NitroCssInstaller::isReady() const {
   std::lock_guard<std::mutex> lock(mutex_);
   return uiManager_ != nullptr;
 }
 
-std::shared_ptr<react::UIManager> NitrowindInstaller::uiManager() const {
+std::shared_ptr<react::UIManager> NitroCssInstaller::uiManager() const {
   std::lock_guard<std::mutex> lock(mutex_);
   return uiManager_;
 }
 
-std::shared_ptr<const react::ContextContainer> NitrowindInstaller::contextContainer() const {
+std::shared_ptr<const react::ContextContainer> NitroCssInstaller::contextContainer() const {
   std::lock_guard<std::mutex> lock(mutex_);
   return contextContainer_;
 }
 
-react::RuntimeExecutor NitrowindInstaller::runtimeExecutor() const {
+react::RuntimeExecutor NitroCssInstaller::runtimeExecutor() const {
   std::lock_guard<std::mutex> lock(mutex_);
   return runtimeExecutor_;
 }
 
-} // namespace nitrowind
+} // namespace nitrocss

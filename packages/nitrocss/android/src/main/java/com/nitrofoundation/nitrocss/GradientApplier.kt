@@ -1,4 +1,4 @@
-package com.nitrowind
+package com.nitrofoundation.nitrocss
 
 import android.graphics.Canvas
 import android.graphics.ColorFilter
@@ -29,7 +29,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * The Android mirror of `NitrowindGradientApplier.mm`: consumes the C++
+ * The Android mirror of `NitroCssGradientApplier.mm`: consumes the C++
  * `GradientTargets` registry (`tag → folded gradient descriptor`) and paints
  * each gradient as part of the target view's OWN background — no child Fabric
  * component involved.
@@ -56,7 +56,7 @@ import org.json.JSONObject
  * it before the first view mounts.
  */
 object GradientApplier {
-  private const val TAG = "NitrowindGradient"
+  private const val TAG = "NitroCssGradient"
   private const val RETRY_BUDGET = 5
   private const val RETRY_DELAY_MS = 50L
   private const val TRANSPARENT_BLACK = 0
@@ -71,7 +71,7 @@ object GradientApplier {
   private val painted = WeakHashMap<View, PaintedState>()
 
   /**
-   * Called from [NitrowindPackage.createNativeModules]: remembers the React
+   * Called from [NitroCssPackage.createNativeModules]: remembers the React
    * context (needed to resolve mounted views by tag) and registers the C++
    * invalidation listener. Safe to call again on reload — the native side is
    * `std::call_once`-guarded and the listener re-fires for existing targets.
@@ -80,7 +80,7 @@ object GradientApplier {
     reactContextRef = WeakReference(reactContext)
     if (!nativeInstalled) {
       try {
-        System.loadLibrary("Nitrowind")
+        System.loadLibrary("NitroCss")
         nativeInstall()
         nativeInstalled = true
       } catch (t: Throwable) {
@@ -244,7 +244,7 @@ object GradientApplier {
 
   /**
    * One JSON payload per flush: `[{tag, generation, borderRadius, descriptor}]`
-   * where descriptor is the compiler's folded `--nitrowind-gradient` object
+   * where descriptor is the compiler's folded `--nitrocss-gradient` object
    * (`gradientType` / `angle` / `positionX,Y` / `colors` / `locations`).
    */
   private fun parseSnapshot(): Map<Int, Entry> {

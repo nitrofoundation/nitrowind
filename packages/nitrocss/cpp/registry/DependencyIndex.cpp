@@ -1,6 +1,6 @@
 #include "DependencyIndex.hpp"
 
-namespace nitrowind {
+namespace nitrocss {
 
 void DependencyIndex::indexByBits(facebook::react::Tag tag, uint32_t mask) {
   for (uint32_t bit = 0; bit < 32; ++bit) {
@@ -145,4 +145,4 @@ std::size_t DependencyIndex::size() const {
   return nodes_.size();
 }
 
-} // namespace nitrowind
+} // namespace nitrocss

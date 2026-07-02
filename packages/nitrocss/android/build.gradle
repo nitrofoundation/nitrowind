@@ -26,7 +26,7 @@ apply plugin: "com.android.library"
 apply plugin: "org.jetbrains.kotlin.android"
 
 android {
-    namespace "com.nitrowind"
+    namespace "com.nitrofoundation.nitrocss"
     compileSdkVersion safeExtGet("compileSdkVersion", 35)
 
     defaultConfig {
@@ -68,9 +68,9 @@ dependencies {
     implementation project(":react-native-nitro-modules")
 }
 
-// Nitrogen generates `nitrowind+autolinking.gradle` which wires the autolinked
+// Nitrogen generates `nitrocss+autolinking.gradle` which wires the autolinked
 // HybridObjects and Fabric/folly/JSI include paths into the CMake build.
-def autolinkingGradle = file("${projectDir}/../nitrogen/generated/android/nitrowind+autolinking.gradle")
+def autolinkingGradle = file("${projectDir}/../nitrogen/generated/android/nitrocss+autolinking.gradle")
 if (autolinkingGradle.exists()) {
     apply from: autolinkingGradle
 }

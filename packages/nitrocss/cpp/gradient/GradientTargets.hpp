@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <utility>
 
-namespace nitrowind {
+namespace nitrocss {
 
 /**
  * The engine's gradient paint registry: `tag → folded gradient descriptor`.
@@ -17,7 +17,7 @@ namespace nitrowind {
  * component — it paints as a `CAGradientLayer` (iOS) installed on the target
  * view's OWN layer, exactly like React Native's `experimental_backgroundImage`
  * path in `RCTViewComponentView`. The C++ resolve pipeline routes the folded
- * `--nitrowind-gradient` descriptor here (it never rides on committed RN
+ * `--nitrocss-gradient` descriptor here (it never rides on committed RN
  * props), and the platform applier consumes the snapshot on the main thread.
  *
  * Why a standing registry instead of a one-shot push: with Fabric view culling
@@ -38,7 +38,7 @@ public:
   using Tag = int32_t;
 
   struct Entry {
-    /** The folded `--nitrowind-gradient` object (see parsers/gradient.ts). */
+    /** The folded `--nitrocss-gradient` object (see parsers/gradient.ts). */
     folly::dynamic descriptor = nullptr;
     /** The owner's resolved uniform borderRadius (pt/dp), 0 when none/unknown. */
     double borderRadius = 0.0;
@@ -57,7 +57,7 @@ public:
 
   /**
    * Register/refresh the descriptor for a linked node. Called by the engine's
-   * resolve path whenever a resolved style carries `--nitrowind-gradient`.
+   * resolve path whenever a resolved style carries `--nitrocss-gradient`.
    * Notifies the platform applier only when the payload actually changed.
    */
   void setDescriptor(Tag tag, const folly::dynamic& descriptor, double borderRadius) {
@@ -156,4 +156,4 @@ private:
   uint64_t generationCounter_ = 0;
 };
 
-} // namespace nitrowind
+} // namespace nitrocss

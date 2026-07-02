@@ -2,7 +2,7 @@
 
 #include <vector>
 
-namespace nitrowind::grid {
+namespace nitrocss::grid {
 
 enum class TrackType { Fr, Px, Auto };
 
@@ -58,4 +58,4 @@ struct GridConfig {
   std::vector<Placement> items;
 };
 
-} // namespace nitrowind::grid
+} // namespace nitrocss::grid

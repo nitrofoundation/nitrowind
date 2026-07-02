@@ -7,7 +7,7 @@
 #include <react/renderer/uimanager/UIManager.h>
 #include <react/utils/ContextContainer.h>
 
-namespace nitrowind {
+namespace nitrocss {
 
 /**
  * Process-wide handle to the Fabric internals the engine needs to commit
@@ -20,9 +20,9 @@ namespace nitrowind {
  * way Reanimated installs itself: given a `RuntimeExecutor`, we schedule a
  * runtime task that pulls the `UIManager` off the `UIManagerBinding`.
  */
-class NitrowindInstaller {
+class NitroCssInstaller {
 public:
-  static NitrowindInstaller& shared();
+  static NitroCssInstaller& shared();
 
   /** Bootstrap from a RuntimeExecutor; captures the UIManager on the JS thread. */
   void installWithRuntimeExecutor(facebook::react::RuntimeExecutor executor);
@@ -46,7 +46,7 @@ public:
   facebook::react::RuntimeExecutor runtimeExecutor() const;
 
 private:
-  NitrowindInstaller() = default;
+  NitroCssInstaller() = default;
   void captureFromRuntime(facebook::jsi::Runtime& runtime);
 
   mutable std::mutex mutex_;
@@ -55,4 +55,4 @@ private:
   facebook::react::RuntimeExecutor runtimeExecutor_;
 };
 
-} // namespace nitrowind
+} // namespace nitrocss

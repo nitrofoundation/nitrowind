@@ -1,17 +1,17 @@
 #pragma once
 
-#include "HybridNitrowindDiagnosticsSpec.hpp"
+#include "HybridNitroCssDiagnosticsSpec.hpp"
 
 #include <functional>
 #include <string>
 #include <vector>
 
-namespace margelo::nitro::nitrowind {
+namespace margelo::nitro::nitrocss {
 
-/** Concrete `NitrowindDiagnostics` — optional debugging hooks. */
-class HybridNitrowindDiagnostics : public HybridNitrowindDiagnosticsSpec {
+/** Concrete `NitroCssDiagnostics` — optional debugging hooks. */
+class HybridNitroCssDiagnostics : public HybridNitroCssDiagnosticsSpec {
 public:
-  HybridNitrowindDiagnostics() : HybridObject(TAG) {}
+  HybridNitroCssDiagnostics() : HybridObject(TAG) {}
 
   void onShadowNodeRegistered(
       const std::function<void(double, const std::string&, double)>& listener) override {
@@ -45,4 +45,4 @@ private:
   std::function<void(const std::vector<DiagnosticUpdate>&)> update_;
 };
 
-} // namespace margelo::nitro::nitrowind
+} // namespace margelo::nitro::nitrocss

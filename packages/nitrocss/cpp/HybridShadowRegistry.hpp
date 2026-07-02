@@ -3,10 +3,10 @@
 #include "HybridShadowRegistrySpec.hpp"
 
 #include "HybridFollyStyle.hpp"
-#include "HybridNitrowindDiagnostics.hpp"
+#include "HybridNitroCssDiagnostics.hpp"
 #include "HybridShadowNodeHandle.hpp"
 #include "conversions.hpp"
-#include "core/NitrowindCore.hpp"
+#include "core/NitroCssCore.hpp"
 #include "core/SharedFolly.hpp"
 #include "fabric/LayoutObserver.hpp"
 
@@ -17,11 +17,11 @@
 #include <variant>
 #include <vector>
 
-namespace margelo::nitro::nitrowind {
+namespace margelo::nitro::nitrocss {
 
 /**
  * Concrete `ShadowRegistry` — the JS-facing seam of the engine. Translates the
- * Nitro link/unlink/commit calls into operations on {@link NitrowindCore}.
+ * Nitro link/unlink/commit calls into operations on {@link NitroCssCore}.
  */
 class HybridShadowRegistry : public HybridShadowRegistrySpec {
 public:
@@ -40,16 +40,16 @@ public:
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr || handle->node() == nullptr) return;
 
-    ::nitrowind::SharedFolly inline_;
+    ::nitrocss::SharedFolly inline_;
     if (inlineStyle != nullptr) {
       inline_ = std::static_pointer_cast<HybridFollyStyle>(inlineStyle)->style();
     }
 
-    ::nitrowind::ResolveContext ctx;
+    ::nitrocss::ResolveContext ctx;
     ctx.themeName = context.currentThemeName;
     ctx.colorScheme = static_cast<int>(context.colorScheme);
     ctx.rtl = context.rtl;
-    ctx.rem = ::nitrowind::NitrowindCore::shared().styleEngine().rem();
+    ctx.rem = ::nitrocss::NitroCssCore::shared().styleEngine().rem();
     if (state.has_value()) {
       ctx.isFocused = state->isFocused;
       ctx.isActive = state->isActive;
@@ -59,7 +59,7 @@ public:
       ctx.isLastChild = state->isLastChild;
     }
 
-    std::vector<::nitrowind::LinkedAccent> linkedAccents;
+    std::vector<::nitrocss::LinkedAccent> linkedAccents;
     linkedAccents.reserve(accents.size());
     for (const auto& accent : accents) {
       auto accentHandle = std::static_pointer_cast<HybridShadowNodeHandle>(accent.handle);
@@ -76,16 +76,16 @@ public:
                                accent.className,
                                accent.accentKey,
                                sourceProperty,
-                               ::nitrowind::maskFromDeps(accent.dependencies)});
+                               ::nitrocss::maskFromDeps(accent.dependencies)});
     }
 
-    auto& core = ::nitrowind::NitrowindCore::shared();
+    auto& core = ::nitrocss::NitroCssCore::shared();
     core.link(handle->nativeTag(),
               handle->family(),
               handle->surfaceId(),
               className,
               componentName,
-              ::nitrowind::maskFromDeps(dependencies),
+              ::nitrocss::maskFromDeps(dependencies),
               ctx,
               inline_,
               std::move(linkedAccents));
@@ -99,7 +99,7 @@ public:
   void unlink(const std::shared_ptr<HybridShadowNodeHandleSpec>& shadowNode) override {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return;
-    ::nitrowind::NitrowindCore::shared().unlink(handle->nativeTag());
+    ::nitrocss::NitroCssCore::shared().unlink(handle->nativeTag());
     if (diagnostics_ != nullptr) {
       diagnostics_->emitUnregistered(static_cast<double>(handle->nativeTag()), 0.0);
     }
@@ -108,14 +108,14 @@ public:
   void suspend(const std::shared_ptr<HybridShadowNodeHandleSpec>& shadowNode) override {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return;
-    ::nitrowind::NitrowindCore::shared().suspend(handle->nativeTag());
+    ::nitrocss::NitroCssCore::shared().suspend(handle->nativeTag());
   }
 
   bool updateShadowTree(
       const std::unordered_map<std::string, std::shared_ptr<HybridFollyStyleSpec>>& mutations,
       const std::unordered_map<std::string, std::shared_ptr<HybridFollyStyleSpec>>&
           /*accentMutations*/) override {
-    std::unordered_map<facebook::react::Tag, ::nitrowind::SharedFolly> batch;
+    std::unordered_map<facebook::react::Tag, ::nitrocss::SharedFolly> batch;
     batch.reserve(mutations.size());
     for (const auto& entry : mutations) {
       facebook::react::Tag tag = 0;
@@ -127,11 +127,11 @@ public:
       if (entry.second == nullptr) continue;
       batch.emplace(tag, std::static_pointer_cast<HybridFollyStyle>(entry.second)->style());
     }
-    return ::nitrowind::NitrowindCore::shared().updateShadowTree(batch);
+    return ::nitrocss::NitroCssCore::shared().updateShadowTree(batch);
   }
 
   void remeasureContainers() override {
-    ::nitrowind::LayoutObserver::shared().remeasure();
+    ::nitrocss::LayoutObserver::shared().remeasure();
   }
 
   bool setContainerSizeForNode(
@@ -140,7 +140,7 @@ public:
       double height) override {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return false;
-    auto& core = ::nitrowind::NitrowindCore::shared();
+    auto& core = ::nitrocss::NitroCssCore::shared();
     const auto containers = core.containerTags();
     auto it = containers.find(handle->nativeTag());
     if (it == containers.end()) return false;
@@ -153,7 +153,7 @@ public:
       const ComponentState& state) override {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return false;
-    auto& core = ::nitrowind::NitrowindCore::shared();
+    auto& core = ::nitrocss::NitroCssCore::shared();
     const auto groups = core.groupTags();
     if (groups.find(handle->nativeTag()) == groups.end()) return false;
     core.setGroupState(handle->nativeTag(), {state.isActive,
@@ -168,24 +168,24 @@ public:
       const ComponentState& state) override {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return false;
-    ::nitrowind::ResolveContext ctx;
+    ::nitrocss::ResolveContext ctx;
     ctx.isFocused = state.isFocused;
     ctx.isActive = state.isActive;
     ctx.isDisabled = state.isDisabled;
     ctx.isHovered = state.isHovered;
     ctx.isFirstChild = state.isFirstChild;
     ctx.isLastChild = state.isLastChild;
-    ::nitrowind::NitrowindCore::shared().setComponentState(handle->nativeTag(), ctx);
+    ::nitrocss::NitroCssCore::shared().setComponentState(handle->nativeTag(), ctx);
     return true;
   }
 
   void enableDiagnostics(
-      const std::shared_ptr<HybridNitrowindDiagnosticsSpec>& instance) override {
-    diagnostics_ = std::static_pointer_cast<HybridNitrowindDiagnostics>(instance);
+      const std::shared_ptr<HybridNitroCssDiagnosticsSpec>& instance) override {
+    diagnostics_ = std::static_pointer_cast<HybridNitroCssDiagnostics>(instance);
   }
 
 private:
-  std::shared_ptr<HybridNitrowindDiagnostics> diagnostics_;
+  std::shared_ptr<HybridNitroCssDiagnostics> diagnostics_;
 };
 
-} // namespace margelo::nitro::nitrowind
+} // namespace margelo::nitro::nitrocss

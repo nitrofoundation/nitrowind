@@ -15,14 +15,14 @@
 #include <utility>
 #include <vector>
 
-namespace nitrowind {
+namespace nitrocss {
 
 /**
  * The central engine. Owns the style tables, the runtime snapshot and the node
  * registry, and orchestrates the recompute-and-commit cycle. Every Nitro
  * HybridObject is a thin façade over this singleton.
  */
-class NitrowindCore {
+class NitroCssCore {
 public:
   using DependencyListener = std::function<void(uint32_t changedMask)>;
   using ResolveListener = std::function<void(const std::string& className,
@@ -61,7 +61,7 @@ public:
     std::vector<facebook::react::ShadowNodeFamily::Shared> childFamilies;
   };
 
-  static NitrowindCore& shared();
+  static NitroCssCore& shared();
 
   StyleEngine& styleEngine() { return styleEngine_; }
 
@@ -169,7 +169,7 @@ public:
   void setResolveListener(ResolveListener listener);
 
 private:
-  NitrowindCore() = default;
+  NitroCssCore() = default;
   void notifyDependencyListeners(uint32_t changedMask);
   folly::dynamic resolveForNode(const LinkedNode& node, const ResolveContext& ctx);
   folly::dynamic resolveAccent(const LinkedAccent& accent, const ResolveContext& ctx);
@@ -213,4 +213,4 @@ private:
   int nextListenerId_ = 1;
 };
 
-} // namespace nitrowind
+} // namespace nitrocss

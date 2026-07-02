@@ -10,8 +10,8 @@
 #import <React/RCTSurfacePresenter.h>
 #endif
 
-#import "NitrowindGradientApplier.h"
-#import "NitrowindInstaller.hpp"
+#import "NitroCssGradientApplier.h"
+#import "NitroCssInstaller.hpp"
 
 #include <ReactCommon/RuntimeExecutor.h>
 #include <react/utils/ContextContainer.h>
@@ -25,7 +25,7 @@
  * NOTE: the few private accessors below are the single device-specific wiring
  * point; they track the RN 0.85+ host surface.
  */
-@interface NitrowindInstallerModule : NSObject <RCTBridgeModule>
+@interface NitroCssInstallerModule : NSObject <RCTBridgeModule>
 @end
 
 // Declared by React Native's CoreModules; pull a non-owning RuntimeExecutor.
@@ -34,14 +34,14 @@ extern facebook::react::RuntimeExecutor RCTRuntimeExecutorFromBridge(RCTBridge *
 #if __has_include(<React/RCTSurfacePresenter.h>)
 // `contextContainer` exists on RCTSurfacePresenter but isn't in the public
 // header; declare it so we can call it (guarded by -respondsToSelector:).
-@interface RCTSurfacePresenter (Nitrowind)
+@interface RCTSurfacePresenter (NitroCss)
 - (std::shared_ptr<const facebook::react::ContextContainer>)contextContainer;
 @end
 #endif
 
-@implementation NitrowindInstallerModule
+@implementation NitroCssInstallerModule
 
-RCT_EXPORT_MODULE(NitrowindInstaller)
+RCT_EXPORT_MODULE(NitroCssInstaller)
 
 + (BOOL)requiresMainQueueSetup {
   return NO;
@@ -58,10 +58,10 @@ RCT_EXPORT_MODULE(NitrowindInstaller)
   @try {
     presenterEarly = bridge.surfacePresenter;
   } @catch (NSException *e) {
-    NSLog(@"[nitrowind.gradient] surfacePresenter threw: %@", e.name);
+    NSLog(@"[nitrocss.gradient] surfacePresenter threw: %@", e.name);
   }
   if (presenterEarly != nil) {
-    [[NitrowindGradientApplier shared] attachToSurfacePresenter:presenterEarly];
+    [[NitroCssGradientApplier shared] attachToSurfacePresenter:presenterEarly];
   }
 #endif
   @try {
@@ -69,7 +69,7 @@ RCT_EXPORT_MODULE(NitrowindInstaller)
   // 1) RuntimeExecutor → the C++ side captures the UIManager on the JS thread.
   facebook::react::RuntimeExecutor runtimeExecutor = RCTRuntimeExecutorFromBridge(bridge);
   if (runtimeExecutor != nullptr) {
-    nitrowind::NitrowindInstaller::shared().installWithRuntimeExecutor(runtimeExecutor);
+    nitrocss::NitroCssInstaller::shared().installWithRuntimeExecutor(runtimeExecutor);
   }
 
   // 2) ContextContainer → required to clone props during a commit.
@@ -78,13 +78,13 @@ RCT_EXPORT_MODULE(NitrowindInstaller)
   if ([presenter respondsToSelector:@selector(contextContainer)]) {
     auto contextContainer = [presenter contextContainer];
     if (contextContainer != nullptr) {
-      nitrowind::NitrowindInstaller::shared().setContextContainer(contextContainer);
+      nitrocss::NitroCssInstaller::shared().setContextContainer(contextContainer);
     }
   }
 
 #endif
   } @catch (NSException *e) {
-    NSLog(@"[nitrowind.gradient] legacy install path threw: %@", e.name);
+    NSLog(@"[nitrocss.gradient] legacy install path threw: %@", e.name);
   }
 }
 

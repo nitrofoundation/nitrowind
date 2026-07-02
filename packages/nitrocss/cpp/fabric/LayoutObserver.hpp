@@ -5,7 +5,7 @@
 #include <react/renderer/uimanager/UIManagerMountHook.h>
 #include <react/timing/primitives.h>
 
-namespace nitrowind {
+namespace nitrocss {
 
 /**
  * The Fabric layout observer that makes container queries resolve natively.
@@ -15,10 +15,10 @@ namespace nitrowind {
  * registering a Fabric `UIManagerMountHook`, whose `shadowTreeDidMount` fires
  * right after a tree is laid out and mounted. For every node the engine knows
  * to be a container we read its `LayoutMetrics` straight off the shadow tree and
- * push it to {@link NitrowindCore} (together with each query node's nearest-
+ * push it to {@link NitroCssCore} (together with each query node's nearest-
  * container association, discovered structurally during the same walk).
  *
- * {@link NitrowindCore::syncContainers} then re-resolves the gated children and
+ * {@link NitroCssCore::syncContainers} then re-resolves the gated children and
  * commits their new styles via {@link ShadowTreeMutator} in a follow-up commit —
  * no JS round-trip, no React re-render. Because the engine only recomputes when
  * a measured size actually changes, the follow-up commit converges in a single
@@ -66,4 +66,4 @@ private:
   bool registered_ = false;
 };
 
-} // namespace nitrowind
+} // namespace nitrocss

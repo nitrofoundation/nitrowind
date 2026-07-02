@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstdio>
 
-using namespace nitrowind::grid;
+using namespace nitrocss::grid;
 
 static int failures = 0;
 static void check(const char* name, double got, double want) {

@@ -1,6 +1,6 @@
 #include "ShadowTreeMutator.hpp"
 
-#include "../NitrowindInstaller.hpp"
+#include "../NitroCssInstaller.hpp"
 
 #include <react/renderer/core/ComponentDescriptor.h>
 #include <react/renderer/core/PropsParserContext.h>
@@ -12,14 +12,14 @@
 
 #include <unordered_map>
 
-namespace nitrowind {
+namespace nitrocss {
 
 using namespace facebook::react;
 
 bool ShadowTreeMutator::commit(const std::vector<NodeMutation>& mutations) {
   if (mutations.empty()) return false;
 
-  auto& installer = NitrowindInstaller::shared();
+  auto& installer = NitroCssInstaller::shared();
   auto uiManager = installer.uiManager();
   if (uiManager == nullptr) return false;
 
@@ -81,4 +81,4 @@ bool ShadowTreeMutator::commit(const std::vector<NodeMutation>& mutations) {
   return anyCommitted;
 }
 
-} // namespace nitrowind
+} // namespace nitrocss

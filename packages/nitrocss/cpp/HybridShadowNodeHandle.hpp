@@ -5,7 +5,7 @@
 #include <memory>
 #include <react/renderer/core/ShadowNode.h>
 
-namespace margelo::nitro::nitrowind {
+namespace margelo::nitro::nitrocss {
 
 /**
  * Concrete `ShadowNodeHandle`. Wraps a Fabric `ShadowNode` obtained from a JS
@@ -45,4 +45,4 @@ private:
   facebook::react::SurfaceId surfaceId_ = 0;
 };
 
-} // namespace margelo::nitro::nitrowind
+} // namespace margelo::nitro::nitrocss

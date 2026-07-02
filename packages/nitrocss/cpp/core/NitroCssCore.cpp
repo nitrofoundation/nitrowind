@@ -1,4 +1,4 @@
-#include "NitrowindCore.hpp"
+#include "NitroCssCore.hpp"
 
 #include "../fabric/LayoutObserver.hpp"
 #include "../fabric/ShadowTreeMutator.hpp"
@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <cmath>
 
-namespace nitrowind {
+namespace nitrocss {
 
 using namespace facebook::react;
 
@@ -237,19 +237,19 @@ grid::GridConfig parseGridConfig(const folly::dynamic& value) {
 
 } // namespace
 
-NitrowindCore& NitrowindCore::shared() {
-  static NitrowindCore instance;
+NitroCssCore& NitroCssCore::shared() {
+  static NitroCssCore instance;
   return instance;
 }
 
 // --- Runtime ---------------------------------------------------------------
 
-RuntimeState NitrowindCore::runtimeState() const {
+RuntimeState NitroCssCore::runtimeState() const {
   std::lock_guard<std::mutex> lock(stateMutex_);
   return state_;
 }
 
-void NitrowindCore::setRuntimeState(const RuntimeState& next) {
+void NitroCssCore::setRuntimeState(const RuntimeState& next) {
   uint32_t changed;
   {
     std::lock_guard<std::mutex> lock(stateMutex_);
@@ -268,7 +268,7 @@ void NitrowindCore::setRuntimeState(const RuntimeState& next) {
   }
 }
 
-void NitrowindCore::setTheme(const std::string& themeName) {
+void NitroCssCore::setTheme(const std::string& themeName) {
   styleEngine_.setTheme(themeName);
   {
     std::lock_guard<std::mutex> lock(stateMutex_);
@@ -279,18 +279,18 @@ void NitrowindCore::setTheme(const std::string& themeName) {
   notifyDependencyListeners(changed);
 }
 
-std::string NitrowindCore::currentTheme() const {
+std::string NitroCssCore::currentTheme() const {
   return styleEngine_.currentTheme();
 }
 
-bool NitrowindCore::hasAdaptiveThemes() const {
+bool NitroCssCore::hasAdaptiveThemes() const {
   std::lock_guard<std::mutex> lock(stateMutex_);
   return state_.hasAdaptiveThemes;
 }
 
 // --- Registry --------------------------------------------------------------
 
-void NitrowindCore::link(Tag tag,
+void NitroCssCore::link(Tag tag,
                          ShadowNodeFamily::Shared family,
                          SurfaceId surfaceId,
                          std::string className,
@@ -317,12 +317,12 @@ void NitrowindCore::link(Tag tag,
   bool isGrid = false;
   grid::GridConfig gridConfig;
   if (node.inlineStyle && node.inlineStyle->isObject()) {
-    if (auto* g = node.inlineStyle->get_ptr("__nitrowindGrid");
+    if (auto* g = node.inlineStyle->get_ptr("__nitrocssGrid");
         g != nullptr && g->isObject()) {
       gridConfig = parseGridConfig(*g);
       isGrid = !gridConfig.columns.empty();
     }
-    node.inlineStyle->erase("__nitrowindGrid");
+    node.inlineStyle->erase("__nitrocssGrid");
   }
   node.accents = std::move(accents);
   for (const auto& accent : node.accents) {
@@ -383,7 +383,7 @@ void NitrowindCore::link(Tag tag,
   commitResolvedNode(node, runtimeState().toContext());
 }
 
-void NitrowindCore::unlink(Tag tag) {
+void NitroCssCore::unlink(Tag tag) {
   index_.remove(tag);
   GradientTargets::shared().clearDescriptor(tag);
   {
@@ -411,11 +411,11 @@ void NitrowindCore::unlink(Tag tag) {
   }
 }
 
-void NitrowindCore::suspend(Tag tag) {
+void NitroCssCore::suspend(Tag tag) {
   index_.setSuspended(tag, true);
 }
 
-bool NitrowindCore::updateShadowTree(
+bool NitroCssCore::updateShadowTree(
     const std::unordered_map<Tag, SharedFolly>& mutations) {
   std::vector<NodeMutation> batch;
   batch.reserve(mutations.size());
@@ -432,7 +432,7 @@ bool NitrowindCore::updateShadowTree(
   return ShadowTreeMutator::commit(batch);
 }
 
-folly::dynamic NitrowindCore::resolveAccent(const LinkedAccent& accent,
+folly::dynamic NitroCssCore::resolveAccent(const LinkedAccent& accent,
                                             const ResolveContext& ctx) {
   uint32_t mask = 0;
   folly::dynamic style = styleEngine_.resolve(accent.className, ctx, mask);
@@ -464,7 +464,7 @@ folly::dynamic NitrowindCore::resolveAccent(const LinkedAccent& accent,
 
 // --- Container queries ------------------------------------------------------
 
-void NitrowindCore::setContainerSize(Tag containerTag,
+void NitroCssCore::setContainerSize(Tag containerTag,
                                      const std::string& name,
                                      double width,
                                      double height) {
@@ -494,7 +494,7 @@ void NitrowindCore::setContainerSize(Tag containerTag,
   }
 }
 
-void NitrowindCore::syncContainers(
+void NitroCssCore::syncContainers(
     const std::vector<ContainerMeasurement>& measurements,
     const std::unordered_map<Tag, Tag>& nodeToContainer,
     bool forceRecompute) {
@@ -526,7 +526,7 @@ void NitrowindCore::syncContainers(
   }
 }
 
-void NitrowindCore::syncGroups(
+void NitroCssCore::syncGroups(
     const std::unordered_map<Tag, Tag>& nodeToGroup,
     bool forceRecompute) {
   bool changed = false;
@@ -538,7 +538,7 @@ void NitrowindCore::syncGroups(
   }
 }
 
-void NitrowindCore::syncStructuralPseudos(
+void NitroCssCore::syncStructuralPseudos(
     const std::unordered_map<Tag, StructuralPseudoState>& stateByTag,
     bool forceRecompute) {
   bool changed = false;
@@ -559,7 +559,7 @@ void NitrowindCore::syncStructuralPseudos(
   }
 }
 
-void NitrowindCore::syncGrids(const std::vector<GridMeasurement>& measurements,
+void NitroCssCore::syncGrids(const std::vector<GridMeasurement>& measurements,
                              bool forceRecompute) {
   std::vector<NodeMutation> batch;
   for (const auto& m : measurements) {
@@ -623,7 +623,7 @@ void NitrowindCore::syncGrids(const std::vector<GridMeasurement>& measurements,
   }
 }
 
-void NitrowindCore::setGroupState(Tag groupTag, GroupState state) {
+void NitroCssCore::setGroupState(Tag groupTag, GroupState state) {
   bool changed = false;
   {
     std::lock_guard<std::mutex> lock(groupMutex_);
@@ -637,41 +637,41 @@ void NitrowindCore::setGroupState(Tag groupTag, GroupState state) {
   if (changed) recompute(depFlag(Dependency::GroupState));
 }
 
-void NitrowindCore::setComponentState(Tag tag, const ResolveContext& context) {
+void NitroCssCore::setComponentState(Tag tag, const ResolveContext& context) {
   if (!index_.updateContext(tag, context)) return;
   LinkedNode node;
   if (!index_.tryGet(tag, node)) return;
   commitResolvedNode(node, runtimeState().toContext());
 }
 
-std::unordered_map<Tag, std::string> NitrowindCore::containerTags() const {
+std::unordered_map<Tag, std::string> NitroCssCore::containerTags() const {
   std::lock_guard<std::mutex> lock(containerMutex_);
   return containerTags_;
 }
 
-std::unordered_map<Tag, std::string> NitrowindCore::groupTags() const {
+std::unordered_map<Tag, std::string> NitroCssCore::groupTags() const {
   std::lock_guard<std::mutex> lock(groupMutex_);
   return groupTags_;
 }
 
-std::unordered_set<Tag> NitrowindCore::containerQueryTags() const {
+std::unordered_set<Tag> NitroCssCore::containerQueryTags() const {
   return index_.tagsForBit(static_cast<uint32_t>(Dependency::ContainerSize));
 }
 
-std::unordered_set<Tag> NitrowindCore::groupDependentTags() const {
+std::unordered_set<Tag> NitroCssCore::groupDependentTags() const {
   return index_.tagsForBit(static_cast<uint32_t>(Dependency::GroupState));
 }
 
-std::unordered_set<Tag> NitrowindCore::linkedTags() const {
+std::unordered_set<Tag> NitroCssCore::linkedTags() const {
   return index_.activeTags();
 }
 
-std::unordered_set<Tag> NitrowindCore::structuralPseudoTags() const {
+std::unordered_set<Tag> NitroCssCore::structuralPseudoTags() const {
   std::lock_guard<std::mutex> lock(structuralMutex_);
   return structuralPseudoTags_;
 }
 
-std::unordered_set<Tag> NitrowindCore::gridTags() const {
+std::unordered_set<Tag> NitroCssCore::gridTags() const {
   std::lock_guard<std::mutex> lock(gridMutex_);
   std::unordered_set<Tag> tags;
   tags.reserve(gridConfigs_.size());
@@ -679,7 +679,7 @@ std::unordered_set<Tag> NitrowindCore::gridTags() const {
   return tags;
 }
 
-void NitrowindCore::applyContainerSizes(ResolveContext& ctx,
+void NitroCssCore::applyContainerSizes(ResolveContext& ctx,
                                         const LinkedNode& node) const {
   std::lock_guard<std::mutex> lock(containerMutex_);
   if (node.containerTag != 0) {
@@ -695,7 +695,7 @@ void NitrowindCore::applyContainerSizes(ResolveContext& ctx,
   }
 }
 
-void NitrowindCore::applyGroupState(ResolveContext& ctx,
+void NitroCssCore::applyGroupState(ResolveContext& ctx,
                                     const LinkedNode& node) const {
   if (node.groupTag == 0) return;
   std::lock_guard<std::mutex> lock(groupMutex_);
@@ -709,7 +709,7 @@ void NitrowindCore::applyGroupState(ResolveContext& ctx,
 
 // --- Recompute -------------------------------------------------------------
 
-folly::dynamic NitrowindCore::resolveForNode(const LinkedNode& node,
+folly::dynamic NitroCssCore::resolveForNode(const LinkedNode& node,
                                              const ResolveContext& ctx) {
   ResolveContext nodeCtx = ctx;
   nodeCtx.isFocused = node.context.isFocused;
@@ -731,7 +731,7 @@ folly::dynamic NitrowindCore::resolveForNode(const LinkedNode& node,
   // CAGradientLayer on the target view's OWN layer (RN backgroundImage-style).
   // Registering here (resolve time) means first paint, theme/scheme recomputes
   // and state changes all refresh the registry through the same single path.
-  if (auto* gradient = style.get_ptr("--nitrowind-gradient");
+  if (auto* gradient = style.get_ptr("--nitrocss-gradient");
       gradient != nullptr && gradient->isObject()) {
     if (node.tag != 0) {
       double radius = 0.0;
@@ -741,7 +741,7 @@ folly::dynamic NitrowindCore::resolveForNode(const LinkedNode& node,
       }
       GradientTargets::shared().setDescriptor(node.tag, *gradient, radius);
     }
-    style.erase("--nitrowind-gradient");
+    style.erase("--nitrocss-gradient");
   } else if (node.tag != 0) {
     // The class no longer folds a gradient (e.g. state/variant flip) — make
     // sure a previously registered paint is removed. No-op for the common case.
@@ -750,7 +750,7 @@ folly::dynamic NitrowindCore::resolveForNode(const LinkedNode& node,
   return style;
 }
 
-void NitrowindCore::recompute(uint32_t changedMask) {
+void NitroCssCore::recompute(uint32_t changedMask) {
   const ResolveContext ctx = runtimeState().toContext();
   std::vector<NodeMutation> batch;
 
@@ -775,7 +775,7 @@ void NitrowindCore::recompute(uint32_t changedMask) {
   }
 }
 
-void NitrowindCore::commitResolvedNode(const LinkedNode& node,
+void NitroCssCore::commitResolvedNode(const LinkedNode& node,
                                        const ResolveContext& ctx) {
   if (node.family == nullptr) return;
   folly::dynamic props = resolveForNode(node, ctx);
@@ -791,24 +791,24 @@ void NitrowindCore::commitResolvedNode(const LinkedNode& node,
 
 // --- Listeners -------------------------------------------------------------
 
-int NitrowindCore::addDependencyListener(DependencyListener listener) {
+int NitroCssCore::addDependencyListener(DependencyListener listener) {
   std::lock_guard<std::mutex> lock(listenerMutex_);
   const int id = nextListenerId_++;
   dependencyListeners_.emplace(id, std::move(listener));
   return id;
 }
 
-void NitrowindCore::removeDependencyListener(int id) {
+void NitroCssCore::removeDependencyListener(int id) {
   std::lock_guard<std::mutex> lock(listenerMutex_);
   dependencyListeners_.erase(id);
 }
 
-void NitrowindCore::setResolveListener(ResolveListener listener) {
+void NitroCssCore::setResolveListener(ResolveListener listener) {
   std::lock_guard<std::mutex> lock(listenerMutex_);
   resolveListener_ = std::move(listener);
 }
 
-void NitrowindCore::notifyDependencyListeners(uint32_t changedMask) {
+void NitroCssCore::notifyDependencyListeners(uint32_t changedMask) {
   std::vector<DependencyListener> snapshot;
   {
     std::lock_guard<std::mutex> lock(listenerMutex_);
@@ -818,4 +818,4 @@ void NitrowindCore::notifyDependencyListeners(uint32_t changedMask) {
   for (const auto& listener : snapshot) listener(changedMask);
 }
 
-} // namespace nitrowind
+} // namespace nitrocss

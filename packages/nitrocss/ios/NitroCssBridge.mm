@@ -1,13 +1,13 @@
-#import "NitrowindBridge.h"
+#import "NitroCssBridge.h"
 
 #import "LayoutObserver.hpp"
-#import "NitrowindCore.hpp"
+#import "NitroCssCore.hpp"
 
 #include <string>
 
-using namespace nitrowind;
+using namespace nitrocss;
 
-@implementation NitrowindBridge
+@implementation NitroCssBridge
 
 + (void)pushRuntimeStateWithColorScheme:(NSInteger)colorScheme
                               themeName:(NSString *)themeName
@@ -40,7 +40,7 @@ using namespace nitrowind;
   state.rem = rem;
   state.hairlineWidth = hairlineWidth;
 
-  NitrowindCore::shared().setRuntimeState(state);
+  NitroCssCore::shared().setRuntimeState(state);
 }
 
 + (void)remeasureContainers {
@@ -49,11 +49,11 @@ using namespace nitrowind;
 
 + (void)setTheme:(NSString *)themeName {
   if (themeName == nil) return;
-  NitrowindCore::shared().setTheme(std::string(themeName.UTF8String));
+  NitroCssCore::shared().setTheme(std::string(themeName.UTF8String));
 }
 
 + (NSString *)currentTheme {
-  return [NSString stringWithUTF8String:NitrowindCore::shared().currentTheme().c_str()];
+  return [NSString stringWithUTF8String:NitroCssCore::shared().currentTheme().c_str()];
 }
 
 @end

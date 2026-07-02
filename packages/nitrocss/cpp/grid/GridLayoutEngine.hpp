@@ -2,7 +2,7 @@
 
 #include "GridTypes.hpp"
 
-namespace nitrowind::grid {
+namespace nitrocss::grid {
 
 class GridLayoutEngine {
 public:
@@ -11,4 +11,4 @@ public:
   static GridOutput layout(const GridInput& input);
 };
 
-} // namespace nitrowind::grid
+} // namespace nitrocss::grid

@@ -1,4 +1,4 @@
-package com.margelo.nitro.nitrowind
+package com.margelo.nitro.nitrocss
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -12,14 +12,14 @@ import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.facebook.proguard.annotations.DoNotStrip
-import com.nitrowind.NitrowindContextHolder
-import com.nitrowind.NitrowindNative
+import com.nitrofoundation.nitrocss.NitroCssContextHolder
+import com.nitrofoundation.nitrocss.NitroCssNative
 import java.util.Locale
 
 /**
  * Android implementation of the `NativePlatform` HybridObject. Reads appearance,
  * dimensions, orientation, font scale and RTL from the system configuration and
- * forwards every change into the C++ engine (via [NitrowindNative.setRuntimeState])
+ * forwards every change into the C++ engine (via [NitroCssNative.setRuntimeState])
  * while notifying JS listeners.
  */
 @DoNotStrip
@@ -64,7 +64,7 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
 
   /** Live safe-area insets (system bars + display cutout) in dp. */
   private fun readInsets(): Insets {
-    val decor: View = NitrowindContextHolder.currentActivity?.window?.decorView
+    val decor: View = NitroCssContextHolder.currentActivity?.window?.decorView
       ?: return Insets(top = 0.0, right = 0.0, bottom = 0.0, left = 0.0)
     val root = ViewCompat.getRootWindowInsets(decor)
       ?: return Insets(top = 0.0, right = 0.0, bottom = 0.0, left = 0.0)
@@ -114,7 +114,7 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
     val (w, h) = screenSize()
     val scale = density()
     val insets = readInsets()
-    NitrowindNative.setRuntimeState(
+    NitroCssNative.setRuntimeState(
       colorScheme = colorSchemeRaw(),
       themeName = currentThemeName,
       width = w,
@@ -133,8 +133,8 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
   }
 
   private fun remeasureContainersSoon() {
-    mainHandler.post { NitrowindNative.remeasureContainers() }
-    mainHandler.postDelayed({ NitrowindNative.remeasureContainers() }, 50)
+    mainHandler.post { NitroCssNative.remeasureContainers() }
+    mainHandler.postDelayed({ NitroCssNative.remeasureContainers() }, 50)
   }
 
   private fun dependencies(previous: RuntimeSnapshot?, next: RuntimeSnapshot): Array<StyleDependency> {
@@ -171,7 +171,7 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
 
   private fun ensureReceiver() {
     if (receiver != null) return
-    val context: Context = NitrowindContextHolder.appContext ?: return
+    val context: Context = NitroCssContextHolder.appContext ?: return
     val r = object : BroadcastReceiver() {
       override fun onReceive(ctx: Context?, intent: Intent?) {
         emitChange()
@@ -184,7 +184,7 @@ class HybridNativePlatform : HybridNativePlatformSpec() {
   /** Recompute natively whenever the window insets change (keyboard, cutout, rotation). */
   private fun ensureInsetsListener() {
     if (insetsListenerAttached) return
-    val decor = NitrowindContextHolder.currentActivity?.window?.decorView ?: return
+    val decor = NitroCssContextHolder.currentActivity?.window?.decorView ?: return
     insetsListenerAttached = true
     mainHandler.post {
       ViewCompat.setOnApplyWindowInsetsListener(decor) { _, windowInsets ->

@@ -1,4 +1,4 @@
-package com.margelo.nitro.nitrowind
+package com.margelo.nitro.nitrocss
 
 import android.content.Context
 import android.view.View

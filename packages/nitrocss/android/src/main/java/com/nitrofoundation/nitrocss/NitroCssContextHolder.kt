@@ -1,11 +1,11 @@
-package com.nitrowind
+package com.nitrofoundation.nitrocss
 
 import android.app.Activity
 import android.content.Context
 import java.lang.ref.WeakReference
 
 /** Holds a weak reference to the application context for context-free HybridObjects. */
-internal object NitrowindContextHolder {
+internal object NitroCssContextHolder {
   private var ref: WeakReference<Context>? = null
   private var activityRef: WeakReference<Activity>? = null
 

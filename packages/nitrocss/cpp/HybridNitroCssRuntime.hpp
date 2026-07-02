@@ -1,23 +1,23 @@
 #pragma once
 
-#include "HybridNitrowindRuntimeSpec.hpp"
+#include "HybridNitroCssRuntimeSpec.hpp"
 #include "conversions.hpp"
-#include "core/NitrowindCore.hpp"
+#include "core/NitroCssCore.hpp"
 
 #include <functional>
 #include <optional>
 #include <string>
 #include <vector>
 
-namespace margelo::nitro::nitrowind {
+namespace margelo::nitro::nitrocss {
 
-/** Concrete `NitrowindRuntime` — reactive snapshot + dependency events. */
-class HybridNitrowindRuntime : public HybridNitrowindRuntimeSpec {
+/** Concrete `NitroCssRuntime` — reactive snapshot + dependency events. */
+class HybridNitroCssRuntime : public HybridNitroCssRuntimeSpec {
 public:
-  HybridNitrowindRuntime() : HybridObject(TAG) {}
+  HybridNitroCssRuntime() : HybridObject(TAG) {}
 
   RuntimeSnapshot getCurrent() override {
-    const auto s = ::nitrowind::NitrowindCore::shared().runtimeState();
+    const auto s = ::nitrocss::NitroCssCore::shared().runtimeState();
     RuntimeSnapshot snapshot;
     snapshot.colorScheme = static_cast<ColorScheme>(s.colorScheme);
     snapshot.hasAdaptiveThemes = s.hasAdaptiveThemes;
@@ -40,17 +40,17 @@ public:
   }
 
   void registerThemes(const std::vector<std::string>& themeNames) override {
-    ::nitrowind::NitrowindCore::shared().styleEngine().registerThemes(themeNames);
+    ::nitrocss::NitroCssCore::shared().styleEngine().registerThemes(themeNames);
   }
 
   void onCSSVariablesChanged(const std::string& /*forTheme*/) override {
-    ::nitrowind::NitrowindCore::shared().recompute(
-        ::nitrowind::depFlag(::nitrowind::Dependency::Theme));
+    ::nitrocss::NitroCssCore::shared().recompute(
+        ::nitrocss::depFlag(::nitrocss::Dependency::Theme));
   }
 
   std::function<void()> onResolveClassNames(
       const std::function<void(const ResolveClassNamesPayload&)>& listener) override {
-    ::nitrowind::NitrowindCore::shared().setResolveListener(
+    ::nitrocss::NitroCssCore::shared().setResolveListener(
         [listener](const std::string& className, const std::string& componentName) {
           ResolveClassNamesPayload payload;
           payload.className = className;
@@ -58,7 +58,7 @@ public:
           listener(payload);
         });
     return []() {
-      ::nitrowind::NitrowindCore::shared().setResolveListener(nullptr);
+      ::nitrocss::NitroCssCore::shared().setResolveListener(nullptr);
     };
   }
 
@@ -66,18 +66,18 @@ public:
       const std::function<void(const std::vector<StyleDependency>&)>& listener,
       const std::optional<std::vector<StyleDependency>>& dependencies) override {
     const uint32_t filter =
-        dependencies.has_value() ? ::nitrowind::maskFromDeps(*dependencies) : 0xFFFFFFFFu;
+        dependencies.has_value() ? ::nitrocss::maskFromDeps(*dependencies) : 0xFFFFFFFFu;
 
-    const int id = ::nitrowind::NitrowindCore::shared().addDependencyListener(
+    const int id = ::nitrocss::NitroCssCore::shared().addDependencyListener(
         [listener, filter](uint32_t changed) {
           const uint32_t hit = changed & filter;
-          if (hit != 0) listener(::nitrowind::depsFromMask(hit));
+          if (hit != 0) listener(::nitrocss::depsFromMask(hit));
         });
 
     return [id]() {
-      ::nitrowind::NitrowindCore::shared().removeDependencyListener(id);
+      ::nitrocss::NitroCssCore::shared().removeDependencyListener(id);
     };
   }
 };
 
-} // namespace margelo::nitro::nitrowind
+} // namespace margelo::nitro::nitrocss

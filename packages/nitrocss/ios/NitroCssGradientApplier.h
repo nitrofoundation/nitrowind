@@ -6,13 +6,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 /**
  * Main-thread applier that paints the engine's gradients as a named
- * `CAGradientLayer` ("nitrowind.gradient") installed on the TARGET VIEW'S OWN
+ * `CAGradientLayer` ("nitrocss.gradient") installed on the TARGET VIEW'S OWN
  * LAYER — the same architecture React Native uses for
  * `experimental_backgroundImage` in `RCTViewComponentView` (sublayer at the
  * background-color z-position, below content, corner-shaped to the view).
  * There is no child Fabric component.
  *
- * Data path: the C++ engine folds `--nitrowind-gradient` at resolve time and
+ * Data path: the C++ engine folds `--nitrocss-gradient` at resolve time and
  * routes `tag → descriptor` into `GradientTargets` (cpp/gradient). This class
  * registers the invalidation listener there and, on every signal (descriptor
  * change, theme/scheme recompute, or a Fabric mount transaction — the
@@ -27,13 +27,13 @@ NS_ASSUME_NONNULL_BEGIN
  * All CALayer writes happen inside a `CATransaction` with actions disabled so
  * prop refreshes never lerp.
  */
-@interface NitrowindGradientApplier : NSObject
+@interface NitroCssGradientApplier : NSObject
 
 + (instancetype)shared;
 
 /**
  * Wire the applier to the app's surface presenter (held weakly). Called by
- * `NitrowindInstallerModule` when the React host hands us the bridge; also
+ * `NitroCssInstallerModule` when the React host hands us the bridge; also
  * registers the C++ `GradientTargets` invalidation listener (once).
  */
 - (void)attachToSurfacePresenter:(RCTSurfacePresenter *)surfacePresenter;

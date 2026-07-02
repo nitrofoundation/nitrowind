@@ -8,7 +8,7 @@ import NitroModules
 /**
  * iOS implementation of the `NativePlatform` HybridObject. Reads appearance,
  * dimensions, safe-area insets, orientation, font scale and RTL from UIKit and
- * pushes every change into the C++ engine via `NitrowindBridge`, while also
+ * pushes every change into the C++ engine via `NitroCssBridge`, while also
  * notifying JS listeners.
  */
 final class HybridNativePlatform: HybridNativePlatformSpec {
@@ -110,7 +110,7 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
     let (w, h) = screenSize()
     let (top, right, bottom, left) = safeInsets()
     let scale = Double(UIScreen.main.scale)
-    NitrowindBridge.pushRuntimeState(
+    NitroCssBridge.pushRuntimeState(
       withColorScheme: colorSchemeRaw(),
       themeName: currentThemeName,
       width: w, height: h,
@@ -125,10 +125,10 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
 
   private func remeasureContainersSoon() {
     DispatchQueue.main.async {
-      NitrowindBridge.remeasureContainers()
+      NitroCssBridge.remeasureContainers()
     }
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-      NitrowindBridge.remeasureContainers()
+      NitroCssBridge.remeasureContainers()
     }
   }
 
@@ -181,7 +181,7 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
     let previousTheme = currentThemeName
     adaptiveThemeFollowsColorScheme = false
     currentThemeName = theme
-    NitrowindBridge.setTheme(currentThemeName)
+    NitroCssBridge.setTheme(currentThemeName)
     var deps: [StyleDependency] = []
     if previousTheme != currentThemeName { deps.append(.theme) }
     emitUserThemeChange(deps)

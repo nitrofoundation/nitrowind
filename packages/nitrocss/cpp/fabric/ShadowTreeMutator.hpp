@@ -4,7 +4,7 @@
 #include <react/renderer/core/ShadowNode.h>
 #include <vector>
 
-namespace nitrowind {
+namespace nitrocss {
 
 /** A single node's pending prop mutation, addressed by its stable family. */
 struct NodeMutation {
@@ -29,4 +29,4 @@ public:
   static bool commit(const std::vector<NodeMutation>& mutations);
 };
 
-} // namespace nitrowind
+} // namespace nitrocss

@@ -9,10 +9,10 @@
 #include <memory>
 #include <string>
 
-#include "NitrowindOnLoad.hpp"
+#include "NitroCssOnLoad.hpp"
 
-#include "NitrowindCore.hpp"
-#include "NitrowindInstaller.hpp"
+#include "NitroCssCore.hpp"
+#include "NitroCssInstaller.hpp"
 #include "LayoutObserver.hpp"
 #include "RuntimeState.hpp"
 
@@ -22,14 +22,14 @@ using namespace facebook;
  * JNI bootstrap. `JNI_OnLoad` delegates to the Nitrogen-generated initializer
  * which registers every autolinked HybridObject and initializes fbjni. The two
  * `extern "C"` entry points below are bound by name to the Kotlin `external fun`
- * declarations in `NitrowindNative`.
+ * declarations in `NitroCssNative`.
  */
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
-  return margelo::nitro::nitrowind::initialize(vm);
+  return margelo::nitro::nitrocss::initialize(vm);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_nitrowind_NitrowindNative_install(
+Java_com_nitrofoundation_nitrocss_NitroCssNative_install(
     JNIEnv*, jobject, jlong runtimePtr, jobject callInvokerHolderRef) {
   if (runtimePtr == 0 || callInvokerHolderRef == nullptr) {
     return JNI_FALSE;
@@ -51,12 +51,12 @@ Java_com_nitrowind_NitrowindNative_install(
             [runtime, cb = std::move(callback)]() mutable { cb(*runtime); });
       };
 
-  nitrowind::NitrowindInstaller::shared().installWithRuntimeExecutor(executor);
+  nitrocss::NitroCssInstaller::shared().installWithRuntimeExecutor(executor);
   return JNI_TRUE;
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_nitrowind_NitrowindNative_setRuntimeState(
+Java_com_nitrofoundation_nitrocss_NitroCssNative_setRuntimeState(
     JNIEnv* env,
     jobject,
     jint colorScheme,
@@ -73,7 +73,7 @@ Java_com_nitrowind_NitrowindNative_setRuntimeState(
     jboolean rtl,
     jdouble rem,
     jdouble hairlineWidth) {
-  nitrowind::RuntimeState state;
+  nitrocss::RuntimeState state;
   state.colorScheme = static_cast<int>(colorScheme);
   state.hasAdaptiveThemes = true;
   if (themeName != nullptr) {
@@ -96,10 +96,10 @@ Java_com_nitrowind_NitrowindNative_setRuntimeState(
   state.rem = rem;
   state.hairlineWidth = hairlineWidth;
 
-  nitrowind::NitrowindCore::shared().setRuntimeState(state);
+  nitrocss::NitroCssCore::shared().setRuntimeState(state);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_nitrowind_NitrowindNative_remeasureContainers(JNIEnv*, jobject) {
-  nitrowind::LayoutObserver::shared().remeasure();
+Java_com_nitrofoundation_nitrocss_NitroCssNative_remeasureContainers(JNIEnv*, jobject) {
+  nitrocss::LayoutObserver::shared().remeasure();
 }

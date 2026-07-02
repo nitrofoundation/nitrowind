@@ -143,14 +143,14 @@ bool isUnsupportedNativeColorValue(const folly::dynamic& key,
 /**
  * True for props whose (whole-string) value is a color: RN's native color
  * props plus the marker props whose values get spliced into composite values
- * later in this file (`--nitrowind-shadow-color` into each `boxShadow`
+ * later in this file (`--nitrocss-shadow-color` into each `boxShadow`
  * layer's `color`, `--nw-gradient-from/via/to` into the gradient descriptor).
  */
 bool isColorBearingProp(const folly::dynamic& key) {
   if (isNativeColorProp(key)) return true;
   if (!key.isString()) return false;
   const auto& prop = key.getString();
-  return prop == "--nitrowind-shadow-color" || prop == "--nw-gradient-from" ||
+  return prop == "--nitrocss-shadow-color" || prop == "--nw-gradient-from" ||
       prop == "--nw-gradient-via" || prop == "--nw-gradient-to";
 }
 
@@ -183,7 +183,7 @@ std::string lowerColorFunctionValue(const folly::dynamic& key,
  * `parseProcessedBoxShadow`) accepts only that form: numeric px lengths,
  * boolean `inset`, and a `color` that `fromRawValue(SharedColor)` can read —
  * an already-processed ARGB int, NOT a CSS string. So here we (1) splice the
- * theme-resolved `--nitrowind-shadow-color` marker into every layer's `color`
+ * theme-resolved `--nitrocss-shadow-color` marker into every layer's `color`
  * (the JS runtime performs the identical splice for web in
  * core/normalize.ts), and (2) lower each layer's hex color to the processed
  * int, so ShadowTree re-commits carry shadows stable RN parses without any
@@ -193,10 +193,10 @@ std::string lowerColorFunctionValue(const folly::dynamic& key,
  */
 void normalizeShadow(folly::dynamic& style) {
   if (!style.isObject()) return;
-  auto* marker = style.get_ptr("--nitrowind-shadow-color");
+  auto* marker = style.get_ptr("--nitrocss-shadow-color");
   const bool hasMarker = marker != nullptr && marker->isString();
   const std::string color = hasMarker ? marker->getString() : "";
-  style.erase("--nitrowind-shadow-color");
+  style.erase("--nitrocss-shadow-color");
 #if defined(__ANDROID__)
   // Android paints shadows via the compiler's `elevation` fallback. RN 0.76+
   // Android does parse the processed array form too, but committing it
@@ -345,7 +345,7 @@ void radialCenterFromPosition(const std::string& position,
 
 /**
  * Assemble the merged `--nw-gradient-*` marker props into the compact numeric
- * gradient descriptor under `--nitrowind-gradient` and erase the markers.
+ * gradient descriptor under `--nitrocss-gradient` and erase the markers.
  * Colors are already lowered to hex (literals at compile time, theme `var()`
  * substituted above). Mirrors the JS `foldGradient` (descriptor target) so a
  * native theme-swap commit matches a JS-resolved style exactly. The engine
@@ -398,7 +398,7 @@ void foldGradient(folly::dynamic& style) {
   descriptor["positionY"] = centerY;
   descriptor["colors"] = std::move(colors);
   descriptor["locations"] = std::move(locations);
-  style["--nitrowind-gradient"] = std::move(descriptor);
+  style["--nitrocss-gradient"] = std::move(descriptor);
 }
 
 /** Parse a compiled `container` descriptor (`{ axis, op, value, name? }`). */
@@ -723,7 +723,7 @@ folly::dynamic NitroCssEngine::resolve(const std::string& className,
   // reads it from the JS-resolved styles and renders the native BackdropView
   // layer. Committed RN props must never carry it, so the engine still erases
   // it here at the resolve() tail.
-  style.erase("--nitrowind-backdrop-filter");
+  style.erase("--nitrocss-backdrop-filter");
   return style;
 }
 

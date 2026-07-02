@@ -3,14 +3,14 @@
 #include <folly/dynamic.h>
 #include <memory>
 
-namespace nitrowind {
+namespace nitrocss {
 
 /**
  * A reference-counted `folly::dynamic`. We pass styles around as
  * `folly::dynamic` so they can be merged and committed straight into Fabric
  * props without re-marshalling through JSI on every update.
  *
- * Aliased in the Nitro spec as `nitrowind::SharedFolly` (see
+ * Aliased in the Nitro spec as `nitrocss::SharedFolly` (see
  * `src/specs/types.ts`).
  */
 using SharedFolly = std::shared_ptr<folly::dynamic>;
@@ -28,4 +28,4 @@ inline void mergeFolly(folly::dynamic& target, const folly::dynamic& source) {
   }
 }
 
-} // namespace nitrowind
+} // namespace nitrocss

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <string>
 
-namespace nitrowind {
+namespace nitrocss {
 
 /** Plain mirror of the JS `RuntimeSnapshot` (kept free of generated types). */
 struct RuntimeState {
@@ -54,4 +54,4 @@ inline uint32_t diffStates(const RuntimeState& a, const RuntimeState& b) {
   return mask;
 }
 
-} // namespace nitrowind
+} // namespace nitrocss

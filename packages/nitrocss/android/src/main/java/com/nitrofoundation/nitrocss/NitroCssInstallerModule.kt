@@ -1,4 +1,4 @@
-package com.nitrowind
+package com.nitrofoundation.nitrocss
 
 import android.util.Log
 import com.facebook.react.common.annotations.FrameworkAPI
@@ -13,15 +13,15 @@ import com.facebook.react.turbomodule.core.CallInvokerHolderImpl
  * native installer, mirroring how JSI libraries (e.g. Reanimated) install.
  */
 @OptIn(FrameworkAPI::class)
-class NitrowindInstallerModule(reactContext: ReactApplicationContext) :
+class NitroCssInstallerModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
 
   init {
-    NitrowindContextHolder.appContext = reactContext.applicationContext
-    NitrowindContextHolder.currentActivity = reactContext.currentActivity
+    NitroCssContextHolder.appContext = reactContext.applicationContext
+    NitroCssContextHolder.currentActivity = reactContext.currentActivity
     reactContext.addLifecycleEventListener(object : LifecycleEventListener {
       override fun onHostResume() {
-        NitrowindContextHolder.currentActivity = reactContext.currentActivity
+        NitroCssContextHolder.currentActivity = reactContext.currentActivity
       }
 
       override fun onHostPause() {}
@@ -52,12 +52,12 @@ class NitrowindInstallerModule(reactContext: ReactApplicationContext) :
         return
       }
 
-      val installed = NitrowindNative.install(runtimePtr, holder)
+      val installed = NitroCssNative.install(runtimePtr, holder)
       if (!installed) {
         Log.w(NAME, "Native install returned false.")
       }
     } catch (t: Throwable) {
-      Log.e(NAME, "Failed to install the Nitrowind engine.", t)
+      Log.e(NAME, "Failed to install the NitroCss engine.", t)
     }
   }
 
@@ -73,6 +73,6 @@ class NitrowindInstallerModule(reactContext: ReactApplicationContext) :
   }
 
   companion object {
-    const val NAME = "NitrowindInstaller"
+    const val NAME = "NitroCssInstaller"
   }
 }

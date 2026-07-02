@@ -4,7 +4,7 @@
 #include <cmath>
 #include <vector>
 
-namespace nitrowind::grid {
+namespace nitrocss::grid {
 namespace {
 
 int clampSpan(int span, int trackCount) {
@@ -205,4 +205,4 @@ GridOutput GridLayoutEngine::layout(const GridInput& input) {
   return output;
 }
 
-} // namespace nitrowind::grid
+} // namespace nitrocss::grid

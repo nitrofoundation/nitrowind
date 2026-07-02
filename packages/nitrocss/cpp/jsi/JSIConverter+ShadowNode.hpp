@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../NitrowindInstaller.hpp"
+#include "../NitroCssInstaller.hpp"
 
 #include <NitroModules/JSIConverter.hpp>
 #include <jsi/jsi.h>
@@ -34,7 +34,7 @@ struct JSIConverter<std::shared_ptr<const facebook::react::ShadowNode>> {
     // We hold a live JS runtime here, on the JS thread, at the exact moment a
     // node is first linked — the bridgeless-safe seam to capture the UIManager
     // (its binding isn't reachable via `setBridge:` under the New Arch host).
-    ::nitrowind::NitrowindInstaller::shared().ensureCaptured(runtime);
+    ::nitrocss::NitroCssInstaller::shared().ensureCaptured(runtime);
     return object.getNativeState<facebook::react::ShadowNodeWrapper>(runtime)->shadowNode;
   }
 

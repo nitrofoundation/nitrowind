@@ -1,4 +1,4 @@
-package com.nitrowind
+package com.nitrofoundation.nitrocss
 
 import com.facebook.react.common.annotations.FrameworkAPI
 import com.facebook.react.turbomodule.core.CallInvokerHolderImpl
@@ -8,9 +8,9 @@ import com.facebook.react.turbomodule.core.CallInvokerHolderImpl
  * `extern "C"` functions in `cpp-adapter.cpp`.
  */
 @OptIn(FrameworkAPI::class)
-internal object NitrowindNative {
+internal object NitroCssNative {
   init {
-    System.loadLibrary("Nitrowind")
+    System.loadLibrary("NitroCss")
   }
 
   /** Capture the Fabric UIManager via a RuntimeExecutor built from the CallInvoker. */

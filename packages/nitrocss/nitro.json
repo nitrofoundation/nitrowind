@@ -1,19 +1,19 @@
 {
   "$schema": "https://nitro.margelo.com/nitro.schema.json",
-  "cxxNamespace": ["nitrowind"],
+  "cxxNamespace": ["nitrocss"],
   "ios": {
-    "iosModuleName": "Nitrowind"
+    "iosModuleName": "NitroCss"
   },
   "android": {
-    "androidNamespace": ["nitrowind"],
-    "androidCxxLibName": "Nitrowind"
+    "androidNamespace": ["nitrocss"],
+    "androidCxxLibName": "NitroCss"
   },
   "autolinking": {
-    "NitrowindConfig": {
-      "cpp": "HybridNitrowindConfig"
+    "NitroCssConfig": {
+      "cpp": "HybridNitroCssConfig"
     },
-    "NitrowindRuntime": {
-      "cpp": "HybridNitrowindRuntime"
+    "NitroCssRuntime": {
+      "cpp": "HybridNitroCssRuntime"
     },
     "ShadowRegistry": {
       "cpp": "HybridShadowRegistry"
@@ -24,8 +24,8 @@
     "FollyStyle": {
       "cpp": "HybridFollyStyle"
     },
-    "NitrowindDiagnostics": {
-      "cpp": "HybridNitrowindDiagnostics"
+    "NitroCssDiagnostics": {
+      "cpp": "HybridNitroCssDiagnostics"
     },
     "NativePlatform": {
       "swift": "HybridNativePlatform",

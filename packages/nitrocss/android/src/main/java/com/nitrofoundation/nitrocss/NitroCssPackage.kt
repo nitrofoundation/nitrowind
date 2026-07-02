@@ -1,11 +1,11 @@
-package com.nitrowind
+package com.nitrofoundation.nitrocss
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.ViewManager
-import com.margelo.nitro.nitrowind.NitrowindOnLoad
-import com.margelo.nitro.nitrowind.views.HybridBackdropViewManager
+import com.margelo.nitro.nitrocss.NitroCssOnLoad
+import com.margelo.nitro.nitrocss.views.HybridBackdropViewManager
 
 /**
  * Registers the installer module and the engine's Nitro HybridViews. The
@@ -16,14 +16,14 @@ import com.margelo.nitro.nitrowind.views.HybridBackdropViewManager
  * background from the C++ `GradientTargets` registry — see [GradientApplier],
  * installed here so it has a ReactContext for Fabric view lookups.
  */
-class NitrowindPackage : ReactPackage {
+class NitroCssPackage : ReactPackage {
   init {
-    NitrowindOnLoad.initializeNative()
+    NitroCssOnLoad.initializeNative()
   }
 
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
     GradientApplier.install(reactContext)
-    return listOf(NitrowindInstallerModule(reactContext))
+    return listOf(NitroCssInstallerModule(reactContext))
   }
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
