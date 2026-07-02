@@ -1,29 +1,6 @@
 require "json"
-require "open3"
-require "pathname"
-require "fileutils"
 
 package = JSON.parse(File.read(File.join(__dir__, "package.json")))
-
-resolve_node_package = lambda do |package_name|
-  script = "require.resolve(\"#{package_name}/package.json\", { paths: [#{JSON.generate(__dir__)}] })"
-  stdout, status = Open3.capture2e("node", "--print", script)
-  next File.dirname(stdout.strip) if status.success? && !stdout.strip.empty?
-
-  nil
-end
-
-nitrocss_dir_absolute = resolve_node_package.call("nitrocss") || File.expand_path("../nitrocss", __dir__)
-
-# CocoaPods' Sandbox::PathList only discovers files that live inside the pod's own
-# root directory: it does not follow ".."-escaping glob patterns out to a sibling
-# package, nor does it traverse symlinks. Since nitrocss lives in a sibling package,
-# vendor its cpp sources into our own tree so CocoaPods can actually see them.
-nitrocss_vendor_dir = File.join(__dir__, "cpp", "nitrocss")
-FileUtils.rm_rf(nitrocss_vendor_dir)
-FileUtils.mkdir_p(nitrocss_vendor_dir)
-FileUtils.cp_r(Dir.glob(File.join(nitrocss_dir_absolute, "cpp", "*")), nitrocss_vendor_dir)
-nitrocss_dir = Pathname.new(nitrocss_vendor_dir).relative_path_from(Pathname.new(__dir__)).to_s
 
 Pod::Spec.new do |s|
   s.name         = "NitroCss"
@@ -34,7 +11,7 @@ Pod::Spec.new do |s|
   s.authors      = package["author"]
 
   s.platforms    = { :ios => min_ios_version_supported }
-  s.source       = { :git => "https://github.com/nitrocss/nitrocss.git", :tag => "#{s.version}" }
+  s.source       = { :git => "https://github.com/nitrofoundation/nitrocss.git", :tag => "#{s.version}" }
 
   # Compiled from source — NOT a prebuilt binary. This is the whole point of nitrocss.
   #
@@ -48,8 +25,7 @@ Pod::Spec.new do |s|
   # umbrella's `#error`, so the Swift header is never emitted (build deadlock).
   s.source_files = [
     "ios/**/*.{swift,h,m,mm}",
-    "cpp/**/*.{hpp,cpp}",
-    File.join(nitrocss_dir, "cpp/**/*.{hpp,cpp}")
+    "cpp/**/*.{hpp,cpp}"
   ]
 
   # The hand-written Objective-C++ seam that the Swift HybridObject calls into
@@ -64,7 +40,7 @@ Pod::Spec.new do |s|
     "HEADER_SEARCH_PATHS" => [
       "\"$(PODS_TARGET_SRCROOT)/cpp\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/core\"",
-      "\"$(PODS_TARGET_SRCROOT)/#{nitrocss_dir}\"",
+      "\"$(PODS_TARGET_SRCROOT)/cpp/css\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/jsi\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/registry\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/fabric\"",

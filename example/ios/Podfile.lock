@@ -5,8 +5,9 @@ PODS:
   - hermes-engine (250829098.0.14):
     - hermes-engine/Pre-built (= 250829098.0.14)
   - hermes-engine/Pre-built (250829098.0.14)
-  - NitroModules (0.35.10):
+  - NitroCss (0.1.0):
     - hermes-engine
+    - NitroModules
     - RCTRequired
     - RCTTypeSafety
     - React-callinvoker
@@ -14,6 +15,7 @@ PODS:
     - React-Core-prebuilt
     - React-debug
     - React-Fabric
+    - React-FabricComponents
     - React-featureflags
     - React-graphics
     - React-ImageManager
@@ -28,9 +30,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - Nitrowind (0.1.0):
+  - NitroModules (0.35.10):
     - hermes-engine
-    - NitroModules
     - RCTRequired
     - RCTTypeSafety
     - React-callinvoker
@@ -38,7 +39,6 @@ PODS:
     - React-Core-prebuilt
     - React-debug
     - React-Fabric
-    - React-FabricComponents
     - React-featureflags
     - React-graphics
     - React-ImageManager
@@ -2254,8 +2254,8 @@ DEPENDENCIES:
   - BVLinearGradient (from `../../node_modules/react-native-linear-gradient`)
   - FBLazyVector (from `../../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
+  - "NitroCss (from `../../node_modules/@nitrofoundation/nitrocss`)"
   - NitroModules (from `../../node_modules/react-native-nitro-modules`)
-  - Nitrowind (from `../../node_modules/nitrowind`)
   - RCTDeprecation (from `../../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../../node_modules/react-native/Libraries/Required`)
   - RCTSwiftUI (from `../../node_modules/react-native/ReactApple/RCTSwiftUI`)
@@ -2346,10 +2346,10 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v250829098.0.14
+  NitroCss:
+    :path: "../../node_modules/@nitrofoundation/nitrocss"
   NitroModules:
     :path: "../../node_modules/react-native-nitro-modules"
-  Nitrowind:
-    :path: "../../node_modules/nitrowind"
   RCTDeprecation:
     :path: "../../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation"
   RCTRequired:
@@ -2515,8 +2515,8 @@ SPEC CHECKSUMS:
   BVLinearGradient: cb006ba232a1f3e4f341bb62c42d1098c284da70
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
   hermes-engine: ee405e16f7a2f5c41805cce74e41f4a48bf34bf3
+  NitroCss: 241aaf2907b2befc6a4d22d026a9885991b071b2
   NitroModules: 994eaa7fc39d1fb4b76bb61054312c9796c4a649
-  Nitrowind: 19eab25f1d358be0995eb6af127a44c867822f3f
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
   RCTRequired: 30451112e6fef4e6f31b4e7eee0845156e35e4b0
   RCTSwiftUI: 5aaf0b07e747ba749dc6acc94d8bd41eea4b570f

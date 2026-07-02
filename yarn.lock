@@ -1776,6 +1776,7 @@ __metadata:
     typescript: "npm:5.9.2"
     vitest: "npm:3.2.4"
   peerDependencies:
+    "@nitrofoundation/nitrocss": "*"
     react: ">=19.0.0"
     react-native: ">=0.85.0"
     react-native-nitro-modules: ">=0.35.0"
@@ -6111,6 +6112,7 @@ __metadata:
   dependencies:
     "@babel/core": "npm:^7.25.0"
     "@babel/runtime": "npm:^8.0.0"
+    "@nitrofoundation/nitrocss": "workspace:*"
     "@nitrofoundation/nitrowind": "workspace:*"
     "@react-native-community/cli": "npm:20.1.0"
     "@react-native/babel-preset": "npm:0.86.0"

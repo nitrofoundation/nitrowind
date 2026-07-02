@@ -5,43 +5,19 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(PACKAGE_NAME NitroCss)
 
-# Resolve nitrocss like Node would, so native builds work with hoisted,
-# non-hoisted, npm, Yarn, and pnpm node_modules layouts. Fall back to the
-# monorepo sibling path for local source checkouts without node_modules.
-execute_process(
-    COMMAND node --print "require.resolve('nitrocss/package.json')"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    OUTPUT_VARIABLE NITROCSS_PACKAGE_JSON
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
-if(NITROCSS_PACKAGE_JSON)
-    get_filename_component(NITROCSS_PACKAGE_DIR "${NITROCSS_PACKAGE_JSON}" DIRECTORY)
-    set(NITROCSS_CPP_DIR "${NITROCSS_PACKAGE_DIR}/cpp")
-else()
-    set(NITROCSS_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../nitrocss/cpp")
-endif()
-
-# Shared, cross-platform engine sources (the open-source native core).
+# Shared, cross-platform engine sources — everything (resolver engine, color
+# parser, core, fabric, grid, registry, JNI) lives in this package's cpp/ now.
 file(GLOB_RECURSE nitrocss_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/../cpp/*.cpp"
-    "${NITROCSS_CPP_DIR}/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp/*.cpp"
 )
-
-# The iOS podspec vendors a copy of nitrocss into ../cpp/nitrocss at
-# pod-install time. If that copy exists on disk, the ../cpp glob above picks
-# it up in addition to the real nitrocss sources, producing duplicate
-# symbols. Android always compiles nitrocss from NITROCSS_CPP_DIR, so drop
-# the vendored copy from the source list.
-list(FILTER nitrocss_SOURCES EXCLUDE REGEX "nitrocss/cpp/nitrocss/")
 
 add_library(${PACKAGE_NAME} SHARED ${nitrocss_SOURCES})
 
 target_include_directories(${PACKAGE_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../cpp/core"
-    "${NITROCSS_CPP_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../cpp/css"
     "${CMAKE_CURRENT_SOURCE_DIR}/../cpp/jsi"
     "${CMAKE_CURRENT_SOURCE_DIR}/../cpp/registry"
     "${CMAKE_CURRENT_SOURCE_DIR}/../cpp/fabric"

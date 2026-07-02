@@ -92,11 +92,11 @@
     "clean": "rimraf lib"
   },
   "dependencies": {
-    "@nitrofoundation/nitrocss": "workspace:*",
     "@tailwindcss/node": "4.3.1",
     "@tailwindcss/oxide": "4.3.1"
   },
   "peerDependencies": {
+    "@nitrofoundation/nitrocss": "*",
     "react": ">=19.0.0",
     "react-native": ">=0.85.0",
     "react-native-nitro-modules": ">=0.35.0",
@@ -112,6 +112,7 @@
     }
   },
   "devDependencies": {
+    "@nitrofoundation/nitrocss": "workspace:*",
     "@types/node": "^22.12.0",
     "@types/react": "19.2.17",
     "react": "19.2.3",
