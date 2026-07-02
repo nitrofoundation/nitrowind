@@ -187,9 +187,8 @@ describe("compileFromCss", () => {
   });
 
   it("compiles New Architecture filter objects", () => {
-    registerStyles(
-      compileFromCss(
-        `
+    const artifact = compileFromCss(
+      `
           @theme { --blur-sm: 8px; --drop-shadow-lg: 0 4px 4px #00000026; }
           .blur-sm {
             --tw-blur: blur(var(--blur-sm));
@@ -210,10 +209,11 @@ describe("compileFromCss", () => {
           .hue-rotate-90 { filter: hue-rotate(90deg); }
           .backdrop-blur-sm { backdrop-filter: blur(8px); }
            .backdrop-brightness-125 { -webkit-backdrop-filter: brightness(125%); }
+          .frosted { filter: blur(4px); backdrop-filter: blur(8px); }
         `,
-        16,
-      ),
+      16,
     );
+    registerStyles(artifact);
 
     expect(resolveStyles("blur-sm", makeSnapshot()).styles).toEqual({
       filter: [{ blur: 8 }],
@@ -243,12 +243,30 @@ describe("compileFromCss", () => {
     expect(resolveStyles("[filter:blur(24px)]", makeSnapshot()).styles).toEqual(
       { filter: [{ blur: 24 }] },
     );
-    expect(resolveStyles("backdrop-blur-sm", makeSnapshot()).styles).toEqual({
-      filter: [{ blur: 8 }],
+    // backdrop-filter must NOT fold into RN's `filter` (that would filter the
+    // view's own content). It compiles to the `--nitrowind-backdrop-filter`
+    // marker, which stays out of resolved styles until native consumes it.
+    expect(artifact.classes["backdrop-blur-sm"]?.[0]?.style).toEqual({
+      "--nitrowind-backdrop-filter": [{ blur: 8 }],
     });
+    expect(artifact.classes["backdrop-brightness-125"]?.[0]?.style).toEqual({
+      "--nitrowind-backdrop-filter": [{ brightness: 1.25 }],
+    });
+    expect(resolveStyles("backdrop-blur-sm", makeSnapshot()).styles).toEqual(
+      {},
+    );
     expect(
       resolveStyles("backdrop-brightness-125", makeSnapshot()).styles,
-    ).toEqual({ filter: [{ brightness: 1.25 }] });
+    ).toEqual({});
+    // A rule carrying both keeps `filter` intact and routes backdrop-filter to
+    // the marker.
+    expect(artifact.classes["frosted"]?.[0]?.style).toEqual({
+      filter: [{ blur: 4 }],
+      "--nitrowind-backdrop-filter": [{ blur: 8 }],
+    });
+    expect(resolveStyles("frosted", makeSnapshot()).styles).toEqual({
+      filter: [{ blur: 4 }],
+    });
   });
 
   it("applies interactive pseudo variants only from component state", () => {

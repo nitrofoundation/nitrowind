@@ -23,6 +23,7 @@ type RootStackParamList = {
   Pseudo: undefined;
   Grid: undefined;
   Gradients: undefined;
+  Svg: undefined;
   Lists: undefined;
 };
 
@@ -111,6 +112,13 @@ const PAGES: Page[] = [
     subtitle: 'Native linear, radial & animated gradients',
     icon: '🌈',
     tile: 'bg-linear-to-br from-fuchsia-500 to-cyan-400',
+  },
+  {
+    route: 'Svg',
+    title: 'SVG',
+    subtitle: 'className-styled react-native-svg (fill-*, stroke-*)',
+    icon: '✎',
+    tile: 'bg-orange-500',
   },
   {
     route: 'Lists',

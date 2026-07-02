@@ -10,7 +10,7 @@ until every research doc below is `DONE` and reviewed.**_
 | 1 | `research/gradient-ios.md` | iOS | CAGradientLayer axial/radial, RCTLinearGradient/RCTRadialGradient, RCTBackgroundImageUtils sizing/clip | DONE |
 | 2 | `research/gradient-android.md` | Android | LinearGradient/RadialGradient Shader, GradientDrawable, rounded-corner clip | DONE |
 | 3 | `research/gradient-jscpp.md` | JS/C++ | descriptor from compiler fold, HybridView spec, View child render, Reanimated surface | DONE |
-| 4 | `research/grid.md` | JS/C++ | GridLayoutEngine API, LayoutObserver/LayoutMetrics hook, ShadowTreeMutator commit, remove onLayout | **IMPLEMENTED, pending build** |
+| 4 | `research/grid.md` | JS/C++ | GridLayoutEngine API, LayoutObserver/LayoutMetrics hook, ShadowTreeMutator commit, remove onLayout | **IMPLEMENTED + VERIFIED on device** |
 | 5 | `research/css-parser.md` | JS/C++ | RN react/renderer/css parsers → our own C++ value parser (oklch etc.) | DONE |
 | 6 | `research/virtualization-ios.md` | iOS | VirtualView hiding, RCTVirtualViewContainerState, offscreen hidden=YES | DONE |
 | 7 | `research/virtualization-android.md` | Android | VirtualViewContainerStateExperimental IntervalTree, ViewManager recycling | DONE |
@@ -33,6 +33,9 @@ Status values: `pending` → `researching` → `DONE` → `reviewed`.
    (`CSSColor`, `CSSFilter`, …) for supported types; build our own only for what RN lacks
    (`oklch/oklab/lab/lch/color()/color-mix()`). Replace our shims with RN's once RN adds them.
    JS "emit raw" + C++ "parse at commit" must land together; match culori's per-channel clip.
+   **FINALIZED (user):** keep build-time hex lowering (fastest — zero runtime parse cost); the C++
+   `nitrocss::css` parser (53/53 culori parity) natively handles anything raw at runtime. The full
+   "JS emits raw + drop culori" flip stays documented as an optional later move, not planned.
 4. **`nitrolist` → deferred, documented.** `display:none` visibility-commit for v1; separate future
    package. Consolidated in `docs/engine-v2/nitrolist.md`. Not built now.
 5. **Filters → hybrid, with the C++ parser.** RN prop for Android color-matrix + iOS
@@ -118,3 +121,20 @@ interop** (cssInterop + svg preset) can land anytime.
 - Reanimated is the animation engine for v2; `cxxNativeAnimatedEnabled` is a later adoption.
 - `nitrolist` is a separate package; docs 6–8 are its groundwork, not core.
 - Keep everything rename-agnostic (family rename is a later mechanical pass).
+
+## Implementation wave 1 — BUILT + VERIFIED (iOS simulator)
+- **Native grid**: C++ GridLayoutEngine wired (LayoutObserver → engine → ShadowTreeMutator);
+  verified on the Grid screen (columns/spans/gaps correct, absolute-committed, no reflow).
+- **Native gradient engine**: own Nitro HybridView (CAGradientLayer / Android Shader), numeric
+  descriptor fold (JS+C++), View renders GradientLayer child; **native theme commits verified** —
+  dark-mode switch re-colored `from-primary/to-danger` via the C++ GradientRegistry → generated
+  setters while the sweep animation kept running (no restart). `experimental_backgroundImage`
+  is gone. NOTE: ShadowTree RawProps commits crash on Nitro views (dynamic→jsi cast) — theme
+  commits drive the hybrid view's C++ setters instead (design change, documented in the agent
+  report; still zero JS re-render).
+- **C++ color parser**: `nitrocss::css` in the vendored build; 53/53 culori-parity fixtures.
+- **Interop**: `cssInterop` + `nitrowind/svg` verified on the SVG screen (fill/stroke/opacity
+  utilities hoisted onto svg props, theme tokens included).
+- Follow-ups: LogBox shows a warning pill on launch (triage), Android build/verify pending,
+  `enableNativeCSSParsing` flag can now be dropped from the example's feature-flags provider
+  (gradients no longer need it — verify other flags' usage first).

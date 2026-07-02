@@ -14,6 +14,7 @@
  * Authored in CommonJS because Metro loads transformers via `require`.
  */
 import path from "node:path";
+import { rewriteReactNativeImports } from "./rewriteImports";
 
 const upstreamPath = require.resolve(
   process.env.NITROWIND_UPSTREAM_TRANSFORMER || "metro-transform-worker",
@@ -124,25 +125,6 @@ const inputAbs = process.env.NITROWIND_INPUT
   ? path.resolve(process.env.NITROWIND_INPUT)
   : null;
 
-const STYLED_IMPORTS = new Set([
-  "ActivityIndicator",
-  "FlatList",
-  "Image",
-  "ImageBackground",
-  "KeyboardAvoidingView",
-  "Pressable",
-  "ScrollView",
-  "SectionList",
-  "Switch",
-  "Text",
-  "TextInput",
-  "TouchableHighlight",
-  "TouchableOpacity",
-  "View",
-]);
-
-const IMPORT_RE = /import\s+(\{[^;]*?\})\s+from\s+["']react-native["'];?/g;
-
 /** True when `filename` (relative to `projectRoot`) is the configured input. */
 function isStylesheet(projectRoot: string, filename: string): boolean {
   if (!inputAbs || !filename) return false;
@@ -160,37 +142,6 @@ function shouldRewriteReactNativeImports(filename: string): boolean {
     normalized.includes("/node_modules/") ||
     normalized.includes("/packages/nitrowind/")
   );
-}
-
-function rewriteReactNativeImports(source: string): string {
-  return source.replace(IMPORT_RE, (full, clause: string) => {
-    const named = clause.match(/\{([\s\S]*)\}/);
-    if (!named) return full;
-
-    const nitrowind: string[] = [];
-    const reactNative: string[] = [];
-
-    for (const rawSpecifier of (named[1] ?? "").split(",")) {
-      const specifier = rawSpecifier.trim();
-      if (!specifier) continue;
-      const isType = specifier.startsWith("type ");
-      const withoutType = isType ? specifier.slice(5).trim() : specifier;
-      const importedName = withoutType.split(/\s+as\s+/i)[0]?.trim();
-      if (!isType && importedName && STYLED_IMPORTS.has(importedName)) {
-        nitrowind.push(withoutType);
-      } else {
-        reactNative.push(specifier);
-      }
-    }
-
-    if (nitrowind.length === 0) return full;
-    const imports: string[] = [];
-    if (reactNative.length > 0) {
-      imports.push(`import { ${reactNative.join(", ")} } from "react-native";`);
-    }
-    imports.push(`import { ${nitrowind.join(", ")} } from "nitrowind";`);
-    return imports.join("\n");
-  });
 }
 
 async function transform(

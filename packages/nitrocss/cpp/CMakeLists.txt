@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(nitrocss STATIC
     NitroCssEngine.cpp
+    css/CssColor.cpp
 )
 
 target_include_directories(nitrocss PUBLIC

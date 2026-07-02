@@ -320,8 +320,8 @@ const collectCustomProps = (
 /**
  * True for declarations handled by the dedicated value parsers (transform,
  * box-shadow, filter, text-shadow, font-variant), every custom property, and
- * backdrop filters that map to RN's native `filter` prop. These are skipped by
- * the generic value loop.
+ * backdrop filters that compile to the `--nitrowind-backdrop-filter` marker
+ * (see parsers/filter.ts). These are skipped by the generic value loop.
  */
 const isParsedProp = (prop: string): boolean =>
   prop.startsWith("--") ||
@@ -382,8 +382,8 @@ export function parseStyles(
     const filter = extractFilter(rule.declarations, ruleResolve);
     if (filter !== undefined) Object.assign(style, filter);
     // Gradient utilities (`bg-linear-*`, `from-*`, `via-*`, `to-*`, `bg-radial`)
-    // compile to `--nw-gradient-*` marker props that fold into RN's native
-    // `experimental_backgroundImage` once every matching class has merged.
+    // compile to `--nw-gradient-*` marker props that fold into the compact
+    // numeric gradient descriptor once every matching class has merged.
     const gradient = extractGradient(rule.declarations, ruleResolve);
     if (gradient !== undefined) Object.assign(style, gradient);
     const textShadow = extractTextShadow(rule.declarations, ruleResolve);

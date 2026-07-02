@@ -170,14 +170,23 @@ function hasGroupMarker(className: string): boolean {
     .some((token) => token === "group" || token.startsWith("group/"));
 }
 
-function resolveGeneratedProps<P>(
+export function resolveGeneratedProps<P>(
   props: Record<string, unknown>,
   snapshot: RuntimeSnapshot,
   options?: WithNitrowindOptions<P>,
+  hostClassName?: string,
 ): Record<string, unknown> {
-  const source = props;
   const generated: Record<string, unknown> = {};
   const propOptions = propOptionsFor(options);
+
+  // The wrapper destructures `className` off the props before delegating here,
+  // so mappings that read `fromClassName: "className"` (e.g. the svg preset)
+  // receive it explicitly. Only the explicit-mapping branch may see it — the
+  // generic scan below must not, or it would re-apply `className` as `style`.
+  const source: Record<string, unknown> =
+    propOptions && hostClassName && props.className === undefined
+      ? { ...props, className: hostClassName }
+      : props;
 
   if (propOptions) {
     for (const [propName, option] of Object.entries(
@@ -190,7 +199,8 @@ function resolveGeneratedProps<P>(
       const resolved = resolveStyles(className, snapshot).styles;
       if (option.styleProperty) {
         if (source[propName] !== undefined) continue;
-        generated[propName] = resolved[option.styleProperty];
+        const value = resolved[option.styleProperty];
+        if (value !== undefined) generated[propName] = value;
         continue;
       }
 
@@ -350,8 +360,9 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
               rest as Record<string, unknown>,
               snapshot,
               options,
+              className,
             ),
-      [isWeb, rest, snapshot, options],
+      [className, isWeb, rest, snapshot, options],
     );
     const nativeAccents = useMemo<NativeAccentDescriptor[]>(
       () =>

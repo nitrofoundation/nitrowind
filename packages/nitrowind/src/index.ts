@@ -51,6 +51,13 @@ export type {
   WithNitrowindProps,
 } from "./hoc/withNitrowind";
 
+export { cssInterop } from "./hoc/cssInterop";
+export type {
+  CssInteropComponent,
+  CssInteropMapping,
+  CssInteropShorthandMapping,
+} from "./hoc/cssInterop";
+
 export { registerSerializedStyles, registerStyles } from "./core/registry";
 export { setNativeProps } from "./core/nativeProps";
 export type { NativeProps } from "./core/nativeProps";

@@ -1,6 +1,10 @@
 #include "NitroCssEngine.hpp"
+#include "css/CssColor.hpp"
 
 #include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <cstdlib>
 #include <folly/json.h>
 #include <regex>
 #include <sstream>
@@ -139,6 +143,42 @@ bool isUnsupportedNativeColorValue(const folly::dynamic& key,
 #endif
 }
 
+/**
+ * True for props whose (whole-string) value is a color: RN's native color
+ * props plus the marker props whose values get spliced into composite strings
+ * later in this file (`--nitrowind-shadow-color` into `boxShadow`,
+ * `--nw-gradient-from/via/to` into the gradient descriptor).
+ */
+bool isColorBearingProp(const folly::dynamic& key) {
+  if (isNativeColorProp(key)) return true;
+  if (!key.isString()) return false;
+  const auto& prop = key.getString();
+  return prop == "--nitrowind-shadow-color" || prop == "--nw-gradient-from" ||
+      prop == "--nw-gradient-via" || prop == "--nw-gradient-to";
+}
+
+/**
+ * Additive commit-time color lowering. If a color-bearing value still looks
+ * like a CSS color FUNCTION after var() substitution (rgb/hsl/hwb/oklch/
+ * oklab/lab/lch/color), lower it to hex with the culori-parity parser in
+ * cpp/css/ so native commits never carry the modern color functions RN's own
+ * parser drops (CSSColorFunction.h TODO T213000437). Hex and named colors are
+ * returned untouched — they already pass through natively — so first-paint /
+ * commit byte parity with the JS compiler's culori pre-lowering is preserved.
+ * Theme values are normally pre-lowered to hex at compile time (themes.ts
+ * normalizeThemeValue), which makes this a safety net for themes injected at
+ * runtime with raw modern colors, and the enabling step for the later
+ * "JS emits raw CSS" flip. Unparseable functions (color-mix, out-of-scope
+ * spaces) fall through unchanged to the existing platform handling.
+ */
+std::string lowerColorFunctionValue(const folly::dynamic& key,
+                                    const std::string& value) {
+  if (!isColorBearingProp(key)) return value;
+  if (!css::looksLikeColorFunction(value)) return value;
+  if (auto hex = css::parseColorToHex(value)) return *hex;
+  return value;
+}
+
 void normalizeShadow(folly::dynamic& style) {
   if (!style.isObject()) return;
   auto* marker = style.get_ptr("--nitrowind-shadow-color");
@@ -165,12 +205,121 @@ constexpr const char* kGradientProps[] = {
     "--nw-gradient-via-position",  "--nw-gradient-to-position",
 };
 
+double clamp01(double value) {
+  return value < 0.0 ? 0.0 : (value > 1.0 ? 1.0 : value);
+}
+
+/** Collapse runs of whitespace to single spaces, trim, and lowercase. */
+std::string normalizeKeywordString(const std::string& raw) {
+  std::string out;
+  out.reserve(raw.size());
+  bool pendingSpace = false;
+  for (char ch : raw) {
+    if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+      if (!out.empty()) pendingSpace = true;
+      continue;
+    }
+    if (pendingSpace) {
+      out += ' ';
+      pendingSpace = false;
+    }
+    out += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  return out;
+}
+
 /**
- * Assemble the merged `--nw-gradient-*` marker props into RN's native
- * `experimental_backgroundImage` string and erase the markers. Colors are
- * already lowered to hex (literals at compile time, theme `var()` substituted
- * above), so this is pure string composition. Mirrors the JS `foldGradient` so
- * a native theme-swap commit matches a JS-resolved style exactly.
+ * `"40%"` → `0.4`; bare numbers pass through (`"0.4"` → `0.4`). Mirrors the JS
+ * `parseStopLocation` in `src/compiler/parsers/gradient.ts` byte-for-byte.
+ */
+double parseStopLocation(const std::string& raw, double fallback) {
+  if (raw.empty()) return fallback;
+  const std::string trimmed = normalizeKeywordString(raw);
+  if (trimmed.empty()) return fallback;
+  const bool isPercent = trimmed.back() == '%';
+  char* end = nullptr;
+  const double num = std::strtod(trimmed.c_str(), &end);
+  if (end == trimmed.c_str()) return fallback;
+  return clamp01(isPercent ? num / 100.0 : num);
+}
+
+/**
+ * `--tw-gradient-position` → CSS angle in degrees for a LINEAR gradient.
+ * Keyword corners use the fixed 45°-diagonal table. Mirrors the JS
+ * `angleFromPosition` byte-for-byte.
+ */
+double angleFromPosition(const std::string& position) {
+  if (position.empty()) return 180.0;
+  const std::string normalized = normalizeKeywordString(position);
+  if (normalized == "to top") return 0.0;
+  if (normalized == "to top right" || normalized == "to right top") return 45.0;
+  if (normalized == "to right") return 90.0;
+  if (normalized == "to bottom right" || normalized == "to right bottom") return 135.0;
+  if (normalized == "to bottom") return 180.0;
+  if (normalized == "to bottom left" || normalized == "to left bottom") return 225.0;
+  if (normalized == "to left") return 270.0;
+  if (normalized == "to top left" || normalized == "to left top") return 315.0;
+  // `45deg` / bare number, mirroring JS `/^(-?\d*\.?\d+)(deg)?$/`.
+  std::string numeric = normalized;
+  if (numeric.size() > 3 && numeric.compare(numeric.size() - 3, 3, "deg") == 0) {
+    numeric = numeric.substr(0, numeric.size() - 3);
+  }
+  char* end = nullptr;
+  const double num = std::strtod(numeric.c_str(), &end);
+  if (end == nullptr || *end != '\0' || end == numeric.c_str()) return 180.0;
+  double angle = std::fmod(num, 360.0);
+  if (angle < 0.0) angle += 360.0;
+  return angle;
+}
+
+/**
+ * RADIAL `at <position>` clause → fractional center. Shape/size keywords are
+ * ignored (v1 renders `ellipse farthest-corner`). Mirrors the JS
+ * `radialCenterFromPosition` byte-for-byte.
+ */
+void radialCenterFromPosition(const std::string& position,
+                              double& outX,
+                              double& outY) {
+  outX = 0.5;
+  outY = 0.5;
+  if (position.empty()) return;
+  const std::string normalized = normalizeKeywordString(position);
+  const size_t at = normalized.find("at ");
+  if (at == std::string::npos) return;
+  std::string rest = normalized.substr(at + 3);
+  size_t index = 0;
+  size_t start = 0;
+  while (start <= rest.size() && index < 2) {
+    size_t space = rest.find(' ', start);
+    if (space == std::string::npos) space = rest.size();
+    const std::string token = rest.substr(start, space - start);
+    start = space + 1;
+    if (token.empty()) continue;
+    if (token == "left") outX = 0.0;
+    else if (token == "right") outX = 1.0;
+    else if (token == "top") outY = 0.0;
+    else if (token == "bottom") outY = 1.0;
+    else if (token == "center") { /* already 0.5 */ }
+    else if (token.back() == '%') {
+      char* end = nullptr;
+      const double num = std::strtod(token.c_str(), &end);
+      if (end != token.c_str()) {
+        if (index == 0) outX = clamp01(num / 100.0);
+        else outY = clamp01(num / 100.0);
+      }
+    }
+    index++;
+  }
+}
+
+/**
+ * Assemble the merged `--nw-gradient-*` marker props into the compact numeric
+ * gradient descriptor under `--nitrowind-gradient` and erase the markers.
+ * Colors are already lowered to hex (literals at compile time, theme `var()`
+ * substituted above). Mirrors the JS `foldGradient` (descriptor target) so a
+ * native theme-swap commit matches a JS-resolved style exactly. The engine's
+ * own Nitro `GradientView` consumes the descriptor verbatim — no CSS-string
+ * parsing at paint time.
  */
 void foldGradient(folly::dynamic& style) {
   if (!style.isObject()) return;
@@ -192,20 +341,33 @@ void foldGradient(folly::dynamic& style) {
 
   if (type != "linear" && type != "radial") return;
 
-  auto stop = [](const std::string& color, const std::string& fallbackColor,
-                 const std::string& pos, const std::string& fallbackPos) {
-    const std::string c = color.empty() ? fallbackColor : color;
-    const std::string p = pos.empty() ? fallbackPos : pos;
-    return p.empty() ? c : c + " " + p;
+  folly::dynamic colors = folly::dynamic::array;
+  folly::dynamic locations = folly::dynamic::array;
+  double previousLocation = 0.0;
+  auto push = [&](const std::string& color, double location) {
+    // CSS color-stop fixup: positions are monotonic non-decreasing.
+    if (location < previousLocation) location = previousLocation;
+    previousLocation = location;
+    colors.push_back(color);
+    locations.push_back(location);
   };
+  push(from.empty() ? "transparent" : from, parseStopLocation(fromPos, 0.0));
+  if (!via.empty()) push(via, parseStopLocation(viaPos, 0.5));
+  push(to.empty() ? "transparent" : to, parseStopLocation(toPos, 1.0));
 
-  std::string stops = stop(from, "transparent", fromPos, "0%");
-  if (!via.empty()) stops += ", " + stop(via, via, viaPos, "50%");
-  stops += ", " + stop(to, "transparent", toPos, "100%");
+  const bool isRadial = type == "radial";
+  double centerX = 0.5;
+  double centerY = 0.5;
+  if (isRadial) radialCenterFromPosition(position, centerX, centerY);
 
-  const std::string prelude = position.empty() ? "" : position + ", ";
-  style["experimental_backgroundImage"] =
-      type + "-gradient(" + prelude + stops + ")";
+  folly::dynamic descriptor = folly::dynamic::object();
+  descriptor["gradientType"] = type;
+  descriptor["angle"] = isRadial ? 0.0 : angleFromPosition(position);
+  descriptor["positionX"] = centerX;
+  descriptor["positionY"] = centerY;
+  descriptor["colors"] = std::move(colors);
+  descriptor["locations"] = std::move(locations);
+  style["--nitrowind-gradient"] = std::move(descriptor);
 }
 
 /** Parse a compiled `container` descriptor (`{ axis, op, value, name? }`). */
@@ -504,12 +666,18 @@ folly::dynamic NitroCssEngine::resolve(const std::string& className,
         if (value.isString()) {
           const std::string str = value.getString();
           if (str.find("var(") != std::string::npos) {
-            const std::string resolved = resolveVarsInString(str, vars);
+            const std::string resolved = lowerColorFunctionValue(
+                pair.first, resolveVarsInString(str, vars));
             if (isUnsupportedNativeColorValue(pair.first, resolved)) continue;
             style[pair.first] = resolved;
             continue;
           }
           if (isUnsupportedNativeColorValue(pair.first, str)) continue;
+          const std::string lowered = lowerColorFunctionValue(pair.first, str);
+          if (lowered != str) {
+            style[pair.first] = lowered;
+            continue;
+          }
         }
         style[pair.first] = value;
       }
@@ -519,6 +687,11 @@ folly::dynamic NitroCssEngine::resolve(const std::string& className,
   foldTransform(style);
   foldGradient(style);
   normalizeShadow(style);
+  // `backdrop-filter` compiles to this marker (src/compiler/parsers/filter.ts)
+  // so it never pollutes RN's `filter` prop; there is no native backdrop
+  // consumer yet, so keep it out of committed props. Mirrors the JS strip in
+  // src/core/normalize.ts.
+  style.erase("--nitrowind-backdrop-filter");
   return style;
 }
 

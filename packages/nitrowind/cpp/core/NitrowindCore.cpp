@@ -724,6 +724,10 @@ folly::dynamic NitrowindCore::resolveForNode(const LinkedNode& node,
     mergeFolly(style, *node.inlineStyle);
   }
   processColorProps(style);
+  // The folded gradient descriptor is consumed by the gradient child view
+  // (committed natively via the GradientRegistry), never by the owner's own
+  // props — strip it so commits carry only real RN props.
+  style.erase("--nitrowind-gradient");
   return style;
 }
 

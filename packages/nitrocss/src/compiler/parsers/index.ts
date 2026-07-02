@@ -11,12 +11,18 @@ export {
   type TransformAxis,
 } from "./transform";
 export { extractBoxShadow, isBoxShadowProp } from "./boxShadow";
-export { extractFilter, isFilterProp } from "./filter";
+export { BACKDROP_FILTER_PROP, extractFilter, isFilterProp } from "./filter";
 export {
+  angleFromPosition,
   extractGradient,
   foldGradient,
   isGradientProp,
+  parseStopLocation,
+  radialCenterFromPosition,
+  GRADIENT_DESCRIPTOR_PROP,
   GRADIENT_STYLE_PROPS,
+  type GradientDescriptor,
+  type GradientFoldTarget,
 } from "./gradient";
 export {
   extractTextShadow,

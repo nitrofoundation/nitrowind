@@ -103,6 +103,18 @@ describe("parseTransformString", () => {
       { translateX: -8 },
     ]);
   });
+
+  it("preserves percentage translates as strings", () => {
+    // Reanimated's CSS keyframe engine parses "%" strings as relative lengths
+    // (CSSLength.isRelative); collapsing to a number would silently turn
+    // translateX(-18%) into -18px.
+    expect(parseTransformString("translateX(-18%)", 16)).toEqual([
+      { translateX: "-18%" },
+    ]);
+    expect(
+      parseTransformString("translateY(25.5%) translateX(4px)", 16),
+    ).toEqual([{ translateY: "25.5%" }, { translateX: 4 }]);
+  });
 });
 
 describe("extractReanimatedVars", () => {
@@ -133,6 +145,23 @@ describe("extractKeyframes", () => {
         "0%": { transform: [{ rotate: "-3deg" }] },
         "100%": { transform: [{ rotate: "-3deg" }] },
         "50%": { transform: [{ rotate: "3deg" }] },
+      },
+    });
+  });
+
+  it("keeps percentage translates in keyframe transforms", () => {
+    // Tailwind's built-in `animate-bounce` uses translateY(-25%); the percent
+    // must survive into the keyframes instead of degrading to -25px.
+    const css = `
+      @keyframes slide {
+        0% { transform: translateX(-18%); }
+        100% { transform: translateX(0); }
+      }
+    `;
+    expect(extractKeyframes(css, 16)).toEqual({
+      slide: {
+        "0%": { transform: [{ translateX: "-18%" }] },
+        "100%": { transform: [{ translateX: 0 }] },
       },
     });
   });

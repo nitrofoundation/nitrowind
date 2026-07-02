@@ -14,9 +14,11 @@ interface Decl {
  * chain. Those tokens compile to *separate* class buckets in nitrowind, so the
  * pieces can only be reassembled once every matching class has merged — exactly
  * like the per-axis transform props. We therefore emit the atomic pieces as our
- * own `--nw-gradient-*` custom props and fold them into RN's native
- * `experimental_backgroundImage` at resolve time (see the runtime `foldGradient`
- * in `nitrowind/src/core/normalize.ts`, which delegates to {@link foldGradient}).
+ * own `--nw-gradient-*` custom props and fold them at resolve time into the
+ * compact numeric {@link GradientDescriptor} consumed by the engine's own
+ * native `GradientView` (see the runtime `foldGradient` in
+ * `nitrowind/src/core/normalize.ts`, which delegates to {@link foldGradient};
+ * web folds to a real CSS `backgroundImage` string instead).
  */
 export const GRADIENT_TYPE_PROP = "--nw-gradient-type";
 export const GRADIENT_POSITION_PROP = "--nw-gradient-position";
@@ -134,17 +136,149 @@ const stop = (color: string, position: string | undefined): string =>
   position ? `${color} ${position}` : color;
 
 /**
- * Assemble the merged `--nw-gradient-*` marker props into RN's native
- * `experimental_backgroundImage` string and delete the markers. Colors have
- * already been lowered to hex (literals at compile time, `var()` at resolve
- * time), so this is pure string composition. Mutates `style` in place.
- *
- * Runs once after every matching class has merged — the same reason
- * `foldTransform` runs late — so multi-class composition (`bg-linear-to-r`
- * + `from-*` + `to-*`) behaves like CSS: later stops win per slot, and the
- * `bg-*` type/position and the stops union into one gradient.
+ * The single resolved-style key carrying the folded gradient on native. The
+ * value is a compact NUMERIC descriptor (no CSS-string parsing at paint time):
+ * the engine's own Nitro `GradientView` consumes it verbatim, and the C++
+ * mirror fold in `nitrocss/cpp/NitroCssEngine.cpp` emits the identical object
+ * so native theme-swap commits match JS-resolved styles exactly.
  */
-export function foldGradient(style: RNStyle): void {
+export const GRADIENT_DESCRIPTOR_PROP = "--nitrowind-gradient";
+
+export interface GradientDescriptor {
+  gradientType: "linear" | "radial";
+  /**
+   * Linear sweep angle in CSS degrees (`0` = to top, `90` = to right,
+   * `180` = to bottom — the default when Tailwind gave no direction).
+   * `0` for radial gradients (unused).
+   */
+  angle: number;
+  /** Radial center as fractions of the box (`0..1`); `0.5, 0.5` when centered. */
+  positionX: number;
+  positionY: number;
+  /** Stop colors in order, already lowered to hex (or `transparent`). */
+  colors: string[];
+  /** Stop offsets `0..1`, monotonic, same length as `colors`. */
+  locations: number[];
+}
+
+/** Where the fold's output goes: native descriptor vs. web CSS string. */
+export type GradientFoldTarget = "descriptor" | "css";
+
+const clamp01 = (value: number): number =>
+  value < 0 ? 0 : value > 1 ? 1 : value;
+
+/**
+ * `"40%"` → `0.4`; bare numbers pass through (`"0.4"` → `0.4`). Falls back for
+ * anything unparseable. Mirrored byte-for-byte by the C++ fold.
+ */
+export function parseStopLocation(
+  raw: string | undefined,
+  fallback: number,
+): number {
+  if (!raw) return fallback;
+  const trimmed = raw.trim();
+  const isPercent = trimmed.endsWith("%");
+  const num = Number.parseFloat(trimmed);
+  if (Number.isNaN(num)) return fallback;
+  return clamp01(isPercent ? num / 100 : num);
+}
+
+/**
+ * Resolve Tailwind's `--tw-gradient-position` for a LINEAR gradient into a CSS
+ * angle in degrees. Keyword corners use the fixed 45°-diagonal table (the Lynx
+ * convention — aspect-ratio-exact corner targeting is a fidelity follow-up).
+ * Mirrored byte-for-byte by the C++ fold.
+ */
+export function angleFromPosition(position: string | undefined): number {
+  if (!position) return 180;
+  const normalized = position.trim().replace(/\s+/g, " ").toLowerCase();
+  switch (normalized) {
+    case "to top":
+      return 0;
+    case "to top right":
+    case "to right top":
+      return 45;
+    case "to right":
+      return 90;
+    case "to bottom right":
+    case "to right bottom":
+      return 135;
+    case "to bottom":
+      return 180;
+    case "to bottom left":
+    case "to left bottom":
+      return 225;
+    case "to left":
+      return 270;
+    case "to top left":
+    case "to left top":
+      return 315;
+  }
+  const match = /^(-?\d*\.?\d+)(deg)?$/.exec(normalized);
+  if (match) {
+    let angle = Number.parseFloat(match[1]!) % 360;
+    if (angle < 0) angle += 360;
+    return angle;
+  }
+  return 180;
+}
+
+/**
+ * Resolve a RADIAL gradient's `at <position>` clause into fractional center
+ * coordinates. Shape/size keywords before `at` are ignored (v1 renders the
+ * `ellipse farthest-corner` approximation). Mirrored byte-for-byte in C++.
+ */
+export function radialCenterFromPosition(position: string | undefined): {
+  x: number;
+  y: number;
+} {
+  let x = 0.5;
+  let y = 0.5;
+  if (!position) return { x, y };
+  const normalized = position.trim().replace(/\s+/g, " ").toLowerCase();
+  const at = normalized.indexOf("at ");
+  if (at < 0) return { x, y };
+  const tokens = normalized.slice(at + 3).split(" ");
+  for (let i = 0; i < tokens.length && i < 2; i++) {
+    const token = tokens[i]!;
+    if (token === "left") x = 0;
+    else if (token === "right") x = 1;
+    else if (token === "top") y = 0;
+    else if (token === "bottom") y = 1;
+    else if (token === "center") {
+      /* already 0.5 */
+    } else if (token.endsWith("%")) {
+      const num = Number.parseFloat(token);
+      if (!Number.isNaN(num)) {
+        if (i === 0) x = clamp01(num / 100);
+        else y = clamp01(num / 100);
+      }
+    }
+  }
+  return { x, y };
+}
+
+/**
+ * Assemble the merged `--nw-gradient-*` marker props and delete the markers.
+ * Mutates `style` in place.
+ *
+ * - `target === "descriptor"` (native): emits the compact numeric
+ *   {@link GradientDescriptor} under {@link GRADIENT_DESCRIPTOR_PROP}. The
+ *   `View` host strips it from the RN style and feeds it to the engine's own
+ *   Nitro `GradientView`; the C++ engine re-emits it on theme/scheme change.
+ * - `target === "css"` (web): emits a real CSS `backgroundImage` string so
+ *   non-Tailwind web consumers keep a browser-paintable gradient.
+ *
+ * Colors have already been lowered to hex (literals at compile time, `var()`
+ * at resolve time). Runs once after every matching class has merged — the same
+ * reason `foldTransform` runs late — so multi-class composition
+ * (`bg-linear-to-r` + `from-*` + `to-*`) behaves like CSS: later stops win per
+ * slot, and the `bg-*` type/position and the stops union into one gradient.
+ */
+export function foldGradient(
+  style: RNStyle,
+  target: GradientFoldTarget = "descriptor",
+): void {
   const type = asString(style[GRADIENT_TYPE_PROP]);
   const position = asString(style[GRADIENT_POSITION_PROP]);
   const from = asString(style[GRADIENT_FROM_PROP]);
@@ -158,10 +292,40 @@ export function foldGradient(style: RNStyle): void {
 
   if (type !== "linear" && type !== "radial") return;
 
-  const stops = [stop(from ?? "transparent", fromPosition ?? "0%")];
-  if (via) stops.push(stop(via, viaPosition ?? "50%"));
-  stops.push(stop(to ?? "transparent", toPosition ?? "100%"));
+  if (target === "css") {
+    const stops = [stop(from ?? "transparent", fromPosition ?? "0%")];
+    if (via) stops.push(stop(via, viaPosition ?? "50%"));
+    stops.push(stop(to ?? "transparent", toPosition ?? "100%"));
+    const prelude = position ? `${position}, ` : "";
+    style.backgroundImage = `${type}-gradient(${prelude}${stops.join(", ")})`;
+    return;
+  }
 
-  const prelude = position ? `${position}, ` : "";
-  style.experimental_backgroundImage = `${type}-gradient(${prelude}${stops.join(", ")})`;
+  const colors: string[] = [];
+  const locations: number[] = [];
+  const push = (color: string, location: number): void => {
+    // CSS color-stop fixup: positions are monotonic non-decreasing.
+    const previous = locations.length > 0 ? locations[locations.length - 1]! : 0;
+    colors.push(color);
+    locations.push(location < previous ? previous : location);
+  };
+  push(from ?? "transparent", parseStopLocation(fromPosition, 0));
+  if (via) push(via, parseStopLocation(viaPosition, 0.5));
+  push(to ?? "transparent", parseStopLocation(toPosition, 1));
+
+  const isRadial = type === "radial";
+  const center = isRadial
+    ? radialCenterFromPosition(position)
+    : { x: 0.5, y: 0.5 };
+
+  const descriptor: GradientDescriptor = {
+    gradientType: type,
+    angle: isRadial ? 0 : angleFromPosition(position),
+    positionX: center.x,
+    positionY: center.y,
+    colors,
+    locations,
+  };
+  style[GRADIENT_DESCRIPTOR_PROP] =
+    descriptor as unknown as RNStyle[string];
 }

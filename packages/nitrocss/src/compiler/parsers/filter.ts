@@ -109,24 +109,46 @@ function parseFilterList(filter: string): RNStyle["filter"] | undefined {
 }
 
 /**
+ * Marker prop carrying a rule's `backdrop-filter` as the same parsed
+ * filter-function array shape as RN's `filter`. RN has no backdrop-filter
+ * support, so the value must NOT be folded into the `filter` prop (that
+ * would filter the view's own content instead of what's behind it). The
+ * marker is kept out of committed RN styles (see `normalizeShadow` in
+ * src/core/normalize.ts and the native engine's resolve()) until a native
+ * backdrop consumer lands.
+ */
+export const BACKDROP_FILTER_PROP = "--nitrowind-backdrop-filter";
+
+/**
  * React Native New Architecture accepts `filter` as an array of filter function
  * objects. Tailwind emits filters as composed `--tw-*` variables, so compile
  * the resolved CSS functions to the native object form Fabric can consume.
+ * `backdrop-filter` declarations compile to the separate
+ * {@link BACKDROP_FILTER_PROP} marker instead of polluting `filter`.
  */
 export function extractFilter(
   declarations: ReadonlyArray<Decl>,
   resolveVar: VarResolver,
 ): RNStyle | undefined {
-  const raw = declarations.find(
-    (d) =>
-      d.prop === "filter" ||
-      d.prop === "backdrop-filter" ||
-      d.prop === "-webkit-backdrop-filter",
+  const out: RNStyle = {};
+
+  const rawFilter = declarations.find((d) => d.prop === "filter")?.value;
+  if (rawFilter !== undefined) {
+    const filter = normalizeFilter(resolveVars(rawFilter, resolveVar));
+    const parsed = filter ? parseFilterList(filter) : undefined;
+    if (parsed) out.filter = parsed;
+  }
+
+  const rawBackdrop = declarations.find(
+    (d) => d.prop === "backdrop-filter" || d.prop === "-webkit-backdrop-filter",
   )?.value;
-  if (raw === undefined) return undefined;
-  const filter = normalizeFilter(resolveVars(raw, resolveVar));
-  const parsed = filter ? parseFilterList(filter) : undefined;
-  return parsed ? { filter: parsed } : undefined;
+  if (rawBackdrop !== undefined) {
+    const backdrop = normalizeFilter(resolveVars(rawBackdrop, resolveVar));
+    const parsed = backdrop ? parseFilterList(backdrop) : undefined;
+    if (parsed) out[BACKDROP_FILTER_PROP] = parsed;
+  }
+
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 export const isFilterProp = (prop: string): boolean =>

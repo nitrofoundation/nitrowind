@@ -52,6 +52,18 @@
         "default": "./lib/commonjs/compiler/index.js"
       }
     },
+    "./svg": {
+      "source": "./src/svg/index.tsx",
+      "react-native": "./src/svg/index.tsx",
+      "import": {
+        "types": "./lib/typescript/module/svg/index.d.ts",
+        "default": "./lib/module/svg/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/svg/index.d.ts",
+        "default": "./lib/commonjs/svg/index.js"
+      }
+    },
     "./metro": {
       "source": "./src/metro/index.ts",
       "types": "./lib/typescript/commonjs/metro/index.d.ts",
@@ -92,10 +104,14 @@
     "react": ">=19.0.0",
     "react-native": ">=0.85.0",
     "react-native-nitro-modules": ">=0.35.0",
+    "react-native-svg": ">=15.0.0",
     "tailwindcss": ">=4.0.0"
   },
   "peerDependenciesMeta": {
     "react-native-reanimated": {
+      "optional": true
+    },
+    "react-native-svg": {
       "optional": true
     }
   },

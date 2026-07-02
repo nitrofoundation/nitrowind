@@ -1,13 +1,17 @@
 /**
  * Gradients — linear, radial and an animated linear gradient, all compiled from
  * Tailwind gradient utilities (`bg-linear-*`, `bg-radial*`, `from-*`, `via-*`,
- * `to-*`) into React Native's native `experimental_backgroundImage`. No
- * `react-native-linear-gradient` and no custom native view: nitrowind folds the
- * split `--tw-gradient-*` utilities into one native gradient at resolve time.
+ * `to-*`) into the engine's OWN native gradient view (a Nitro HybridView:
+ * CAGradientLayer on iOS, a Shader-painted View on Android). No
+ * `react-native-linear-gradient` and no `experimental_backgroundImage`:
+ * nitrowind folds the split `--tw-gradient-*` utilities into one compact
+ * numeric descriptor at resolve time, and theme/scheme changes re-commit the
+ * gradient colors NATIVELY from the C++ engine — no JS re-render.
  *
- * The animated tile can't interpolate a gradient string, so it spins an
- * oversized gradient layer via the `animate-gradient-spin` CSS keyframe (see
- * `global.css`) — the same Reanimated native CSS-animation path as `animate-*`.
+ * The animated tile can't interpolate a gradient's own geometry yet, so it
+ * sweeps an oversized gradient layer via the `animate-gradient-shift` CSS
+ * keyframe (see `global.css`) — the same Reanimated native CSS-animation path
+ * as `animate-*`.
  */
 import { Text, View } from 'nitrowind';
 
@@ -67,7 +71,7 @@ export default function Gradients() {
 
       <Section
         title="Linear"
-        subtitle="bg-linear-* direction + from/via/to stops → native experimental_backgroundImage."
+        subtitle="bg-linear-* direction + from/via/to stops → the engine's own native gradient view."
       >
         <View className="flex-row flex-wrap gap-4">
           {LINEAR.map((g) => (

@@ -47,6 +47,7 @@ export const extractReanimatedVars = (
 
 const TRANSFORM_FN_RE = /([a-zA-Z]+)\(([^)]*)\)/g;
 const ANGLE_RE = /^-?\d*\.?\d+(deg|rad|grad|turn)$/;
+const PERCENT_RE = /^[+-]?\d*\.?\d+%$/;
 const VAR_TOKEN_RE =
   /var\(\s*(--[A-Za-z0-9-_]+)\s*(?:,\s*([^()]*|var\([^)]*\)))?\s*\)/g;
 
@@ -190,7 +191,11 @@ export function parseTransformString(
     ) {
       out.push({ [fn]: ANGLE_RE.test(arg) ? arg : `${arg}deg` });
     } else if (fn === "translateX" || fn === "translateY") {
-      out.push({ [fn]: lengthToNumber(arg, rem) });
+      // Percentage translates must stay strings: Reanimated's CSS keyframe
+      // engine parses a trailing "%" as a relative length (CSSLength
+      // isRelative), while collapsing to a number would silently reinterpret
+      // `translateX(-18%)` as -18px. Absolute lengths still lower to px.
+      out.push({ [fn]: PERCENT_RE.test(arg) ? arg : lengthToNumber(arg, rem) });
     } else if (fn === "scaleX" || fn === "scaleY" || fn === "scale") {
       out.push({ [fn]: Number.parseFloat(arg) });
     } else if (fn === "perspective") {
