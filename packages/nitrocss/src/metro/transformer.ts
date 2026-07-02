@@ -18,7 +18,6 @@
  * Authored in CommonJS because Metro loads transformers via `require`.
  */
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { rewriteReactNativeImports } from "./rewriteImports";
 
 /** Options handed to the pipeline (mirrors the `withNitroCssMetroConfig` env). */
@@ -86,18 +85,24 @@ let bootstrapPromise: Promise<string> | null = null;
 let candidateSignature: string | null = null;
 
 /**
- * Load the configured pipeline module. A dynamic `import()` of a `file://` URL
- * keeps (possibly ESM-only) toolchains out of Metro's synchronous require
- * graph and works for both CJS and ESM pipeline modules.
+ * Load the configured pipeline module. Metro workers require() this
+ * transformer as CommonJS, and Babel rewrites dynamic `import()` in the CJS
+ * build to `require()` — which cannot load `file://` URLs. Pipeline modules
+ * are published CJS-only (see the `./metro/pipeline` exports), so a plain
+ * absolute-path require is both correct and worker-safe.
  */
 function loadPipeline(): Promise<NitroCssPipeline> {
   if (pipelinePromise) return pipelinePromise;
   const pipelinePath =
     process.env.NITROCSS_PIPELINE ?? require.resolve("./pipeline");
-  pipelinePromise = import(pathToFileURL(pipelinePath).href).then(
-    // CJS pipelines surface their exports under `default`; ESM ones directly.
-    (mod) => (mod.scan ? mod : mod.default) as NitroCssPipeline,
-  );
+  pipelinePromise = Promise.resolve().then(() => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require(pipelinePath) as
+      | NitroCssPipeline
+      | { default: NitroCssPipeline };
+    // CJS interop: transpiled pipelines surface their exports under `default`.
+    return "scan" in mod ? mod : mod.default;
+  });
   return pipelinePromise;
 }
 
