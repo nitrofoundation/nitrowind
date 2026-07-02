@@ -361,7 +361,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
    * mount transaction re-triggers us anyway, so a couple of retries only cover
    * the "static screen, nothing else commits" window.
    */
-  NSInteger _retriesLeft;
+  std::atomic<NSInteger> _retriesLeft;
 }
 
 + (instancetype)shared {
@@ -397,6 +397,12 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 }
 
 - (void)setNeedsFlush {
+  // Every fresh signal (new descriptor, theme recompute, mount transaction)
+  // replenishes the first-paint retry budget. Without this, the startup burst
+  // (descriptors registering before anything is mounted) exhausts the budget,
+  // and a final flush racing ahead of main-queue view creation would leave the
+  // screen gradient-less with nothing left to re-trigger it.
+  _retriesLeft.store(5);
   bool expected = false;
   if (!_flushScheduled.compare_exchange_strong(expected, true)) return;
   // Lynx-style coalescing: N invalidations between now and the main-queue turn
@@ -457,9 +463,9 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   [CATransaction commit];
 
   if (!anyMissing) {
-    _retriesLeft = 3;
-  } else if (_retriesLeft > 0) {
-    _retriesLeft -= 1;
+    _retriesLeft.store(5);
+  } else if (_retriesLeft.load() > 0) {
+    _retriesLeft.fetch_sub(1);
     __weak NitrowindGradientApplier *weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
