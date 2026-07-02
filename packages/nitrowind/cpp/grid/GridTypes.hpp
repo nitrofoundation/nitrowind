@@ -41,4 +41,21 @@ struct GridOutput {
   double height = 0.0;
 };
 
+/**
+ * A grid container's parsed config, serialized once in JS (grid.tsx) and stored
+ * in the engine at link time. `items` holds one placement per grid-item child,
+ * in child order; the layout layer zips them positionally with the measured
+ * child families. `paddingHorizontal` is subtracted from the measured container
+ * width before the tracks are resolved (mirrors JS `calculateGridContentWidth`).
+ */
+struct GridConfig {
+  std::vector<Track> columns;
+  std::vector<Track> rows;
+  Track autoRow{TrackType::Px, 64.0};
+  double columnGap = 0.0;
+  double rowGap = 0.0;
+  double paddingHorizontal = 0.0;
+  std::vector<Placement> items;
+};
+
 } // namespace nitrowind::grid

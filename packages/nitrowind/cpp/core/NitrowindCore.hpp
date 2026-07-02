@@ -2,6 +2,7 @@
 
 #include "RuntimeState.hpp"
 #include "StyleEngine.hpp"
+#include "../grid/GridTypes.hpp"
 #include "../registry/DependencyIndex.hpp"
 
 #include <cstdint>
@@ -45,6 +46,19 @@ public:
   struct StructuralPseudoState {
     bool first = false;
     bool last = false;
+  };
+
+  /**
+   * One grid container's post-layout snapshot, reported by the layout observer:
+   * its measured width plus the ordered families of its grid-item children (and
+   * its own family, for committing the computed container height).
+   */
+  struct GridMeasurement {
+    facebook::react::Tag tag = 0;
+    facebook::react::ShadowNodeFamily::Shared family; // the container itself
+    facebook::react::SurfaceId surfaceId = 0;
+    double width = 0.0;
+    std::vector<facebook::react::ShadowNodeFamily::Shared> childFamilies;
   };
 
   static NitrowindCore& shared();
@@ -108,6 +122,17 @@ public:
       const std::unordered_map<facebook::react::Tag, StructuralPseudoState>& stateByTag,
       bool forceRecompute = false);
 
+  /**
+   * Native CSS grid. Driven by the layout observer once a tree is mounted: for
+   * every registered grid container it runs {@link grid::GridLayoutEngine} over
+   * the stored config + measured width and commits each item's absolute frame
+   * (and the container's computed height) straight into the ShadowTree — no JS
+   * round-trip, no re-render. Gated on measured-width change per container so the
+   * follow-up commit converges in a single frame and never loops.
+   */
+  void syncGrids(const std::vector<GridMeasurement>& measurements,
+                 bool forceRecompute = false);
+
   /** Update one group root's interactive state and recompute group descendants. */
   void setGroupState(facebook::react::Tag groupTag, GroupState state);
 
@@ -131,6 +156,9 @@ public:
 
   /** Snapshot of every node with first:/last: structural pseudo variants. */
   std::unordered_set<facebook::react::Tag> structuralPseudoTags() const;
+
+  /** Snapshot of every registered grid container's tag. */
+  std::unordered_set<facebook::react::Tag> gridTags() const;
 
   // --- Recompute -----------------------------------------------------------
   void recompute(uint32_t changedMask);
@@ -171,6 +199,13 @@ private:
 
   mutable std::mutex structuralMutex_;
   std::unordered_set<facebook::react::Tag> structuralPseudoTags_;
+
+  // Grid containers: parsed config + last measured width (the commit gate),
+  // keyed by the container's Fabric tag. Written from `link` (config) and
+  // `syncGrids` (width), read by the layout observer.
+  mutable std::mutex gridMutex_;
+  std::unordered_map<facebook::react::Tag, grid::GridConfig> gridConfigs_;
+  std::unordered_map<facebook::react::Tag, double> gridLastWidth_;
 
   std::mutex listenerMutex_;
   std::unordered_map<int, DependencyListener> dependencyListeners_;

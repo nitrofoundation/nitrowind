@@ -10,7 +10,7 @@ until every research doc below is `DONE` and reviewed.**_
 | 1 | `research/gradient-ios.md` | iOS | CAGradientLayer axial/radial, RCTLinearGradient/RCTRadialGradient, RCTBackgroundImageUtils sizing/clip | DONE |
 | 2 | `research/gradient-android.md` | Android | LinearGradient/RadialGradient Shader, GradientDrawable, rounded-corner clip | DONE |
 | 3 | `research/gradient-jscpp.md` | JS/C++ | descriptor from compiler fold, HybridView spec, View child render, Reanimated surface | DONE |
-| 4 | `research/grid.md` | JS/C++ | GridLayoutEngine API, LayoutObserver/LayoutMetrics hook, ShadowTreeMutator commit, remove onLayout | DONE |
+| 4 | `research/grid.md` | JS/C++ | GridLayoutEngine API, LayoutObserver/LayoutMetrics hook, ShadowTreeMutator commit, remove onLayout | **IMPLEMENTED, pending build** |
 | 5 | `research/css-parser.md` | JS/C++ | RN react/renderer/css parsers → our own C++ value parser (oklch etc.) | DONE |
 | 6 | `research/virtualization-ios.md` | iOS | VirtualView hiding, RCTVirtualViewContainerState, offscreen hidden=YES | DONE |
 | 7 | `research/virtualization-android.md` | Android | VirtualViewContainerStateExperimental IntervalTree, ViewManager recycling | DONE |
@@ -85,13 +85,34 @@ sequenced (shared files), built + verified between.
 ## Known bugs surfaced (fix regardless of v2 direction)
 - `%`-drop in transform keyframes: `translateX(-18%)` → `-18` px (`parsers/animations.ts` lengthToNumber has no `%` branch).
 - Theme toggle can restart running animations: memoize `animationName`/entering by animation identity, not by `snapshot`.
-- Grid `offsetFor` probable off-by-one (C++ engine never executed).
+- ~~Grid `offsetFor` probable off-by-one (C++ engine never executed).~~ **FIXED** — `offsetFor`
+  under-counted gaps by one (`start - 1` instead of `start`); confirmed against the JS
+  `templateOffset` oracle and corrected. Container-height calc switched to a new `tracksExtent`
+  helper (which keeps `count - 1` gaps). Parity harness: `packages/nitrowind/cpptests/grid_layout_test.cpp`.
 - `backdrop-filter` wrongly folded into `filter`.
 
 ## Recommended build order (unchanged, now evidence-backed)
 1. **Grid wiring** (bounded; engine exists) → 2. **Gradient HybridView** (3 platform docs ready) →
 3. **C++ CSS value parser** → 4. **`nitrolist`** (separate package). Cross-cutting: **universal
 interop** (cssInterop + svg preset) can land anytime.
+
+## Grid implementation notes (task 1 — native grid)
+- **Transport reuses the existing `link` path (no Nitro spec change / no codegen).** The JS
+  serializer (`serializeGridConfig` in `grid.tsx`) emits the config and it rides on the inline-style
+  `FollyStyle` under the reserved key `__nitrowindGrid`; `NitrowindCore::link` extracts it into a
+  `gridConfigs_` registry and strips the key before commit. This avoided regenerating
+  `HybridShadowRegistrySpec` (nitrogen not run).
+- **Flow:** `View`/`withNitrowind` serialize → `link` stores config + `LayoutObserver::remeasure()` →
+  observer `walk` reads the container's `frame.size.width` + ordered child families → `syncGrids`
+  runs `GridLayoutEngine::layout` → commits each item `{position:absolute,left,top,width,height}` +
+  the container `{height}` via `ShadowTreeMutator`. Gated on measured-width change (`gridLastWidth_`)
+  so it converges in one frame like container queries. JS `useGridFallback` reflow now runs ONLY on
+  web or native-without-engine (`canNativeGridLayout` gate).
+- **Limitations (v1, TODO):** C++ `Track` has no `%`/`minmax` → `%` columns fall back to JS, `%` rows
+  and `auto`/`min-content`/`max-content` tracks degrade (no item measurement); RTL x is not mirrored;
+  item↔child correspondence is positional (JS valid-element children ↔ C++ Layoutable children).
+- **Re-vendor:** none. `cpp/grid/*` is already globbed by the podspec/CMake; only new `syncGrids`/
+  registry code + the `GridLayoutEngine.hpp` include in `NitrowindCore.cpp` were added.
 
 ## Notes
 - Reanimated is the animation engine for v2; `cxxNativeAnimatedEnabled` is a later adoption.

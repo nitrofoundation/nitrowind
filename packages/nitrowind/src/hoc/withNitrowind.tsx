@@ -22,7 +22,7 @@ import {
   ContainerProvider,
   useContainer,
 } from "../components/containerContext";
-import { useGridFallback } from "../components/grid";
+import { serializeGridConfig, useGridFallback } from "../components/grid";
 import type { NativeAccentDescriptor } from "../components/internal";
 import {
   setNativeComponentStateForNode,
@@ -365,6 +365,21 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
             ),
       [className, isWeb, native, rest, snapshot, options],
     );
+    // Native grid config for grid-container wrappers (Stacks, etc.); `undefined`
+    // on web / non-grids / grids the native engine can't handle.
+    const gridConfig = useMemo(
+      () =>
+        isWeb
+          ? undefined
+          : serializeGridConfig(
+              className,
+              children,
+              typeof style === "function"
+                ? undefined
+                : (style as StyleProp<ViewStyle>),
+            ),
+      [isWeb, className, children, style],
+    );
     const ref = useLinkedRef<unknown>(
       className,
       componentName,
@@ -377,6 +392,7 @@ export function withNitrowind<P extends { style?: StyleProp<unknown> }>(
         nativeHandleRef.current = handle;
       }, []),
       typeof style === "function" ? undefined : style,
+      gridConfig,
     );
 
     const {

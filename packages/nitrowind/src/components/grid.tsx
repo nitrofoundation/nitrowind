@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
 import { Platform, StyleSheet } from "react-native";
+import { hasNativeEngine } from "../core/native";
 
 const GRID_COLS_RE = /(?:^|\s)grid-cols-(\d+)(?:\s|$)/;
 const GRID_COLS_TEMPLATE_RE = /(?:^|\s)grid-cols-\[([^\]]+)\](?:\s|$)/;
@@ -53,6 +54,41 @@ type AreaPlacement = {
   columnSpan: number;
   rowStart: number;
   rowSpan: number;
+};
+
+/**
+ * A track serialized down to the native `grid::TrackType` shape (Fr | Px |
+ * Auto). The richer JS `Track` (percent, minmax `min`, content `auto`) has no
+ * native equivalent, so `%` columns disable the native path (see
+ * `serializeGridTrack`) and rows/`auto` degrade — the JS fallback handles the
+ * lossy cases.
+ */
+export type SerializedGridTrack = {
+  type: "fr" | "px" | "auto";
+  value: number;
+};
+
+/** A grid-item placement, 1-based with `0` meaning auto-flow (native `Placement`). */
+export type SerializedGridPlacement = {
+  columnStart: number;
+  columnSpan: number;
+  rowStart: number;
+  rowSpan: number;
+};
+
+/**
+ * The per-grid-container payload handed to the C++ engine at link time. Item
+ * placements travel in child order and are zipped positionally with the measured
+ * child families in the layout observer.
+ */
+export type SerializedGridConfig = {
+  columns: SerializedGridTrack[];
+  rows: SerializedGridTrack[];
+  autoRow: SerializedGridTrack;
+  columnGap: number;
+  rowGap: number;
+  paddingHorizontal: number;
+  items: SerializedGridPlacement[];
 };
 
 function classNameOf(props: unknown): string | undefined {
@@ -626,6 +662,172 @@ export function calculateGridFallbackWidth({
   return track * clampedSpan + safeGap * (clampedSpan - 1);
 }
 
+/** Engine default implicit-row size (matches `grid::GridInput::autoRow` = 64px). */
+const DEFAULT_AUTO_ROW = 64;
+
+/**
+ * Resolve a grid container's explicit column tracks: an arbitrary column
+ * template, else the `grid-template` shorthand columns, else `grid-cols-N`
+ * expanded to N equal `fr` tracks. Returns `undefined` when the column count is
+ * unknown (e.g. `auto-cols-*` only), in which case native layout is impossible
+ * and the JS fallback owns the grid.
+ */
+function resolveGridColumns(parentClassName: string): Track[] | undefined {
+  const gridTemplate = gridTemplateFor(parentClassName);
+  const shorthandColumns = gridTemplate?.columns.length
+    ? gridTemplate.columns
+    : undefined;
+  const columnTemplate = columnTemplateFor(parentClassName) ?? shorthandColumns;
+  if (columnTemplate && columnTemplate.length > 0) return columnTemplate;
+  const columns = columnsFor(parentClassName);
+  if (columns) {
+    return Array.from(
+      { length: columns },
+      () => ({ kind: "fr", value: 1 }) as Track,
+    );
+  }
+  return undefined;
+}
+
+/**
+ * Map a JS `Track` down to the native `SerializedGridTrack`. Returns `undefined`
+ * for a `percent` **column** (no native `TrackType`), which disables native
+ * layout for the whole grid; percent **rows** degrade to `auto` (native rows are
+ * resolved against a zero available size anyway).
+ */
+function serializeGridTrack(
+  track: Track,
+  axis: "column" | "row",
+): SerializedGridTrack | undefined {
+  switch (track.kind) {
+    case "fixed":
+      return { type: "px", value: track.value };
+    case "fr":
+      return { type: "fr", value: track.value };
+    case "auto":
+      return typeof track.min === "number"
+        ? { type: "px", value: track.min }
+        : { type: "auto", value: 0 };
+    case "percent":
+      return axis === "column" ? undefined : { type: "auto", value: 0 };
+  }
+}
+
+function serializeAutoRow(parentClassName: string): SerializedGridTrack {
+  const value = autoRowsFor(parentClassName);
+  if (!value) return { type: "px", value: DEFAULT_AUTO_ROW };
+  const track = parseTrack(value);
+  const serialized = track ? serializeGridTrack(track, "row") : undefined;
+  // Implicit rows must be a concrete size — `fr`/content `auto` rows collapse to
+  // 0 natively, so fall back to the engine's default row size. `min-content`/
+  // `max-content` (`auto-rows-min`/`-max`) need item measurement the engine
+  // can't do; they degrade here too. TODO: two-pass measure for content rows.
+  if (!serialized || serialized.type !== "px") {
+    return { type: "px", value: DEFAULT_AUTO_ROW };
+  }
+  return serialized;
+}
+
+function serializeGridItems(
+  children: React.ReactNode,
+  parentClassName: string,
+): SerializedGridPlacement[] {
+  const gridTemplate = gridTemplateFor(parentClassName);
+  const areas = areaPlacements(gridTemplate?.areas);
+  let autoAreaIndex = 0;
+  const items: SerializedGridPlacement[] = [];
+  Children.toArray(children).forEach((child) => {
+    if (!isValidElement(child)) return;
+    const className = classNameOf(child.props) ?? "";
+    const span = spanFor(className);
+    const explicitArea = areaFor(className);
+    const areaName = explicitArea ?? areas.order[autoAreaIndex];
+    const placement = areaName ? areas.placements.get(areaName) : undefined;
+    if (placement && !explicitArea) autoAreaIndex += 1;
+    if (placement) {
+      // JS area placements are 0-based; native `Placement` is 1-based (0 = auto).
+      items.push({
+        columnStart: placement.columnStart + 1,
+        columnSpan: placement.columnSpan,
+        rowStart: placement.rowStart + 1,
+        rowSpan: placement.rowSpan,
+      });
+    } else {
+      items.push({ columnStart: 0, columnSpan: span, rowStart: 0, rowSpan: 1 });
+    }
+  });
+  return items;
+}
+
+/**
+ * True when the native C++ grid engine can lay this container out: it is a
+ * `grid` with resolvable columns and no `%` columns. Used to gate the JS
+ * `onLayout` fallback off on native-with-engine builds. Does not need the
+ * children, so it is cheap to call from the render body.
+ */
+export function canNativeGridLayout(parentClassName: string): boolean {
+  if (Platform.OS === "web") return false;
+  if (!/(?:^|\s)grid(?:\s|$)/.test(parentClassName)) return false;
+  if (!hasGridFallbackTracks(parentClassName)) return false;
+  const columns = resolveGridColumns(parentClassName);
+  if (!columns || columns.length === 0) return false;
+  return columns.every(
+    (track) => serializeGridTrack(track, "column") !== undefined,
+  );
+}
+
+/**
+ * Serialize a grid container's full config (tracks, gaps, padding, per-item
+ * placements) into the native `SerializedGridConfig`, or `undefined` when native
+ * layout is not possible (web / not a grid / unresolvable or `%` columns). The
+ * engine reads this once at link time and lays the grid out from the measured
+ * container width, so there is no `onLayout` → `setState` → re-render reflow.
+ */
+export function serializeGridConfig(
+  parentClassName: string,
+  children: React.ReactNode,
+  parentStyle?: StyleProp<ViewStyle>,
+): SerializedGridConfig | undefined {
+  if (!canNativeGridLayout(parentClassName)) return undefined;
+  const columnTracks = resolveGridColumns(parentClassName);
+  if (!columnTracks) return undefined;
+  const columns: SerializedGridTrack[] = [];
+  for (const track of columnTracks) {
+    const serialized = serializeGridTrack(track, "column");
+    if (!serialized) return undefined;
+    columns.push(serialized);
+  }
+
+  const gridTemplate = gridTemplateFor(parentClassName);
+  const shorthandRows = gridTemplate?.rows.length
+    ? gridTemplate.rows
+    : undefined;
+  const rowTemplate = rowTemplateFor(parentClassName) ?? shorthandRows;
+  const rows: SerializedGridTrack[] = [];
+  if (rowTemplate) {
+    for (const track of rowTemplate) {
+      const serialized = serializeGridTrack(track, "row");
+      if (serialized) rows.push(serialized);
+    }
+  }
+
+  const gap = gapFor(parentClassName);
+  const paddingHorizontal = Math.max(
+    horizontalPadding(parentStyle),
+    horizontalPaddingClassName(parentClassName),
+  );
+
+  return {
+    columns,
+    rows,
+    autoRow: serializeAutoRow(parentClassName),
+    columnGap: gap,
+    rowGap: gap,
+    paddingHorizontal,
+    items: serializeGridItems(children, parentClassName),
+  };
+}
+
 export function withGridFallback(
   children: React.ReactNode,
   parentClassName: string,
@@ -754,8 +956,20 @@ export function useGridFallback(
   onLayout?: (event: LayoutChangeEvent) => void;
 } {
   const isGrid = /(?:^|\s)grid(?:\s|$)/.test(parentClassName);
+  // On native with the C++ engine present, grid layout is committed straight
+  // into the ShadowTree from the measured container width (no re-render). The JS
+  // `onLayout` → `setState` → re-render fallback is kept ONLY for web and for
+  // native builds with no engine (old arch / engine disabled).
+  const nativeHandlesGrid =
+    Platform.OS !== "web" &&
+    hasNativeEngine() &&
+    isGrid &&
+    canNativeGridLayout(parentClassName);
   const enabled =
-    Platform.OS !== "web" && isGrid && hasGridFallbackTracks(parentClassName);
+    Platform.OS !== "web" &&
+    isGrid &&
+    hasGridFallbackTracks(parentClassName) &&
+    !nativeHandlesGrid;
   const [containerWidth, setContainerWidth] = useState(0);
   const handleLayout = useCallback(
     (event: LayoutChangeEvent) => {

@@ -50,10 +50,12 @@ void walk(const ShadowNode& node,
           const std::unordered_set<Tag>& structuralPseudoTags,
           const std::unordered_set<Tag>& queryTags,
           const std::unordered_set<Tag>& groupDependentTags,
+          const std::unordered_set<Tag>& gridTags,
           std::vector<NitrowindCore::ContainerMeasurement>& measurements,
           std::unordered_map<Tag, Tag>& nodeToContainer,
           std::unordered_map<Tag, Tag>& nodeToGroup,
-          std::unordered_map<Tag, NitrowindCore::StructuralPseudoState>& structuralState) {
+          std::unordered_map<Tag, NitrowindCore::StructuralPseudoState>& structuralState,
+          std::vector<NitrowindCore::GridMeasurement>& gridMeasurements) {
   const Tag tag = node.getTag();
 
   // Bind this query node to the nearest container found above it.
@@ -84,6 +86,28 @@ void walk(const ShadowNode& node,
     childNearestGroup = tag;
   }
 
+  // Native grid: measure the container's content width and collect its grid-item
+  // children (in tree order) so the engine can lay them out and commit absolute
+  // frames. Placements travel positionally with these families (see grid.tsx).
+  if (gridTags.find(tag) != gridTags.end()) {
+    if (auto* layoutable = dynamic_cast<const LayoutableShadowNode*>(&node)) {
+      NitrowindCore::GridMeasurement measurement;
+      measurement.tag = tag;
+      measurement.family = node.getFamilyShared();
+      measurement.surfaceId = node.getSurfaceId();
+      measurement.width =
+          static_cast<double>(layoutable->getLayoutMetrics().frame.size.width);
+      for (const auto& child : node.getChildren()) {
+        if (child == nullptr) continue;
+        if (dynamic_cast<const LayoutableShadowNode*>(child.get()) == nullptr) {
+          continue;
+        }
+        measurement.childFamilies.push_back(child->getFamilyShared());
+      }
+      gridMeasurements.push_back(std::move(measurement));
+    }
+  }
+
   std::vector<Tag> linkedChildTags;
   for (const auto& child : node.getChildren()) {
     if (child == nullptr) continue;
@@ -105,7 +129,8 @@ void walk(const ShadowNode& node,
     if (child != nullptr) {
       walk(*child, childNearest, childNearestGroup, containers, groups,
            linkedTags, structuralPseudoTags, queryTags, groupDependentTags,
-           measurements, nodeToContainer, nodeToGroup, structuralState);
+           gridTags, measurements, nodeToContainer, nodeToGroup, structuralState,
+           gridMeasurements);
     }
   }
 }
@@ -120,7 +145,9 @@ void measureAndSync(const ShadowNode& root, bool forceRecompute) {
   const auto containers = core.containerTags();
   const auto groups = core.groupTags();
     const auto structuralPseudoTags = core.structuralPseudoTags();
-    if (containers.empty() && groups.empty() && structuralPseudoTags.empty()) return;
+    const auto gridTags = core.gridTags();
+    if (containers.empty() && groups.empty() && structuralPseudoTags.empty() &&
+        gridTags.empty()) return;
   const auto queryTags = core.containerQueryTags();
   const auto groupDependentTags = core.groupDependentTags();
     const auto linkedTags = core.linkedTags();
@@ -129,9 +156,11 @@ void measureAndSync(const ShadowNode& root, bool forceRecompute) {
   std::unordered_map<Tag, Tag> nodeToContainer;
   std::unordered_map<Tag, Tag> nodeToGroup;
     std::unordered_map<Tag, NitrowindCore::StructuralPseudoState> structuralState;
+    std::vector<NitrowindCore::GridMeasurement> gridMeasurements;
   walk(root, /*nearestContainer=*/0, /*nearestGroup=*/0, containers, groups,
       linkedTags, structuralPseudoTags, queryTags, groupDependentTags,
-      measurements, nodeToContainer, nodeToGroup, structuralState);
+      gridTags, measurements, nodeToContainer, nodeToGroup, structuralState,
+      gridMeasurements);
 
   if (!measurements.empty() || !nodeToContainer.empty()) {
     core.syncContainers(measurements, nodeToContainer, forceRecompute);
@@ -141,6 +170,9 @@ void measureAndSync(const ShadowNode& root, bool forceRecompute) {
   }
   if (!structuralState.empty()) {
     core.syncStructuralPseudos(structuralState, forceRecompute);
+  }
+  if (!gridMeasurements.empty()) {
+    core.syncGrids(gridMeasurements, forceRecompute);
   }
 }
 
@@ -170,7 +202,7 @@ void LayoutObserver::remeasure() noexcept {
     // uses no container queries.
     auto& core = NitrowindCore::shared();
     if (core.containerTags().empty() && core.groupTags().empty() &&
-      core.structuralPseudoTags().empty()) return;
+      core.structuralPseudoTags().empty() && core.gridTags().empty()) return;
 
     uiManager_->getShadowTreeRegistry().enumerate(
         [](const ShadowTree& shadowTree, bool& /*stop*/) {

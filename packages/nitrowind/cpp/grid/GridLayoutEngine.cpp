@@ -55,13 +55,33 @@ std::vector<double> resolveTracks(
   return out;
 }
 
+// Offset of the `start`-th track's leading edge: the sum of all preceding track
+// sizes plus one gap *between* each of them and before the target track. There
+// are exactly `start` gaps before track `start` (one after each of the `start`
+// preceding tracks). This mirrors the JS `templateOffset` (grid.tsx), which adds
+// `gap * start`. The previous implementation added the gap only `start - 1`
+// times (`if (i + 1 < start)`), under-counting by one gap for every item's x/y —
+// a bug that never surfaced because the engine was dead code. Note this must NOT
+// be used to compute the full track extent (that has `count - 1` gaps); use
+// `tracksExtent` for that.
 double offsetFor(const std::vector<double>& tracks, int start, double gap) {
   double offset = 0.0;
   for (int i = 0; i < start; ++i) {
     offset += tracks[static_cast<std::size_t>(i)];
-    if (i + 1 < start) offset += gap;
+    offset += gap;
   }
   return offset;
+}
+
+// Total laid-out extent of all tracks: the sum of every track size plus one gap
+// *between* consecutive tracks (`count - 1` gaps, no trailing gap). Used for the
+// grid container's computed height.
+double tracksExtent(const std::vector<double>& tracks, double gap) {
+  if (tracks.empty()) return 0.0;
+  double size = 0.0;
+  for (const auto& track : tracks) size += track;
+  size += gap * static_cast<double>(tracks.size() - 1);
+  return size;
 }
 
 double spanSize(const std::vector<double>& tracks, int start, int span, double gap) {
@@ -181,9 +201,7 @@ GridOutput GridLayoutEngine::layout(const GridInput& input) {
   std::vector<Track> rows = input.rows;
   while (rows.size() < occupied.size()) rows.push_back(input.autoRow);
   const auto rowTracks = resolveTracks(rows, 0.0, input.rowGap, input.autoRow.value);
-  output.height = rowTracks.empty()
-      ? 0.0
-      : offsetFor(rowTracks, static_cast<int>(rowTracks.size()), input.rowGap);
+  output.height = tracksExtent(rowTracks, input.rowGap);
   return output;
 }
 

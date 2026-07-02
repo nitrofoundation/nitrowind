@@ -2,6 +2,7 @@
 
 #include "../fabric/LayoutObserver.hpp"
 #include "../fabric/ShadowTreeMutator.hpp"
+#include "../grid/GridLayoutEngine.hpp"
 
 #include <cstdint>
 #include <cmath>
@@ -156,6 +157,83 @@ void processColorProps(folly::dynamic& style) {
   }
 }
 
+// --- Grid config decode (mirrors the JS serializer in grid.tsx) -------------
+
+double numberOr(const folly::dynamic& value, double fallback) {
+  if (value.isDouble()) return value.getDouble();
+  if (value.isInt()) return static_cast<double>(value.getInt());
+  return fallback;
+}
+
+grid::Track parseGridTrack(const folly::dynamic& value, const grid::Track& fallback) {
+  if (!value.isObject()) return fallback;
+  grid::Track track = fallback;
+  if (auto* type = value.get_ptr("type"); type != nullptr && type->isString()) {
+    const auto& t = type->getString();
+    if (t == "fr") track.type = grid::TrackType::Fr;
+    else if (t == "px") track.type = grid::TrackType::Px;
+    else if (t == "auto") track.type = grid::TrackType::Auto;
+  }
+  if (auto* v = value.get_ptr("value"); v != nullptr) {
+    track.value = numberOr(*v, track.value);
+  }
+  return track;
+}
+
+std::vector<grid::Track> parseGridTracks(const folly::dynamic& value) {
+  std::vector<grid::Track> tracks;
+  if (!value.isArray()) return tracks;
+  tracks.reserve(value.size());
+  for (const auto& entry : value) {
+    tracks.push_back(parseGridTrack(entry, grid::Track{}));
+  }
+  return tracks;
+}
+
+int intOr(const folly::dynamic& value, const char* key, int fallback) {
+  if (!value.isObject()) return fallback;
+  if (auto* v = value.get_ptr(key); v != nullptr) {
+    if (v->isInt()) return static_cast<int>(v->getInt());
+    if (v->isDouble()) return static_cast<int>(v->getDouble());
+  }
+  return fallback;
+}
+
+grid::GridConfig parseGridConfig(const folly::dynamic& value) {
+  grid::GridConfig config;
+  if (!value.isObject()) return config;
+  if (auto* columns = value.get_ptr("columns"); columns != nullptr) {
+    config.columns = parseGridTracks(*columns);
+  }
+  if (auto* rows = value.get_ptr("rows"); rows != nullptr) {
+    config.rows = parseGridTracks(*rows);
+  }
+  if (auto* autoRow = value.get_ptr("autoRow"); autoRow != nullptr) {
+    config.autoRow = parseGridTrack(*autoRow, config.autoRow);
+  }
+  if (auto* columnGap = value.get_ptr("columnGap"); columnGap != nullptr) {
+    config.columnGap = numberOr(*columnGap, 0.0);
+  }
+  if (auto* rowGap = value.get_ptr("rowGap"); rowGap != nullptr) {
+    config.rowGap = numberOr(*rowGap, 0.0);
+  }
+  if (auto* padding = value.get_ptr("paddingHorizontal"); padding != nullptr) {
+    config.paddingHorizontal = numberOr(*padding, 0.0);
+  }
+  if (auto* items = value.get_ptr("items"); items != nullptr && items->isArray()) {
+    config.items.reserve(items->size());
+    for (const auto& item : *items) {
+      grid::Placement placement;
+      placement.columnStart = intOr(item, "columnStart", 0);
+      placement.columnSpan = intOr(item, "columnSpan", 1);
+      placement.rowStart = intOr(item, "rowStart", 0);
+      placement.rowSpan = intOr(item, "rowSpan", 1);
+      config.items.push_back(placement);
+    }
+  }
+  return config;
+}
+
 } // namespace
 
 NitrowindCore& NitrowindCore::shared() {
@@ -232,6 +310,19 @@ void NitrowindCore::link(Tag tag,
   node.dependencyMask = dependencyMask | styleEngine_.dependencyMask(node.className);
   node.context = std::move(context);
   node.inlineStyle = std::move(inlineStyle);
+  // Native grid: the JS serializer (grid.tsx) stashes the parsed grid config on
+  // the inline style under a reserved key. Extract it into the grid registry and
+  // strip it so it never lands in the committed props.
+  bool isGrid = false;
+  grid::GridConfig gridConfig;
+  if (node.inlineStyle && node.inlineStyle->isObject()) {
+    if (auto* g = node.inlineStyle->get_ptr("__nitrowindGrid");
+        g != nullptr && g->isObject()) {
+      gridConfig = parseGridConfig(*g);
+      isGrid = !gridConfig.columns.empty();
+    }
+    node.inlineStyle->erase("__nitrowindGrid");
+  }
   node.accents = std::move(accents);
   for (const auto& accent : node.accents) {
     node.dependencyMask |= accent.dependencyMask |
@@ -267,8 +358,16 @@ void NitrowindCore::link(Tag tag,
     structuralPseudoTags_.insert(tag);
   }
 
+  if (isGrid) {
+    std::lock_guard<std::mutex> lock(gridMutex_);
+    gridConfigs_[tag] = std::move(gridConfig);
+    // Drop any cached width so the next measure pass always re-lays out (config
+    // may have changed even when the container width did not).
+    gridLastWidth_.erase(tag);
+  }
+
   if (node.isContainer || readsContainerSize || node.isGroupRoot ||
-      readsGroupState || readsStructuralPseudo) {
+      readsGroupState || readsStructuralPseudo || isGrid) {
     // `link` runs from a React ref callback, which fires *after* Fabric's
     // `shadowTreeDidMount` for the commit that mounted this node. Both sides can
     // arrive in either order: a container may be known before its query children,
@@ -302,6 +401,11 @@ void NitrowindCore::unlink(Tag tag) {
   {
     std::lock_guard<std::mutex> lock(structuralMutex_);
     structuralPseudoTags_.erase(tag);
+  }
+  {
+    std::lock_guard<std::mutex> lock(gridMutex_);
+    gridConfigs_.erase(tag);
+    gridLastWidth_.erase(tag);
   }
 }
 
@@ -453,6 +557,70 @@ void NitrowindCore::syncStructuralPseudos(
   }
 }
 
+void NitrowindCore::syncGrids(const std::vector<GridMeasurement>& measurements,
+                             bool forceRecompute) {
+  std::vector<NodeMutation> batch;
+  for (const auto& m : measurements) {
+    grid::GridConfig config;
+    {
+      std::lock_guard<std::mutex> lock(gridMutex_);
+      auto it = gridConfigs_.find(m.tag);
+      if (it == gridConfigs_.end()) continue;
+      config = it->second;
+
+      // Gate on measured-width change (like container queries) so our own
+      // absolute-frame commit — which re-triggers Yoga + a fresh mount — does
+      // not re-fire us forever. A missing cache entry counts as changed.
+      auto widthIt = gridLastWidth_.find(m.tag);
+      const bool widthChanged = widthIt == gridLastWidth_.end() ||
+          std::abs(widthIt->second - m.width) >= 0.5;
+      if (!widthChanged && !forceRecompute) continue;
+      gridLastWidth_[m.tag] = m.width;
+    }
+
+    grid::GridInput input;
+    input.width = std::max(0.0, m.width - config.paddingHorizontal);
+    input.columns = config.columns;
+    input.rows = config.rows;
+    input.autoRow = config.autoRow;
+    input.columnGap = config.columnGap;
+    input.rowGap = config.rowGap;
+    input.items = config.items;
+    // Placements travel positionally with the measured child families; never lay
+    // out more items than there are children to receive them.
+    if (input.items.size() > m.childFamilies.size()) {
+      input.items.resize(m.childFamilies.size());
+    }
+
+    const auto output = grid::GridLayoutEngine::layout(input);
+
+    for (std::size_t i = 0;
+         i < output.items.size() && i < m.childFamilies.size(); ++i) {
+      if (m.childFamilies[i] == nullptr) continue;
+      const auto& item = output.items[i];
+      folly::dynamic props = folly::dynamic::object();
+      props["position"] = "absolute";
+      props["left"] = item.x;
+      props["top"] = item.y;
+      props["width"] = item.width;
+      props["height"] = item.height;
+      batch.push_back({m.childFamilies[i], m.surfaceId, std::move(props)});
+    }
+
+    // Grid items are out of flow, so the container would collapse to 0 height —
+    // commit the engine's computed height onto the container itself.
+    if (m.family != nullptr) {
+      folly::dynamic containerProps = folly::dynamic::object();
+      containerProps["height"] = output.height;
+      batch.push_back({m.family, m.surfaceId, std::move(containerProps)});
+    }
+  }
+
+  if (!batch.empty()) {
+    ShadowTreeMutator::commit(batch);
+  }
+}
+
 void NitrowindCore::setGroupState(Tag groupTag, GroupState state) {
   bool changed = false;
   {
@@ -499,6 +667,14 @@ std::unordered_set<Tag> NitrowindCore::linkedTags() const {
 std::unordered_set<Tag> NitrowindCore::structuralPseudoTags() const {
   std::lock_guard<std::mutex> lock(structuralMutex_);
   return structuralPseudoTags_;
+}
+
+std::unordered_set<Tag> NitrowindCore::gridTags() const {
+  std::lock_guard<std::mutex> lock(gridMutex_);
+  std::unordered_set<Tag> tags;
+  tags.reserve(gridConfigs_.size());
+  for (const auto& entry : gridConfigs_) tags.insert(entry.first);
+  return tags;
 }
 
 void NitrowindCore::applyContainerSizes(ResolveContext& ctx,

@@ -3,8 +3,13 @@ import React from "react";
 import {
   calculateGridContentWidth,
   calculateGridFallbackWidth,
+  canNativeGridLayout,
+  serializeGridConfig,
   withGridFallback,
 } from "../grid";
+
+const cell = (className: string) =>
+  React.createElement("View", { className }, null);
 
 describe("calculateGridFallbackWidth", () => {
   it("calculates one equal CSS grid track with gaps removed from available width", () => {
@@ -287,5 +292,70 @@ describe("withGridFallback", () => {
       left: 160,
       top: 340,
     });
+  });
+});
+
+describe("serializeGridConfig (native grid payload)", () => {
+  it("expands grid-cols-N to equal fr tracks with gaps and auto-flow items", () => {
+    const config = serializeGridConfig(
+      "grid grid-cols-3 auto-rows-[64px] gap-3",
+      [cell("col-span-1"), cell("col-span-2"), cell("col-span-1")],
+    );
+    expect(config).toBeDefined();
+    expect(config?.columns).toEqual([
+      { type: "fr", value: 1 },
+      { type: "fr", value: 1 },
+      { type: "fr", value: 1 },
+    ]);
+    expect(config?.columnGap).toBe(12);
+    expect(config?.rowGap).toBe(12);
+    expect(config?.autoRow).toEqual({ type: "px", value: 64 });
+    // Auto-flow placements: columnStart 0 = auto, columnSpan from col-span-N.
+    expect(config?.items).toEqual([
+      { columnStart: 0, columnSpan: 1, rowStart: 0, rowSpan: 1 },
+      { columnStart: 0, columnSpan: 2, rowStart: 0, rowSpan: 1 },
+      { columnStart: 0, columnSpan: 1, rowStart: 0, rowSpan: 1 },
+    ]);
+  });
+
+  it("serializes px/fr template columns and subtracts horizontal padding", () => {
+    const config = serializeGridConfig(
+      "grid grid-cols-[96px_1fr_2fr] grid-rows-[48px_72px] gap-3 px-2",
+      [cell(""), cell(""), cell("")],
+    );
+    expect(config?.columns).toEqual([
+      { type: "px", value: 96 },
+      { type: "fr", value: 1 },
+      { type: "fr", value: 2 },
+    ]);
+    expect(config?.rows).toEqual([
+      { type: "px", value: 48 },
+      { type: "px", value: 72 },
+    ]);
+    expect(config?.paddingHorizontal).toBe(16); // px-2 => 8 left + 8 right
+  });
+
+  it("converts named grid-template areas to 1-based placements", () => {
+    const config = serializeGridConfig(
+      'grid grid-template-["header_header"_60px_"nav_main"_280px_/_160px_1fr]',
+      [cell("grid-area-[header]"), cell("grid-area-[nav]"), cell("grid-area-[main]")],
+    );
+    expect(config?.items).toEqual([
+      { columnStart: 1, columnSpan: 2, rowStart: 1, rowSpan: 1 }, // header
+      { columnStart: 1, columnSpan: 1, rowStart: 2, rowSpan: 1 }, // nav
+      { columnStart: 2, columnSpan: 1, rowStart: 2, rowSpan: 1 }, // main
+    ]);
+  });
+
+  it("disables the native path for percent columns (JS fallback owns it)", () => {
+    expect(canNativeGridLayout("grid grid-cols-[50%_50%] gap-2")).toBe(false);
+    expect(
+      serializeGridConfig("grid grid-cols-[50%_50%] gap-2", [cell("")]),
+    ).toBeUndefined();
+  });
+
+  it("disables the native path when there is no resolvable column count", () => {
+    expect(canNativeGridLayout("grid auto-cols-[72px] gap-2")).toBe(false);
+    expect(serializeGridConfig("grid auto-cols-[72px] gap-2", [cell("")])).toBeUndefined();
   });
 });

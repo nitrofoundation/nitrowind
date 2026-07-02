@@ -8,7 +8,7 @@ import {
 import { resolveStylesForPlatform } from "../core/store";
 import { getAnimatedView } from "./animated";
 import { ContainerProvider, useContainer } from "./containerContext";
-import { useGridFallback } from "./grid";
+import { serializeGridConfig, useGridFallback } from "./grid";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
 
@@ -39,6 +39,13 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
     () => resolveStylesForPlatform(className, snapshot, __nitrowindPseudoState),
     [className, snapshot, __nitrowindPseudoState],
   );
+  // Native grid config, serialized once so the C++ engine can lay the grid out
+  // from the measured container width (no `onLayout` reflow). `undefined` on web,
+  // non-grids, or grids the native engine can't handle (JS fallback owns those).
+  const gridConfig = useMemo(
+    () => (isWeb ? undefined : serializeGridConfig(className, children, style)),
+    [isWeb, className, children, style],
+  );
   const ref = useLinkedRef<RNViewType>(
     className,
     "View",
@@ -49,6 +56,7 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
     __nitrowindPseudoState,
     undefined,
     style,
+    gridConfig,
   );
 
   // `useContainer` returns a single `onLayout` that already merges the container

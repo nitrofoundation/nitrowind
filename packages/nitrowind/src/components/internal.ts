@@ -98,6 +98,7 @@ export function linkNode(
   nativeAccents: NativeAccentDescriptor[] = [],
   componentState?: Partial<ComponentState>,
   inlineStyle?: unknown,
+  gridConfig?: Record<string, unknown>,
 ): LinkedNodeRegistration | undefined {
   if (Platform.OS === "web" || !hasNativeEngine() || !instance) {
     return undefined;
@@ -116,7 +117,14 @@ export function linkNode(
     handle.fromRef(wrapper);
 
     const inline = engine.createFollyStyle();
-    inline.fromJSObject(flattenInlineStyle(inlineStyle));
+    const inlineObject = flattenInlineStyle(inlineStyle);
+    // Native grid: piggyback the serialized grid config on the inline style under
+    // a reserved key. `NitrowindCore::link` extracts it into the grid registry
+    // and strips the key before the style is committed, so it never reaches props.
+    if (gridConfig) {
+      inlineObject.__nitrowindGrid = gridConfig;
+    }
+    inline.fromJSObject(inlineObject);
 
     const accents: Accent[] = nativeAccents.map((accent) => ({
       handle,
@@ -234,6 +242,7 @@ export function useLinkedRef<T>(
   componentState?: Partial<ComponentState>,
   onLinked?: (handle: ShadowNodeHandle | undefined) => void,
   inlineStyle?: unknown,
+  gridConfig?: Record<string, unknown>,
 ): (node: T | null) => void {
   const cleanup = useRef<(() => void) | undefined>(undefined);
 
@@ -251,6 +260,7 @@ export function useLinkedRef<T>(
           nativeAccents,
           componentState,
           inlineStyle,
+          gridConfig,
         );
         cleanup.current = registration?.cleanup;
         onLinked?.(registration?.handle);
@@ -269,6 +279,7 @@ export function useLinkedRef<T>(
       componentState,
       onLinked,
       inlineStyle,
+      gridConfig,
     ],
   );
 }
