@@ -22,7 +22,26 @@ _All 10 workers launched (background). Docs merged into per-engine files after r
 
 Status values: `pending` → `researching` → `DONE` → `reviewed`.
 
-## Phase: RESEARCH — **COMPLETE (10/10 DONE)**. Next: review → decisions → code.
+## Phase: RESEARCH — **COMPLETE (10/10 DONE)**. Now: **IMPLEMENT** (decisions locked below).
+
+## Decisions (locked by user)
+1. **Gradient theme reactivity → NATIVE.** The C++ engine commits new gradient colors to the
+   gradient view on theme/scheme change (no JS re-render). → gradient view is a linked node the
+   engine updates; C++ fold emits the descriptor and the mutator commits it.
+2. **Radial fidelity → approximation for v1** (CAGradientLayer / ellipse matrix); revisit if needed.
+3. **CSS parser → reuse RN where it exists, own the gaps.** Use RN's `react/renderer/css/`
+   (`CSSColor`, `CSSFilter`, …) for supported types; build our own only for what RN lacks
+   (`oklch/oklab/lab/lch/color()/color-mix()`). Replace our shims with RN's once RN adds them.
+   JS "emit raw" + C++ "parse at commit" must land together; match culori's per-channel clip.
+4. **`nitrolist` → deferred, documented.** `display:none` visibility-commit for v1; separate future
+   package. Consolidated in `docs/engine-v2/nitrolist.md`. Not built now.
+5. **Filters → hybrid, with the C++ parser.** RN prop for Android color-matrix + iOS
+   opacity/brightness; engine owns iOS blur (CoreImage) + Android RenderEffect. Fix
+   `backdrop-filter`→`filter` collapse.
+
+**Build order:** 1) grid wiring → 2) gradient HybridView (native-committed colors) → 3) C++ CSS
+value parser → 4) filters (with parser). Cross-cutting interop anytime. Each task = one agent,
+sequenced (shared files), built + verified between.
 
 ## Cross-cutting findings (synthesis)
 - **Nitro HybridView is the vehicle** and requires no new native-module plumbing: nitro-modules
