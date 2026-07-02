@@ -15,6 +15,17 @@ export function getEngine(): SpecsModule | null {
     // library isn't linked this throws and we degrade gracefully.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     cached = require("../specs") as SpecsModule;
+    // Touch the legacy installer module once: it's a lazily-initialized RCT
+    // interop module whose `setBridge` hands the SurfacePresenter to the
+    // native gradient applier (iOS). Nothing else requires it from JS, so
+    // without this touch it never initializes on bridgeless RN.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { NativeModules } = require("react-native");
+      void NativeModules?.NitrowindInstaller;
+    } catch {
+      /* interop layer absent — the C++ engine still self-installs via JSI */
+    }
   } catch {
     return null;
   }

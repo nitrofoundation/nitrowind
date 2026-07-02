@@ -1,6 +1,7 @@
 #include "LayoutObserver.hpp"
 
 #include "../core/NitrowindCore.hpp"
+#include "../gradient/GradientTargets.hpp"
 
 #include <react/renderer/core/LayoutableShadowNode.h>
 #include <react/renderer/core/ShadowNode.h>
@@ -186,6 +187,13 @@ void LayoutObserver::shadowTreeDidMount(
   // This hook is `noexcept`: a thrown exception would terminate the app, so we
   // contain any failure to a skipped frame rather than a crash.
   try {
+    // Native gradients: a mount transaction may have created/recycled/resized
+    // component views (view culling deletes off-screen views and re-creates
+    // them on scroll-back). Ping the platform applier so every registered
+    // gradient target is re-applied/pruned. O(1) when no gradients exist; the
+    // applier coalesces onto the main thread and skips unchanged views.
+    GradientTargets::shared().onMountTransaction();
+
     measureAndSync(*rootShadowNode, false);
   } catch (...) {
     // Swallow — container styles will be reconciled on the next mount.

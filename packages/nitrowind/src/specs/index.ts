@@ -2,7 +2,6 @@ import { NitroModules } from "react-native-nitro-modules";
 import "./NativeTurboNitrowind";
 
 import type { FollyStyle } from "./FollyStyle.nitro";
-import type { GradientRegistry } from "./GradientRegistry.nitro";
 import type { NativePlatform } from "./NativePlatform.nitro";
 import type { NitrowindConfig } from "./NitrowindConfig.nitro";
 import type { NitrowindDiagnostics } from "./NitrowindDiagnostics.nitro";
@@ -24,14 +23,6 @@ export const Platform =
 export const Diagnostics =
   NitroModules.createHybridObject<NitrowindDiagnostics>("NitrowindDiagnostics");
 /**
- * Native theme reactivity for gradient views: links a mounted `GradientView`
- * hybrid to its owning className so the C++ engine re-folds and pushes the
- * gradient descriptor on Theme/ColorScheme change (no JS re-render).
- */
-export const Gradients =
-  NitroModules.createHybridObject<GradientRegistry>("GradientRegistry");
-
-/**
  * Per-instance HybridObjects (created on demand, one per linked node/style).
  */
 export const createShadowNodeHandle = () =>
@@ -50,13 +41,6 @@ export type { NitrowindConfig } from "./NitrowindConfig.nitro";
 export type { NitrowindDiagnostics } from "./NitrowindDiagnostics.nitro";
 export type { ShadowNodeHandle } from "./ShadowNodeHandle.nitro";
 export type { FollyStyle } from "./FollyStyle.nitro";
-export type { GradientRegistry } from "./GradientRegistry.nitro";
-export type {
-  GradientType,
-  GradientView,
-  GradientViewMethods,
-  GradientViewProps,
-} from "./GradientView.nitro";
 export type {
   BackdropView,
   BackdropViewMethods,

@@ -138,3 +138,15 @@ interop** (cssInterop + svg preset) can land anytime.
 - Follow-ups: LogBox shows a warning pill on launch (triage), Android build/verify pending,
   `enableNativeCSSParsing` flag can now be dropped from the example's feature-flags provider
   (gradients no longer need it — verify other flags' usage first).
+
+## Gradient v2.1 — layer-on-view re-architecture (BUILT + VERIFIED, iOS)
+The gradient child component is GONE. Gradients paint as a named CAGradientLayer on the target
+view's OWN layer (RN backgroundImage model): C++ `GradientTargets` registry (tag → descriptor,
+captured in resolveForNode), iOS `NitrowindGradientApplier` (SurfacePresenter view lookup,
+coalesced main-thread flush, mount-transaction re-apply). Fixes the scroll-culling repaint bug
+(culled → remounted views re-acquire their layer) — verified. Two integration gotchas solved:
+(1) bridgeless RN never initializes the legacy installer module — the app hands the
+SurfacePresenter to the applier from AppDelegate (KVC: rootViewFactory.reactHost.surfacePresenter);
+(2) Fabric view flattening removed gradient hosts whose committed props looked layout-only —
+`View` now pins `collapsable={false}` when a gradient/backdrop marker is present.
+Android applier (Drawable-on-view, same registry) is the queued follow-up.

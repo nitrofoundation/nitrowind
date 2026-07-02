@@ -2,6 +2,7 @@
 
 #include "../fabric/LayoutObserver.hpp"
 #include "../fabric/ShadowTreeMutator.hpp"
+#include "../gradient/GradientTargets.hpp"
 #include "../grid/GridLayoutEngine.hpp"
 
 #include <cstdint>
@@ -384,6 +385,7 @@ void NitrowindCore::link(Tag tag,
 
 void NitrowindCore::unlink(Tag tag) {
   index_.remove(tag);
+  GradientTargets::shared().clearDescriptor(tag);
   {
     std::lock_guard<std::mutex> lock(containerMutex_);
     auto it = containerTags_.find(tag);
@@ -724,10 +726,27 @@ folly::dynamic NitrowindCore::resolveForNode(const LinkedNode& node,
     mergeFolly(style, *node.inlineStyle);
   }
   processColorProps(style);
-  // The folded gradient descriptor is consumed by the gradient child view
-  // (committed natively via the GradientRegistry), never by the owner's own
-  // props — strip it so commits carry only real RN props.
-  style.erase("--nitrowind-gradient");
+  // Native gradient: the folded descriptor never rides on committed RN props —
+  // it is routed to GradientTargets, and the platform applier paints it as a
+  // CAGradientLayer on the target view's OWN layer (RN backgroundImage-style).
+  // Registering here (resolve time) means first paint, theme/scheme recomputes
+  // and state changes all refresh the registry through the same single path.
+  if (auto* gradient = style.get_ptr("--nitrowind-gradient");
+      gradient != nullptr && gradient->isObject()) {
+    if (node.tag != 0) {
+      double radius = 0.0;
+      if (auto* r = style.get_ptr("borderRadius");
+          r != nullptr && r->isNumber()) {
+        radius = r->asDouble();
+      }
+      GradientTargets::shared().setDescriptor(node.tag, *gradient, radius);
+    }
+    style.erase("--nitrowind-gradient");
+  } else if (node.tag != 0) {
+    // The class no longer folds a gradient (e.g. state/variant flip) — make
+    // sure a previously registered paint is removed. No-op for the common case.
+    GradientTargets::shared().clearDescriptor(node.tag);
+  }
   return style;
 }
 

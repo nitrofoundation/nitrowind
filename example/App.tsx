@@ -62,7 +62,7 @@ export default function App() {
         <NavigationContainer theme={navTheme}>
           <StatusBar barStyle="light-content" />
           <Stack.Navigator
-            initialRouteName="Home"
+            initialRouteName="Gradients"
             screenOptions={{
               headerStyle: { backgroundColor: '#6d28d9' },
               headerTintColor: '#ffffff',

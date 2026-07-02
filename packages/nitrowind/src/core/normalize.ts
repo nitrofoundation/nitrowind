@@ -10,7 +10,8 @@ import { Platform } from "react-native";
 
 /**
  * Platform-gated gradient fold. Native emits the compact numeric descriptor
- * (consumed by the engine's own Nitro `GradientView`); web keeps a real CSS
+ * (routed by the C++ engine to the platform gradient applier, which paints a
+ * CAGradientLayer on the view's own layer); web keeps a real CSS
  * `backgroundImage` string since the browser owns the paint there. The native
  * C++ engine performs the identical descriptor fold so both paths agree.
  */

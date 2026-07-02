@@ -348,9 +348,9 @@ void radialCenterFromPosition(const std::string& position,
  * gradient descriptor under `--nitrowind-gradient` and erase the markers.
  * Colors are already lowered to hex (literals at compile time, theme `var()`
  * substituted above). Mirrors the JS `foldGradient` (descriptor target) so a
- * native theme-swap commit matches a JS-resolved style exactly. The engine's
- * own Nitro `GradientView` consumes the descriptor verbatim — no CSS-string
- * parsing at paint time.
+ * native theme-swap commit matches a JS-resolved style exactly. The engine
+ * routes the descriptor to the platform gradient applier, which paints it as a
+ * layer on the view's own backing layer — no CSS-string parsing at paint time.
  */
 void foldGradient(folly::dynamic& style) {
   if (!style.isObject()) return;

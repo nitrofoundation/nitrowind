@@ -35,8 +35,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
+    // Hand the SurfacePresenter to nitrowind's gradient applier (bridgeless RN
+    // never initializes legacy RCT modules, so the library can't grab it via
+    // setBridge). Uses the ObjC runtime so no extra public headers are needed.
+    attachNitrowindGradientApplier(factory: factory, attempt: 0)
+
     return true
   }
+}
+
+private func attachNitrowindGradientApplier(factory: RCTReactNativeFactory, attempt: Int) {
+  guard attempt < 20 else { return }
+  let host = (factory.rootViewFactory as NSObject).value(forKey: "reactHost") as? NSObject
+  guard let presenter = host?.value(forKey: "surfacePresenter") as? NSObject else {
+    // Host not up yet — retry shortly (bridgeless startup is async).
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+      attachNitrowindGradientApplier(factory: factory, attempt: attempt + 1)
+    }
+    return
+  }
+  guard
+    let applierClass = NSClassFromString("NitrowindGradientApplier") as? NSObject.Type,
+    let shared = applierClass.perform(NSSelectorFromString("shared"))?.takeUnretainedValue()
+  else { return }
+  _ = shared.perform(NSSelectorFromString("attachToSurfacePresenter:"), with: presenter)
 }
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {

@@ -31,16 +31,9 @@
       "swift": "HybridNativePlatform",
       "kotlin": "HybridNativePlatform"
     },
-    "GradientView": {
-      "swift": "HybridGradientView",
-      "kotlin": "HybridGradientView"
-    },
     "BackdropView": {
       "swift": "HybridBackdropView",
       "kotlin": "HybridBackdropView"
-    },
-    "GradientRegistry": {
-      "cpp": "HybridGradientRegistry"
     }
   },
   "ignorePaths": ["node_modules", "lib", "example"]

@@ -10,6 +10,7 @@
 #import <React/RCTSurfacePresenter.h>
 #endif
 
+#import "NitrowindGradientApplier.h"
 #import "NitrowindInstaller.hpp"
 
 #include <ReactCommon/RuntimeExecutor.h>
@@ -49,6 +50,22 @@ RCT_EXPORT_MODULE(NitrowindInstaller)
 - (void)setBridge:(RCTBridge *)bridge {
   if (bridge == nil) return;
 
+#if __has_include(<React/RCTSurfacePresenter.h>)
+  // Gradient applier FIRST: it must attach even if the legacy runtime
+  // executor below is unavailable (bridgeless interop hands us an
+  // RCTBridgeProxy whose bridge internals can throw).
+  RCTSurfacePresenter *presenterEarly = nil;
+  @try {
+    presenterEarly = bridge.surfacePresenter;
+  } @catch (NSException *e) {
+    NSLog(@"[nitrowind.gradient] surfacePresenter threw: %@", e.name);
+  }
+  if (presenterEarly != nil) {
+    [[NitrowindGradientApplier shared] attachToSurfacePresenter:presenterEarly];
+  }
+#endif
+  @try {
+
   // 1) RuntimeExecutor → the C++ side captures the UIManager on the JS thread.
   facebook::react::RuntimeExecutor runtimeExecutor = RCTRuntimeExecutorFromBridge(bridge);
   if (runtimeExecutor != nullptr) {
@@ -64,7 +81,11 @@ RCT_EXPORT_MODULE(NitrowindInstaller)
       nitrowind::NitrowindInstaller::shared().setContextContainer(contextContainer);
     }
   }
+
 #endif
+  } @catch (NSException *e) {
+    NSLog(@"[nitrowind.gradient] legacy install path threw: %@", e.name);
+  }
 }
 
 @end

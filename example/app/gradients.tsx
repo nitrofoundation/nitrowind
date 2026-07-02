@@ -1,17 +1,19 @@
 /**
  * Gradients — linear, radial and an animated linear gradient, all compiled from
  * Tailwind gradient utilities (`bg-linear-*`, `bg-radial*`, `from-*`, `via-*`,
- * `to-*`) into the engine's OWN native gradient view (a Nitro HybridView:
- * CAGradientLayer on iOS, a Shader-painted View on Android). No
- * `react-native-linear-gradient` and no `experimental_backgroundImage`:
- * nitrowind folds the split `--tw-gradient-*` utilities into one compact
- * numeric descriptor at resolve time, and theme/scheme changes re-commit the
- * gradient colors NATIVELY from the C++ engine — no JS re-render.
+ * `to-*`) and painted as a layer ON THE VIEW ITSELF (a CAGradientLayer
+ * installed on the view's own backing layer on iOS — exactly like RN's
+ * `experimental_backgroundImage` path, but engine-owned). There is NO child
+ * component and no `react-native-linear-gradient`: nitrowind folds the split
+ * `--tw-gradient-*` utilities into one compact numeric descriptor at resolve
+ * time, the C++ engine registers `tag → descriptor`, and the native applier
+ * (re)paints on every mount transaction — so culled/recycled views get their
+ * gradient back, and theme/scheme changes re-color NATIVELY, no JS re-render.
  *
  * The animated tile can't interpolate a gradient's own geometry yet, so it
- * sweeps an oversized gradient layer via the `animate-gradient-shift` CSS
+ * sweeps an oversized gradient view via the `animate-gradient-shift` CSS
  * keyframe (see `global.css`) — the same Reanimated native CSS-animation path
- * as `animate-*`.
+ * as `animate-*`; the gradient layer rides on the translated view.
  */
 import { Text, View } from 'nitrowind';
 
@@ -71,7 +73,7 @@ export default function Gradients() {
 
       <Section
         title="Linear"
-        subtitle="bg-linear-* direction + from/via/to stops → the engine's own native gradient view."
+        subtitle="bg-linear-* direction + from/via/to stops → the view's own native gradient layer."
       >
         <View className="flex-row flex-wrap gap-4">
           {LINEAR.map((g) => (

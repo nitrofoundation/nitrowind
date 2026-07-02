@@ -14,13 +14,8 @@ import {
   BackdropLayer,
   backdropBlurRadius,
 } from "./backdrop";
+import { GRADIENT_DESCRIPTOR_PROP } from "../compiler/parsers/gradient";
 import { ContainerProvider, useContainer } from "./containerContext";
-import {
-  GRADIENT_DESCRIPTOR_PROP,
-  GradientLayer,
-  pickBorderRadius,
-  type GradientDescriptor,
-} from "./gradient";
 import { serializeGridConfig, useGridFallback } from "./grid";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
@@ -82,22 +77,22 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
   );
 
   // Gradient: the fold emits the compact numeric descriptor under
-  // `--nitrowind-gradient`. Backdrop: `backdrop-filter` compiles to the parsed
-  // filter array under `--nitrowind-backdrop-filter` (parsers/filter.ts).
-  // Strip both from the RN style (they are not real style keys), force
-  // `overflow: hidden` so the absolutely-filling native children clip to the
-  // box, and remember the uniform borderRadius so the native layers self-clip
-  // to the same rounded rect.
-  const gradient = isWeb
-    ? undefined
-    : ((resolved.styles as Record<string, unknown>)[
-        GRADIENT_DESCRIPTOR_PROP
-      ] as GradientDescriptor | undefined);
+  // `--nitrowind-gradient`. It is NOT a real RN style key and it is NOT a
+  // child component either — the C++ engine registers `tag → descriptor` at
+  // link/resolve time and the native applier paints it as a CAGradientLayer on
+  // this view's own layer (RN backgroundImage-style). All JS does is strip the
+  // marker from the host style.
+  // Backdrop: `backdrop-filter` compiles to the parsed filter array under
+  // `--nitrowind-backdrop-filter` (parsers/filter.ts). Strip it too; the
+  // BackdropLayer child needs `overflow: hidden` + the uniform borderRadius so
+  // the absolutely-filling blur surface clips to the box.
+  const hasGradient =
+    !isWeb && GRADIENT_DESCRIPTOR_PROP in (resolved.styles as object);
   const backdropFilter = isWeb
     ? undefined
     : (resolved.styles as Record<string, unknown>)[BACKDROP_FILTER_PROP];
   const { viewStyles, layerBorderRadius, backdropRadius } = useMemo(() => {
-    if (!gradient && backdropFilter === undefined) {
+    if (!hasGradient && backdropFilter === undefined) {
       return {
         viewStyles: resolved.styles,
         layerBorderRadius: 0,
@@ -110,15 +105,21 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
       ...restStyles
     } = resolved.styles as Record<string, unknown>;
     const stripped = restStyles as RNStyle;
+    if (backdropFilter === undefined) {
+      // Gradient-only: the native layer corner-clips itself (mirrors the
+      // view's radius, RN shapeLayerToMatchView-style) — no overflow forcing.
+      return { viewStyles: stripped, layerBorderRadius: 0, backdropRadius: 0 };
+    }
     if (stripped.overflow === undefined) stripped.overflow = "hidden";
+    const radius = stripped.borderRadius;
     return {
       viewStyles: stripped,
-      layerBorderRadius: pickBorderRadius(stripped),
+      layerBorderRadius: typeof radius === "number" ? radius : 0,
       // v1 backdrop = blur only; non-blur backdrop functions are ignored
       // (documented TODO in parsers/filter.ts `backdropBlurRadius`).
       backdropRadius: backdropBlurRadius(backdropFilter),
     };
-  }, [resolved.styles, gradient, backdropFilter]);
+  }, [resolved.styles, hasGradient, backdropFilter]);
 
   // `useContainer` returns a single `onLayout` that already merges the container
   // size reporter (JS fallback) with the caller's own handler.
@@ -188,6 +189,13 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
   const webProps: Record<string, unknown> =
     isWeb && className ? { className } : {};
 
+  // A gradient/backdrop host must stay in the mounted hierarchy: after the
+  // marker is stripped its committed props can look layout-only, and Fabric's
+  // view flattening would then remove the view entirely — leaving the native
+  // gradient applier's `tag → mounted view` lookup with nothing to paint on.
+  const preventFlattening =
+    !isWeb && (hasGradient || backdropFilter !== undefined);
+
   const node = (
     <Base
       ref={ref}
@@ -196,23 +204,16 @@ export const View = forwardRef<RNViewType, NitrowindViewProps>(function View(
       onLayout={gridFallback.onLayout}
       {...animationProps}
       {...rest}
+      {...(preventFlattening ? { collapsable: false as const } : {})}
     >
       {!isWeb && backdropRadius > 0 ? (
-        // VERY FIRST child: the blur-behind surface must paint below the
-        // gradient (and everything else). RN paints children in source order.
+        // VERY FIRST child: the blur-behind surface must paint below
+        // everything else. RN paints children in source order. (Gradients are
+        // NOT a child — they paint as a layer on this view's own backing
+        // layer, installed natively by the engine's gradient applier.)
         <BackdropLayer
           blurRadius={backdropRadius}
           borderRadius={layerBorderRadius}
-        />
-      ) : null}
-      {!isWeb && gradient ? (
-        // Behind the real children (after the backdrop layer) + absolute fill
-        // + no pointer events. The C++ engine keeps its colors theme-fresh
-        // natively via the GradientRegistry link (no JS re-render).
-        <GradientLayer
-          descriptor={gradient}
-          borderRadius={layerBorderRadius}
-          className={className}
         />
       ) : null}
       {isWeb
