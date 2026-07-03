@@ -27,6 +27,7 @@ type RootStackParamList = {
   BackgroundImage: undefined;
   Svg: undefined;
   Lists: undefined;
+  NitroList: undefined;
 };
 
 type Page = {
@@ -142,6 +143,13 @@ const PAGES: Page[] = [
     subtitle: 'Styled vertical and horizontal list surfaces',
     icon: '[]',
     tile: 'bg-blue-500',
+  },
+  {
+    route: 'NitroList',
+    title: 'NitroList',
+    subtitle: 'Native-engine virtualization — Virtual / Valdi / Lynx variants',
+    icon: '≡',
+    tile: 'bg-linear-to-br from-indigo-500 to-emerald-400',
   },
 ];
 

@@ -18,6 +18,7 @@ import GridScreen from './app/grid';
 import HomeScreen from './app/index';
 import LayoutScreen from './app/layout';
 import ListsScreen from './app/lists';
+import NitroListScreen from './app/nitrolist';
 import PseudoScreen from './app/pseudo';
 import SvgScreen from './app/svg';
 import ThemingScreen from './app/theming';
@@ -41,6 +42,7 @@ type RootStackParamList = {
   BackgroundImage: undefined;
   Svg: undefined;
   Lists: undefined;
+  NitroList: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -66,7 +68,7 @@ export default function App() {
         <NavigationContainer theme={navTheme}>
           <StatusBar barStyle="light-content" />
           <Stack.Navigator
-            initialRouteName="Home"
+            initialRouteName="NitroList"
             screenOptions={{
               headerStyle: { backgroundColor: '#6d28d9' },
               headerTintColor: '#ffffff',
@@ -153,6 +155,11 @@ export default function App() {
               name="Lists"
               component={ListsScreen}
               options={{ title: 'Virtual Lists' }}
+            />
+            <Stack.Screen
+              name="NitroList"
+              component={NitroListScreen}
+              options={{ title: 'NitroList' }}
             />
           </Stack.Navigator>
         </NavigationContainer>
