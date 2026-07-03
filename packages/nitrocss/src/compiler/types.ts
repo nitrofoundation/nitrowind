@@ -64,7 +64,11 @@ export type RNStyleValue =
 /** A single CSS `@keyframes` step's resolved RN style. */
 export type KeyframeStep = Record<
   string,
-  string | number | ReadonlyArray<Record<string, string | number>>
+  | string
+  | number
+  | ReadonlyArray<Record<string, string | number>>
+  /** `textShadowOffset` in an animated `text-shadow` step. */
+  | { width: number; height: number }
 >;
 
 /** A compiled `@keyframes` block: offset (e.g. `"0%"`) -> step style. */

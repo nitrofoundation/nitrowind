@@ -13,10 +13,13 @@ import {
   parseContainerQuery,
 } from "./container";
 import {
+  extractBackgroundImage,
   extractBoxShadow,
+  extractClipPath,
   extractFilter,
   extractFontVariant,
   extractGradient,
+  extractGradientAngleTrack,
   extractKeyframes,
   extractReanimatedVars,
   extractTextShadow,
@@ -24,13 +27,16 @@ import {
   foldAnimation,
   foldTransition,
   isAnimationProp,
+  isBackgroundImageProp,
   isBoxShadowProp,
+  isClipPathProp,
   isFilterProp,
   isFontVariantProp,
   isGradientProp,
   isTextShadowProp,
   isTransitionProp,
   isTransformProp,
+  GRADIENT_TYPE_PROP,
 } from "./parsers";
 import { platformFromSelector } from "./platform";
 import { resolveVarsInValue, toRNProperties, toRNValue } from "./toRNValue";
@@ -329,6 +335,8 @@ const isParsedProp = (prop: string): boolean =>
   isBoxShadowProp(prop) ||
   isFilterProp(prop) ||
   isGradientProp(prop) ||
+  isBackgroundImageProp(prop) ||
+  isClipPathProp(prop) ||
   isTextShadowProp(prop) ||
   isFontVariantProp(prop) ||
   isAnimationProp(prop) ||
@@ -386,6 +394,16 @@ export function parseStyles(
     // numeric gradient descriptor once every matching class has merged.
     const gradient = extractGradient(rule.declarations, ruleResolve);
     if (gradient !== undefined) Object.assign(style, gradient);
+    // Runs AFTER gradient extraction so a `background-image` that is a gradient
+    // is left to the gradient parser (extractBackgroundImage returns undefined
+    // for gradients and only captures `url(...)`).
+    const backgroundImage = extractBackgroundImage(
+      rule.declarations,
+      ruleResolve,
+    );
+    if (backgroundImage !== undefined) Object.assign(style, backgroundImage);
+    const clipPath = extractClipPath(rule.declarations, ruleResolve);
+    if (clipPath !== undefined) Object.assign(style, clipPath);
     const textShadow = extractTextShadow(rule.declarations, ruleResolve);
     if (textShadow) Object.assign(style, textShadow);
     const fontVariant = extractFontVariant(rule.declarations, ruleResolve);
@@ -409,6 +427,18 @@ export function parseStyles(
       const shorthand = resolveVarsInValue(animationDecl.value, ruleResolve);
       const folded = foldAnimation(shorthand, keyframes);
       if (folded) Object.assign(style, folded);
+      // A linear gradient whose angle is driven by an angle-bearing keyframe var
+      // gets a runtime-only angle track. Guard on the gradient TYPE marker
+      // (the descriptor itself is folded later, in core/normalize.ts) so the
+      // track only attaches to linear gradients — per the effects contract.
+      if (style[GRADIENT_TYPE_PROP] === "linear") {
+        const angleTrack = extractGradientAngleTrack(shorthand, keyframes);
+        if (angleTrack) {
+          Object.assign(style, {
+            "--nitrocss-gradient-angle": angleTrack as unknown as RNStyle[string],
+          });
+        }
+      }
     }
     for (const transitionDecl of rule.declarations.filter((d) =>
       isTransitionProp(d.prop),

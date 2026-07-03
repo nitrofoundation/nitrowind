@@ -8,6 +8,7 @@
 #endif
 
 #import "GradientTargets.hpp"
+#import "GradientAngleOverrides.hpp"
 
 #include <atomic>
 #include <cctype>
@@ -36,6 +37,10 @@ NSString *const kNitroCssGradientLayerName = @"nitrocss.gradient";
 // Associated-object keys recording what was painted onto a view.
 const void *kAppliedTagKey = &kAppliedTagKey;
 const void *kAppliedGenerationKey = &kAppliedGenerationKey;
+// Last-painted effective angle (descriptor angle, or the animated override when
+// present). Per-frame override changes carry no new descriptor generation, so
+// the steady-state skip must also compare this to force the repaint.
+const void *kAppliedAngleKey = &kAppliedAngleKey;
 
 // --- Colors ------------------------------------------------------------------
 
@@ -392,6 +397,12 @@ CAGradientLayer *findGradientLayer(UIView *view) {
     GradientTargets::shared().setInvalidationListener([]() {
       [[NitroCssGradientApplier shared] setNeedsFlush];
     });
+    // Per-frame animated angle overrides drive the same coalesced repaint: each
+    // JS `__nitrocssSetGradientAngle(tag, angle)` bumps the override registry,
+    // which fires this listener → one main-thread flush that re-reads the angle.
+    nitrocss::GradientAngleOverrides::shared().setInvalidationListener([]() {
+      [[NitroCssGradientApplier shared] setNeedsFlush];
+    });
   });
   [self setNeedsFlush];
 }
@@ -480,6 +491,8 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   objc_setAssociatedObject(view, kAppliedTagKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   objc_setAssociatedObject(view, kAppliedGenerationKey, nil,
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  objc_setAssociatedObject(view, kAppliedAngleKey, nil,
+                           OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   [_paintedViews removeObject:view];
 }
 
@@ -488,14 +501,33 @@ CAGradientLayer *findGradientLayer(UIView *view) {
                tag:(int32_t)tag {
   CAGradientLayer *layer = findGradientLayer(view);
 
-  // Cheap steady-state path: same tag, same descriptor generation, same frame —
-  // nothing to repaint. This is what keeps the per-mount-transaction re-apply
-  // pass O(#gradients) dictionary lookups.
+  const ParsedDescriptor d = parseDescriptor(entry.descriptor);
+
+  // Animated angle override: JS drives a per-frame `__nitrocssSetGradientAngle`
+  // that lands in GradientAngleOverrides. When present, it wins over the folded
+  // descriptor angle (linear only; radial ignores angle). No override → the
+  // static descriptor angle.
+  double effectiveAngle = d.angle;
+  if (!d.radial) {
+    const auto overrideAngle =
+        nitrocss::GradientAngleOverrides::shared().angleForTag(tag);
+    if (overrideAngle.has_value()) {
+      effectiveAngle = *overrideAngle;
+    }
+  }
+
+  // Cheap steady-state path: same tag, same descriptor generation, same frame,
+  // and same effective angle — nothing to repaint. This is what keeps the
+  // per-mount-transaction re-apply pass O(#gradients) dictionary lookups. The
+  // angle is compared explicitly because a per-frame override carries no new
+  // descriptor generation.
   NSNumber *appliedTag = objc_getAssociatedObject(view, kAppliedTagKey);
   NSNumber *appliedGeneration = objc_getAssociatedObject(view, kAppliedGenerationKey);
+  NSNumber *appliedAngle = objc_getAssociatedObject(view, kAppliedAngleKey);
   if (layer != nil && appliedTag != nil && appliedTag.intValue == tag &&
       appliedGeneration != nil &&
       appliedGeneration.unsignedLongLongValue == entry.generation &&
+      appliedAngle != nil && appliedAngle.doubleValue == effectiveAngle &&
       CGRectEqualToRect(layer.frame, view.layer.bounds)) {
     return;
   }
@@ -512,8 +544,6 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 
   const CGRect bounds = view.layer.bounds;
   layer.frame = bounds;
-
-  const ParsedDescriptor d = parseDescriptor(entry.descriptor);
 
   layer.colors = cgColorsFromHex(d.colors);
   NSMutableArray<NSNumber *> *locations =
@@ -548,7 +578,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
       layer.endPoint = CGPointMake(cx + rx, cy + ry);
     } else {
       layer.type = kCAGradientLayerAxial;
-      const auto points = pointsFromAngle((CGFloat)d.angle, size);
+      const auto points = pointsFromAngle((CGFloat)effectiveAngle, size);
       const CGPoint startUnit =
           CGPointMake(points.first.x / size.width, points.first.y / size.height);
       const CGPoint endUnit =
@@ -565,6 +595,8 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   objc_setAssociatedObject(view, kAppliedTagKey, @(tag),
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   objc_setAssociatedObject(view, kAppliedGenerationKey, @(entry.generation),
+                           OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  objc_setAssociatedObject(view, kAppliedAngleKey, @(effectiveAngle),
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   [_paintedViews addObject:view];
 }

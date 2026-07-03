@@ -11,6 +11,8 @@
 #endif
 
 #import "NitroCssGradientApplier.h"
+#import "NitroCssClipPathApplier.h"
+#import "NitroCssBackgroundImageApplier.h"
 #import "NitroCssInstaller.hpp"
 
 #include <ReactCommon/RuntimeExecutor.h>
@@ -62,6 +64,8 @@ RCT_EXPORT_MODULE(NitroCssInstaller)
   }
   if (presenterEarly != nil) {
     [[NitroCssGradientApplier shared] attachToSurfacePresenter:presenterEarly];
+    [[NitroCssClipPathApplier shared] attachToSurfacePresenter:presenterEarly];
+    [[NitroCssBackgroundImageApplier shared] attachToSurfacePresenter:presenterEarly];
   }
 #endif
   @try {

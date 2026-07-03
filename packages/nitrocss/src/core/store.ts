@@ -8,7 +8,13 @@ import {
   type RuntimeSnapshot,
 } from "../specs/types";
 import { toList } from "./mask";
-import { foldGradient, foldTransform, normalizeShadow } from "./normalize";
+import {
+  foldBackgroundImage,
+  foldClipPath,
+  foldGradient,
+  foldTransform,
+  normalizeShadow,
+} from "./normalize";
 import {
   buildEnteringAnimation,
   buildExitingAnimation,
@@ -306,6 +312,8 @@ function resolveStylesUncached(
         applyBucketStyle(cqStyle, bucket.style);
         foldTransform(cqStyle);
         foldGradient(cqStyle);
+        foldClipPath(cqStyle);
+        foldBackgroundImage(cqStyle);
         normalizeShadow(cqStyle);
         (containerQueries ??= []).push({
           condition: bucket.container,
@@ -335,6 +343,12 @@ function resolveStylesUncached(
   foldGradient(styles);
   foldGradient(beforeStyle);
   foldGradient(afterStyle);
+  foldClipPath(styles);
+  foldClipPath(beforeStyle);
+  foldClipPath(afterStyle);
+  foldBackgroundImage(styles);
+  foldBackgroundImage(beforeStyle);
+  foldBackgroundImage(afterStyle);
   normalizeShadow(styles);
   normalizeShadow(beforeStyle);
   normalizeShadow(afterStyle);

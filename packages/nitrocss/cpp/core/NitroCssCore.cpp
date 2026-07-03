@@ -1,7 +1,10 @@
 #include "NitroCssCore.hpp"
 
+#include "../bgimage/BackgroundImageTargets.hpp"
+#include "../clippath/ClipPathTargets.hpp"
 #include "../fabric/LayoutObserver.hpp"
 #include "../fabric/ShadowTreeMutator.hpp"
+#include "../gradient/GradientAngleOverrides.hpp"
 #include "../gradient/GradientTargets.hpp"
 #include "../grid/GridLayoutEngine.hpp"
 
@@ -386,6 +389,9 @@ void NitroCssCore::link(Tag tag,
 void NitroCssCore::unlink(Tag tag) {
   index_.remove(tag);
   GradientTargets::shared().clearDescriptor(tag);
+  ClipPathTargets::shared().clearDescriptor(tag);
+  BackgroundImageTargets::shared().clearDescriptor(tag);
+  GradientAngleOverrides::shared().clearAngle(tag);
   {
     std::lock_guard<std::mutex> lock(containerMutex_);
     auto it = containerTags_.find(tag);
@@ -746,6 +752,35 @@ folly::dynamic NitroCssCore::resolveForNode(const LinkedNode& node,
     // The class no longer folds a gradient (e.g. state/variant flip) — make
     // sure a previously registered paint is removed. No-op for the common case.
     GradientTargets::shared().clearDescriptor(node.tag);
+  }
+  // Native clip-path: same routing model as the gradient above — the folded
+  // descriptor is a paint/mask instruction for the target view's own layer, not
+  // an RN prop, so it is handed to ClipPathTargets and stripped from the style.
+  if (auto* clipPath = style.get_ptr("--nitrocss-clip-path");
+      clipPath != nullptr && clipPath->isObject()) {
+    if (node.tag != 0) {
+      ClipPathTargets::shared().setDescriptor(node.tag, *clipPath);
+    }
+    style.erase("--nitrocss-clip-path");
+  } else if (node.tag != 0) {
+    ClipPathTargets::shared().clearDescriptor(node.tag);
+  }
+  // Native background-image: url() — routed to its registry and painted as an
+  // image layer on the view's own backing layer, mirroring the gradient path.
+  if (auto* bgImage = style.get_ptr("--nitrocss-background-image");
+      bgImage != nullptr && bgImage->isObject()) {
+    if (node.tag != 0) {
+      BackgroundImageTargets::shared().setDescriptor(node.tag, *bgImage);
+    }
+    style.erase("--nitrocss-background-image");
+  } else if (node.tag != 0) {
+    BackgroundImageTargets::shared().clearDescriptor(node.tag);
+  }
+  // Animated gradient angle is a RUNTIME-ONLY track: the JS driver pushes each
+  // frame's angle through GradientAngleOverrides via the JSI channel. The marker
+  // must never reach RN or the native paint registry — strip it unconditionally.
+  if (style.get_ptr("--nitrocss-gradient-angle") != nullptr) {
+    style.erase("--nitrocss-gradient-angle");
   }
   return style;
 }

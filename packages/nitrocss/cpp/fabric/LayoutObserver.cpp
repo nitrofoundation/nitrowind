@@ -1,6 +1,9 @@
 #include "LayoutObserver.hpp"
 
+#include "../bgimage/BackgroundImageTargets.hpp"
+#include "../clippath/ClipPathTargets.hpp"
 #include "../core/NitroCssCore.hpp"
+#include "../gradient/GradientAngleOverrides.hpp"
 #include "../gradient/GradientTargets.hpp"
 
 #include <react/renderer/core/LayoutableShadowNode.h>
@@ -200,6 +203,12 @@ void LayoutObserver::shadowTreeDidMount(
     // gradient target is re-applied/pruned. O(1) when no gradients exist; the
     // applier coalesces onto the main thread and skips unchanged views.
     GradientTargets::shared().onMountTransaction();
+    // Same re-apply rationale for the other view-layer effects: a recycled or
+    // re-created view must get its clip-path mask, background image, and
+    // in-flight animated gradient angle back. Each is O(1) when unused.
+    ClipPathTargets::shared().onMountTransaction();
+    BackgroundImageTargets::shared().onMountTransaction();
+    GradientAngleOverrides::shared().onMountTransaction();
 
     measureAndSync(*rootShadowNode, false);
   } catch (...) {

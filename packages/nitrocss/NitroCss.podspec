@@ -44,6 +44,9 @@ Pod::Spec.new do |s|
       "\"$(PODS_TARGET_SRCROOT)/cpp/jsi\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/registry\"",
       "\"$(PODS_TARGET_SRCROOT)/cpp/fabric\"",
+      "\"$(PODS_TARGET_SRCROOT)/cpp/gradient\"",
+      "\"$(PODS_TARGET_SRCROOT)/cpp/clippath\"",
+      "\"$(PODS_TARGET_SRCROOT)/cpp/bgimage\"",
       "\"$(PODS_TARGET_SRCROOT)/nitrogen/generated/shared/c++\""
     ].join(" ")
   }

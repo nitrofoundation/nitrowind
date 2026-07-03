@@ -1,5 +1,12 @@
-import React, { forwardRef, useMemo, useRef } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import {
+  findNodeHandle,
   Platform,
   View as RNView,
   type View as RNViewType,
@@ -7,6 +14,15 @@ import {
 } from "react-native";
 import type { RNStyle } from "../compiler/types";
 import { resolveStylesForPlatform } from "../core/store";
+import {
+  BACKGROUND_IMAGE_PROP,
+  CLIP_PATH_PROP,
+  GRADIENT_ANGLE_PROP,
+} from "../core/normalize";
+import {
+  startGradientAngleDriver,
+  type GradientAngleTrack,
+} from "../core/gradientAngle";
 import type { ReanimatedAnimation } from "../core/reanimated";
 import { getAnimatedView } from "./animated";
 import {
@@ -76,6 +92,18 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
     gridConfig,
   );
 
+  // Keep a direct handle to the mounted host node so the gradient-angle driver
+  // can resolve its Fabric tag via findNodeHandle. `ref` (from useLinkedRef) is
+  // itself a callback ref, so compose: store the node, then delegate to it.
+  const nodeRef = useRef<RNViewType | null>(null);
+  const composedRef = useCallback(
+    (node: RNViewType | null) => {
+      nodeRef.current = node;
+      ref(node);
+    },
+    [ref],
+  );
+
   // Gradient: the fold emits the compact numeric descriptor under
   // `--nitrocss-gradient`. It is NOT a real RN style key and it is NOT a
   // child component either — the C++ engine registers `tag → descriptor` at
@@ -91,8 +119,27 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   const backdropFilter = isWeb
     ? undefined
     : (resolved.styles as Record<string, unknown>)[BACKDROP_FILTER_PROP];
+  // Runtime-only animated gradient angle. On native, the JS driver interpolates
+  // the track per frame and pushes the angle to the applier via the JSI channel;
+  // on web the browser animates it (via @property/keyframes), so the driver is a
+  // no-op. In both cases the marker must be stripped from the RN style below.
+  const gradientAngleTrack = isWeb
+    ? undefined
+    : ((resolved.styles as Record<string, unknown>)[GRADIENT_ANGLE_PROP] as
+        | GradientAngleTrack
+        | undefined);
+  // These extra visual-effect markers (clip-path/background-image) are already
+  // routed by normalize (→ real CSS on web, deleted on native). Belt-and-braces:
+  // strip the MARKER names here too so RN never warns on an unknown prop. On web
+  // normalize has already converted them to real CSS props (clipPath/
+  // backgroundImage/…) which are NOT stripped — only the marker names are.
+  const hasNewEffectMarker =
+    !isWeb &&
+    (gradientAngleTrack !== undefined ||
+      CLIP_PATH_PROP in (resolved.styles as object) ||
+      BACKGROUND_IMAGE_PROP in (resolved.styles as object));
   const { viewStyles, layerBorderRadius, backdropRadius } = useMemo(() => {
-    if (!hasGradient && backdropFilter === undefined) {
+    if (!hasGradient && backdropFilter === undefined && !hasNewEffectMarker) {
       return {
         viewStyles: resolved.styles,
         layerBorderRadius: 0,
@@ -102,6 +149,9 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
     const {
       [GRADIENT_DESCRIPTOR_PROP]: _descriptor,
       [BACKDROP_FILTER_PROP]: _backdrop,
+      [GRADIENT_ANGLE_PROP]: _angle,
+      [CLIP_PATH_PROP]: _clipPath,
+      [BACKGROUND_IMAGE_PROP]: _bgImage,
       ...restStyles
     } = resolved.styles as Record<string, unknown>;
     const stripped = restStyles as RNStyle;
@@ -119,7 +169,7 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
       // (documented TODO in parsers/filter.ts `backdropBlurRadius`).
       backdropRadius: backdropBlurRadius(backdropFilter),
     };
-  }, [resolved.styles, hasGradient, backdropFilter]);
+  }, [resolved.styles, hasGradient, backdropFilter, hasNewEffectMarker]);
 
   // `useContainer` returns a single `onLayout` that already merges the container
   // size reporter (JS fallback) with the caller's own handler.
@@ -186,6 +236,32 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
     [hostStyles, containerStyle, style],
   );
 
+  // Animated gradient angle (native only). After mount, resolve the host's
+  // Fabric tag via findNodeHandle(nodeRef) and start the per-frame RAF driver,
+  // which interpolates the track and pushes the angle to the native applier
+  // through the JSI channel. Keyed on className + pseudo state (what the track
+  // derives from) so a theme-driven re-render — which mints a NEW track object
+  // identity but the SAME logical animation — does not restart the loop. The
+  // cleanup cancels the RAF and clears the native override on unmount/change.
+  const trackRef = useRef<GradientAngleTrack | undefined>(undefined);
+  trackRef.current = gradientAngleTrack;
+  const angleKey =
+    gradientAngleTrack === undefined
+      ? ""
+      : __nitrocssPseudoState
+        ? `${className}|${JSON.stringify(__nitrocssPseudoState)}`
+        : className;
+  useEffect(() => {
+    if (isWeb || !angleKey) return;
+    const track = trackRef.current;
+    if (!track) return;
+    const tag = findNodeHandle(nodeRef.current);
+    if (typeof tag !== "number") return;
+    const stop = startGradientAngleDriver(tag, track);
+    return stop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWeb, angleKey]);
+
   const webProps: Record<string, unknown> =
     isWeb && className ? { className } : {};
 
@@ -194,11 +270,14 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   // view flattening would then remove the view entirely — leaving the native
   // gradient applier's `tag → mounted view` lookup with nothing to paint on.
   const preventFlattening =
-    !isWeb && (hasGradient || backdropFilter !== undefined);
+    !isWeb &&
+    (hasGradient ||
+      backdropFilter !== undefined ||
+      gradientAngleTrack !== undefined);
 
   const node = (
     <Base
-      ref={ref}
+      ref={composedRef}
       {...webProps}
       style={isWeb ? style : composedStyle}
       onLayout={gridFallback.onLayout}

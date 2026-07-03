@@ -9,6 +9,127 @@ import type { RNStyle } from "../compiler/types";
 import { Platform } from "react-native";
 
 /**
+ * NEW visual-effect marker prop names (effects contract §"Marker prop names").
+ * The compiler emits these; runtime/engine consume & STRIP them before the RN
+ * commit. Defined locally (structural) so the runtime does not hard-depend on
+ * the compiler agent's landing order.
+ */
+export const CLIP_PATH_PROP = "--nitrocss-clip-path";
+export const BACKGROUND_IMAGE_PROP = "--nitrocss-background-image";
+export const GRADIENT_ANGLE_PROP = "--nitrocss-gradient-angle";
+
+/** `{ v, u }` length used by the clip-path descriptor (pct is 0..100). */
+interface ClipLen {
+  v: number;
+  u: "pct" | "px";
+}
+
+type ClipPathDescriptor =
+  | { type: "polygon"; points: Array<[ClipLen, ClipLen]> }
+  | { type: "circle"; cx: ClipLen; cy: ClipLen; r: ClipLen }
+  | { type: "ellipse"; cx: ClipLen; cy: ClipLen; rx: ClipLen; ry: ClipLen }
+  | {
+      type: "inset";
+      top: ClipLen;
+      right: ClipLen;
+      bottom: ClipLen;
+      left: ClipLen;
+      round?: number;
+    }
+  | { type: "path"; d: string };
+
+interface BackgroundImageDescriptor {
+  url: string;
+  size: "cover" | "contain" | "stretch" | "auto";
+  repeat: "no-repeat" | "repeat" | "repeat-x" | "repeat-y";
+  /** 0..1 */
+  positionX: number;
+  /** 0..1 */
+  positionY: number;
+}
+
+function clipLen({ v, u }: ClipLen): string {
+  return u === "pct" ? `${v}%` : `${v}px`;
+}
+
+/**
+ * Serialize a {@link ClipPathDescriptor} back into a CSS `clip-path` value
+ * (web only). Mirrors the descriptor shapes in the effects contract.
+ */
+function clipPathToCss(desc: ClipPathDescriptor): string | undefined {
+  switch (desc.type) {
+    case "polygon": {
+      const pts = desc.points
+        .map(([x, y]) => `${clipLen(x)} ${clipLen(y)}`)
+        .join(", ");
+      return `polygon(${pts})`;
+    }
+    case "circle":
+      return `circle(${clipLen(desc.r)} at ${clipLen(desc.cx)} ${clipLen(desc.cy)})`;
+    case "ellipse":
+      return `ellipse(${clipLen(desc.rx)} ${clipLen(desc.ry)} at ${clipLen(desc.cx)} ${clipLen(desc.cy)})`;
+    case "inset": {
+      const box = `${clipLen(desc.top)} ${clipLen(desc.right)} ${clipLen(desc.bottom)} ${clipLen(desc.left)}`;
+      return desc.round
+        ? `inset(${box} round ${desc.round}px)`
+        : `inset(${box})`;
+    }
+    case "path":
+      return `path("${desc.d}")`;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Route the `--nitrocss-clip-path` marker. WEB: convert the descriptor back into
+ * a real CSS `clipPath` string the browser paints; DELETE the marker. NATIVE:
+ * just DELETE the marker so it never reaches an RN prop — the C++ engine reads
+ * the descriptor from its OWN resolve pipeline (by tag), so JS deletion here does
+ * not remove it from the engine. Called next to {@link foldGradient}.
+ */
+export function foldClipPath(style: RNStyle): void {
+  const marker = style[CLIP_PATH_PROP] as unknown as
+    | ClipPathDescriptor
+    | undefined;
+  delete style[CLIP_PATH_PROP];
+  if (Platform.OS !== "web" || marker == null || typeof marker !== "object") {
+    return;
+  }
+  const css = clipPathToCss(marker);
+  if (css) (style as Record<string, unknown>).clipPath = css;
+}
+
+/**
+ * Route the `--nitrocss-background-image` marker. WEB: set the real CSS
+ * `backgroundImage: url("…")` plus companion `backgroundSize` /
+ * `backgroundRepeat` / `backgroundPosition` from the descriptor; DELETE the
+ * marker. NATIVE: just DELETE the marker (the C++ engine paints from its own
+ * resolve pipeline by tag). Called next to {@link foldGradient}.
+ */
+export function foldBackgroundImage(style: RNStyle): void {
+  const marker = style[BACKGROUND_IMAGE_PROP] as unknown as
+    | BackgroundImageDescriptor
+    | undefined;
+  delete style[BACKGROUND_IMAGE_PROP];
+  if (Platform.OS !== "web" || marker == null || typeof marker !== "object") {
+    return;
+  }
+  const s = style as Record<string, unknown>;
+  s.backgroundImage = `url("${marker.url}")`;
+  s.backgroundSize =
+    marker.size === "stretch"
+      ? "100% 100%"
+      : marker.size === "auto"
+        ? "auto"
+        : marker.size; // cover | contain
+  s.backgroundRepeat = marker.repeat;
+  const px = Math.round((marker.positionX ?? 0.5) * 100);
+  const py = Math.round((marker.positionY ?? 0.5) * 100);
+  s.backgroundPosition = `${px}% ${py}%`;
+}
+
+/**
  * Platform-gated gradient fold. Native emits the compact numeric descriptor
  * (routed by the C++ engine to the platform gradient applier, which paints a
  * CAGradientLayer on the view's own layer); web keeps a real CSS
@@ -82,3 +203,14 @@ export function normalizeShadow(style: RNStyle): void {
   }
   style.boxShadow = boxShadow.replace(BOX_SHADOW_COLOR_RE, marker);
 }
+
+/**
+ * The `--nitrocss-gradient-angle` marker is intentionally NOT stripped in
+ * normalize. It is a runtime-only animated track (never an RN prop, never a C++
+ * registry entry). `View` reads the track from the resolved styles to start the
+ * per-frame {@link import("./gradientAngle").startGradientAngleDriver}, then
+ * strips the marker before the style reaches RN — the same pattern `View` uses
+ * for the `--nitrocss-gradient` / `--nitrocss-backdrop-filter` markers. Keeping
+ * the raw track on `resolved.styles` here is what makes it available to `View`
+ * without a re-scan.
+ */

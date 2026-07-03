@@ -12,6 +12,19 @@ export {
 } from "./transform";
 export { extractBoxShadow, isBoxShadowProp } from "./boxShadow";
 export {
+  CLIP_PATH_PROP,
+  extractClipPath,
+  isClipPathProp,
+  type ClipPathDescriptor,
+  type ClipValue,
+} from "./clipPath";
+export {
+  BACKGROUND_IMAGE_PROP,
+  extractBackgroundImage,
+  isBackgroundImageProp,
+  type BackgroundImageDescriptor,
+} from "./backgroundImage";
+export {
   BACKDROP_FILTER_PROP,
   backdropBlurRadius,
   extractFilter,
@@ -26,6 +39,7 @@ export {
   radialCenterFromPosition,
   GRADIENT_DESCRIPTOR_PROP,
   GRADIENT_STYLE_PROPS,
+  GRADIENT_TYPE_PROP,
   type GradientDescriptor,
   type GradientFoldTarget,
 } from "./gradient";
@@ -36,6 +50,7 @@ export {
 } from "./textShadow";
 export { extractFontVariant, isFontVariantProp } from "./fontVariant";
 export {
+  extractGradientAngleTrack,
   extractKeyframes,
   extractReanimatedVars,
   foldAnimation,
@@ -43,6 +58,8 @@ export {
   isAnimationProp,
   isReanimatedVar,
   isTransitionProp,
+  parseAngleToDegrees,
   parseTransformString,
   REANIMATED_VAR_PREFIX,
+  type GradientAngleTrack,
 } from "./animations";

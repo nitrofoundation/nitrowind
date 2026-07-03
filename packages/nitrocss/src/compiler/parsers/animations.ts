@@ -16,6 +16,7 @@
  */
 
 import { toRNProperty, toRNValue } from "../toRNValue";
+import { extractTextShadow } from "./textShadow";
 import type { Keyframes, KeyframeStep, RNStyle } from "../types";
 
 export const REANIMATED_VAR_PREFIX = "--reanimated-";
@@ -205,6 +206,30 @@ export function parseTransformString(
   return out;
 }
 
+/**
+ * Parse a CSS angle token into degrees: `deg` as-is, `rad`→`*180/π`,
+ * `grad`→`*0.9`, `turn`→`*360`, and a bare number as degrees. Returns
+ * undefined for anything that is not an angle.
+ */
+export function parseAngleToDegrees(raw: string): number | undefined {
+  const value = raw.trim();
+  const m = /^(-?\d*\.?\d+)(deg|rad|grad|turn)?$/.exec(value);
+  if (!m) return undefined;
+  const num = Number.parseFloat(m[1]!);
+  if (!Number.isFinite(num)) return undefined;
+  switch (m[2]) {
+    case "rad":
+      return (num * 180) / Math.PI;
+    case "grad":
+      return num * 0.9;
+    case "turn":
+      return num * 360;
+    default:
+      // `deg` or bare number.
+      return num;
+  }
+}
+
 /** Coerce one keyframe-step declaration block (raw text) into an RN style. */
 function parseKeyframeStep(body: string, rem: number): KeyframeStep {
   const step: KeyframeStep = {};
@@ -216,6 +241,26 @@ function parseKeyframeStep(body: string, rem: number): KeyframeStep {
     if (!prop || !value) continue;
     if (prop === "transform") {
       step.transform = parseTransformString(value, rem);
+      continue;
+    }
+    if (prop === "text-shadow") {
+      // RN has no `text-shadow` prop; lower the single (first) layer to the
+      // discrete textShadow* props so an animated text-shadow flows through.
+      const lowered = extractTextShadow([{ prop, value }], () => undefined);
+      if (lowered) {
+        step.textShadowColor = lowered.textShadowColor;
+        step.textShadowOffset = lowered.textShadowOffset;
+        step.textShadowRadius = lowered.textShadowRadius;
+      }
+      continue;
+    }
+    if (prop.startsWith("--")) {
+      // Custom props are normally dropped (toRNValue can't type them), but an
+      // angle-bearing var (`--gradient-angle: 120deg`) must survive so the
+      // gradient-angle track can read it. Keep it as a normalized degrees
+      // number; drop non-angle custom props as before.
+      const degrees = parseAngleToDegrees(value);
+      if (degrees !== undefined) step[prop] = degrees;
       continue;
     }
     const rn = toRNValue(prop, value, { rem });
@@ -342,4 +387,121 @@ export function foldAnimation(
     }
   }
   return hasName ? props : undefined;
+}
+
+/**
+ * A runtime-only animated linear-gradient angle track. Emitted under
+ * `--nitrocss-gradient-angle` (see the effects contract) only when a class
+ * ALSO carries a linear gradient descriptor. The JS runtime interpolates it per
+ * frame and pushes the current angle to native — it never reaches RN props or
+ * the C++ registry paint path.
+ */
+export interface GradientAngleTrack {
+  durationMs: number;
+  delayMs: number;
+  /** CSS iteration count; `-1` for `infinite`. */
+  iterations: number;
+  direction: "normal" | "reverse" | "alternate" | "alternate-reverse";
+  easing: string;
+  /** Sorted `at` in `0..1`, always spanning 0 and 1, each with a degrees angle. */
+  keyframes: Array<{ at: number; angle: number }>;
+}
+
+/** Parse a keyframe offset selector (`"0%"`, `"from"`, `"to"`, `"50%"`) to 0..1. */
+function keyframeOffset(selector: string): number | undefined {
+  const key = selector.trim().toLowerCase();
+  if (key === "from") return 0;
+  if (key === "to") return 1;
+  const m = /^(-?\d*\.?\d+)%$/.exec(key);
+  if (!m) return undefined;
+  const n = Number.parseFloat(m[1]!);
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n / 100)) : undefined;
+}
+
+/** Coerce a duration/delay token to milliseconds (numbers only; else 0). */
+function durationToMs(token: string): number {
+  const ms = timeToMs(token);
+  return typeof ms === "number" ? ms : 0;
+}
+
+/**
+ * Resolve an `animation` shorthand's referenced `@keyframes` into a
+ * {@link GradientAngleTrack} — the runtime-only animated linear-gradient angle
+ * channel. Reuses the {@link foldAnimation} timing tokenizer to read duration /
+ * delay / iterations / direction / easing, then collects every keyframe step
+ * that set an angle-bearing custom property (kept as a normalized degrees
+ * number by {@link parseKeyframeStep}). Returns undefined when no keyframe
+ * carries an angle var.
+ */
+export function extractGradientAngleTrack(
+  animationShorthand: string,
+  keyframes: Record<string, Keyframes>,
+): GradientAngleTrack | undefined {
+  let durationMs = 0;
+  let delayMs = 0;
+  let durationSeen = false;
+  let iterations = 1;
+  let direction: GradientAngleTrack["direction"] = "normal";
+  let easing = "ease";
+  let frames: Keyframes | undefined;
+
+  for (const token of animationShorthand.trim().split(/\s+/)) {
+    if (TIME_RE.test(token)) {
+      if (!durationSeen) {
+        durationMs = durationToMs(token);
+        durationSeen = true;
+      } else {
+        delayMs = durationToMs(token);
+      }
+      continue;
+    }
+    if (ITERATION_RE.test(token)) {
+      iterations = token === "infinite" ? -1 : Number(token);
+      continue;
+    }
+    if (TIMING_FUNCTIONS.has(token)) {
+      easing = token;
+      continue;
+    }
+    if (DIRECTIONS.has(token)) {
+      direction = token as GradientAngleTrack["direction"];
+      continue;
+    }
+    if (FILL_MODES.has(token) || PLAY_STATES.has(token)) continue;
+    if (frames === undefined && keyframes[token] !== undefined) {
+      frames = keyframes[token];
+    }
+  }
+
+  if (frames === undefined) return undefined;
+
+  // Collect (offset, angle) from every step that set an angle custom prop.
+  const collected: Array<{ at: number; angle: number }> = [];
+  for (const [selector, step] of Object.entries(frames)) {
+    const at = keyframeOffset(selector);
+    if (at === undefined) continue;
+    let angle: number | undefined;
+    for (const [prop, value] of Object.entries(step)) {
+      if (prop.startsWith("--") && typeof value === "number") angle = value;
+    }
+    if (angle !== undefined) collected.push({ at, angle });
+  }
+  if (collected.length === 0) return undefined;
+
+  collected.sort((a, b) => a.at - b.at);
+  // Clamp/hold so the track always spans 0..1 (native interpolator needs the
+  // endpoints): prepend the first sample at 0 and append the last at 1.
+  const first = collected[0]!;
+  const last = collected[collected.length - 1]!;
+  if (first.at > 0) collected.unshift({ at: 0, angle: first.angle });
+  if (last.at < 1) collected.push({ at: 1, angle: last.angle });
+
+  return {
+    durationMs,
+    delayMs,
+    iterations,
+    direction,
+    easing,
+    keyframes: collected,
+  };
 }
