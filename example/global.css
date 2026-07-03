@@ -101,6 +101,25 @@
   background-position: center;
   background-repeat: no-repeat;
 }
+@utility bg-photo-stretch {
+  background-image: url("https://picsum.photos/id/1039/400/400");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* A small image so `background-repeat` visibly tiles (native size = auto). */
+@utility bg-tile {
+  background-image: url("https://picsum.photos/id/1074/56/56");
+  background-repeat: repeat;
+}
+@utility bg-tile-x {
+  background-image: url("https://picsum.photos/id/1074/56/56");
+  background-repeat: repeat-x;
+}
+@utility bg-tile-y {
+  background-image: url("https://picsum.photos/id/1074/56/56");
+  background-repeat: repeat-y;
+}
 
 /* --- text-shadow (native single-layer via RN textShadow*) --- */
 @utility text-glow {

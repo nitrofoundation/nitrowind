@@ -1,6 +1,7 @@
 #import "NitroCssBackgroundImageApplier.h"
 
 #import <QuartzCore/QuartzCore.h>
+#import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
 #if __has_include(<React/RCTSurfacePresenter.h>)
@@ -10,6 +11,7 @@
 #import "BackgroundImageTargets.hpp"
 
 #include <atomic>
+#include <cmath>
 #include <string>
 
 /**
@@ -19,8 +21,12 @@
  *   { url:string, size:"cover"|"contain"|"stretch"|"auto",
  *     repeat:"no-repeat"|"repeat"|"repeat-x"|"repeat-y",
  *     positionX:number(0..1), positionY:number(0..1) }
- * v1: `repeat` is not tiled — always painted no-repeat via contentsGravity
- * (TODO tiling). position is approximated by contentsGravity only.
+ *
+ * `no-repeat` paints the decoded image directly with a `contentsGravity`
+ * mapped from `background-size` (position approximated by gravity only).
+ * `repeat` / `repeat-x` / `repeat-y` render a bounds-sized tiled bitmap at the
+ * image's native tile size (CSS `background-size: auto` semantics) and re-tile
+ * on resize; the non-repeating axis of a single-axis repeat is centred.
  */
 namespace {
 
@@ -38,6 +44,9 @@ const void *kBgAppliedGenerationKey = &kBgAppliedGenerationKey;
 // generation-view but swaps the image, and to know whether a pending fetch is
 // still wanted for this view.
 const void *kBgAppliedURLKey = &kBgAppliedURLKey;
+// The decoded source UIImage retained per painted view so a resize can re-tile
+// a repeating background without re-fetching.
+const void *kBgSourceImageKey = &kBgSourceImageKey;
 
 struct ParsedBackgroundImage {
   std::string url;
@@ -69,6 +78,48 @@ CALayerContentsGravity contentsGravityForSize(const std::string &size) {
   if (size == "contain") return kCAGravityResizeAspect;
   if (size == "stretch") return kCAGravityResize;
   return kCAGravityCenter; // "auto"
+}
+
+bool isRepeating(const std::string &repeat) {
+  return repeat == "repeat" || repeat == "repeat-x" || repeat == "repeat-y";
+}
+
+/**
+ * Render `source` tiled to fill `size` per the CSS `background-repeat` mode, at
+ * the image's native tile size (`background-size: auto`). `repeat` tiles both
+ * axes; `repeat-x` / `repeat-y` tile one axis and centre the other. Returns the
+ * source unchanged when the target is degenerate.
+ */
+UIImage *renderTiledImage(UIImage *source, CGSize size,
+                          const std::string &repeat) {
+  if (source == nil || size.width <= 0.5 || size.height <= 0.5) return source;
+  const CGSize tile = source.size;
+  if (tile.width <= 0.0 || tile.height <= 0.0) return source;
+
+  const bool repeatX = (repeat == "repeat" || repeat == "repeat-x");
+  const bool repeatY = (repeat == "repeat" || repeat == "repeat-y");
+
+  UIGraphicsImageRendererFormat *format =
+      [UIGraphicsImageRendererFormat preferredFormat];
+  format.opaque = NO;
+  UIGraphicsImageRenderer *renderer =
+      [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
+  return [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+    (void)context;
+    const NSInteger cols =
+        repeatX ? (NSInteger)std::ceil(size.width / tile.width) : 1;
+    const NSInteger rows =
+        repeatY ? (NSInteger)std::ceil(size.height / tile.height) : 1;
+    const CGFloat startX = repeatX ? 0.0 : (size.width - tile.width) / 2.0;
+    const CGFloat startY = repeatY ? 0.0 : (size.height - tile.height) / 2.0;
+    for (NSInteger row = 0; row < rows; row++) {
+      for (NSInteger col = 0; col < cols; col++) {
+        [source drawInRect:CGRectMake(startX + col * tile.width,
+                                      startY + row * tile.height, tile.width,
+                                      tile.height)];
+      }
+    }
+  }];
 }
 
 CALayer *findImageLayer(UIView *view) {
@@ -206,7 +257,33 @@ NSCache<NSString *, UIImage *> *imageCache() {
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   objc_setAssociatedObject(view, kBgAppliedURLKey, nil,
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  objc_setAssociatedObject(view, kBgSourceImageKey, nil,
+                           OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   [_paintedViews removeObject:view];
+}
+
+/**
+ * Paint `image` onto `layer`. `no-repeat` sets the decoded image directly with
+ * a size-derived gravity; repeating modes render a bounds-sized tiled bitmap
+ * (native tile size) and display it 1:1. Retains the source image on `view` so
+ * a later resize can re-tile without re-fetching.
+ */
+- (void)paintImage:(UIImage *)image
+            onView:(UIView *)view
+             layer:(CALayer *)layer
+            bounds:(CGRect)bounds
+              size:(const std::string &)size
+            repeat:(const std::string &)repeat {
+  objc_setAssociatedObject(view, kBgSourceImageKey, image,
+                           OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  if (!isRepeating(repeat)) {
+    layer.contentsGravity = contentsGravityForSize(size);
+    layer.contents = (id)image.CGImage;
+    return;
+  }
+  UIImage *tiled = renderTiledImage(image, bounds.size, repeat);
+  layer.contentsGravity = kCAGravityResize;
+  layer.contents = (id)tiled.CGImage;
 }
 
 - (void)applyEntry:(const BackgroundImageTargets::Entry &)entry
@@ -235,9 +312,22 @@ NSCache<NSString *, UIImage *> *imageCache() {
                          appliedGeneration.unsignedLongLongValue == entry.generation &&
                          [appliedURL isEqualToString:urlString];
   if (unchanged) {
-    // Steady state: only the frame/gravity may need refreshing on resize.
+    // Steady state: only the frame may need refreshing on resize. A repeating
+    // background is a bounds-sized tiled bitmap, so re-tile from the retained
+    // source image whenever the box changes.
     if (!CGRectEqualToRect(layer.frame, bounds)) {
       layer.frame = bounds;
+      if (isRepeating(d.repeat)) {
+        UIImage *source = objc_getAssociatedObject(view, kBgSourceImageKey);
+        if (source != nil) {
+          [self paintImage:source
+                    onView:view
+                     layer:layer
+                    bounds:bounds
+                      size:d.size
+                    repeat:d.repeat];
+        }
+      }
     }
     return;
   }
@@ -265,13 +355,21 @@ NSCache<NSString *, UIImage *> *imageCache() {
   // Cached decoded image → paint synchronously (still inside this CATransaction).
   UIImage *cached = [imageCache() objectForKey:urlString];
   if (cached != nil) {
-    layer.contents = (id)cached.CGImage;
+    [self paintImage:cached
+              onView:view
+               layer:layer
+              bounds:bounds
+                size:d.size
+              repeat:d.repeat];
     return;
   }
 
   NSURL *url = [NSURL URLWithString:urlString];
   if (url == nil) return;
 
+  // Captured by the completion block (C++ strings copy into the block).
+  const std::string sizeCopy = d.size;
+  const std::string repeatCopy = d.repeat;
   __weak NitroCssBackgroundImageApplier *weakSelf = self;
   __weak RCTSurfacePresenter *weakPresenter = presenter;
   NSURLSessionDataTask *task = [[NSURLSession sharedSession]
@@ -304,7 +402,12 @@ NSCache<NSString *, UIImage *> *imageCache() {
           [CATransaction begin];
           [CATransaction setDisableActions:YES];
           currentLayer.frame = currentView.layer.bounds;
-          currentLayer.contents = (id)image.CGImage;
+          [strongSelf paintImage:image
+                          onView:currentView
+                           layer:currentLayer
+                          bounds:currentView.layer.bounds
+                            size:sizeCopy
+                          repeat:repeatCopy];
           [CATransaction commit];
         });
       }];

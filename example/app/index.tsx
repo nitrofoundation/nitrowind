@@ -24,6 +24,7 @@ type RootStackParamList = {
   Grid: undefined;
   Gradients: undefined;
   Effects: undefined;
+  BackgroundImage: undefined;
   Svg: undefined;
   Lists: undefined;
 };
@@ -120,6 +121,13 @@ const PAGES: Page[] = [
     subtitle: 'Animated gradient angle, clip-path, background-image, text-shadow',
     icon: '✨',
     tile: 'bg-linear-45 from-fuchsia-500 to-cyan-400',
+  },
+  {
+    route: 'BackgroundImage',
+    title: 'Background Image',
+    subtitle: 'url(...) rasters — size, position & repeat, painted natively',
+    icon: '🖼️',
+    tile: 'bg-tile',
   },
   {
     route: 'Svg',

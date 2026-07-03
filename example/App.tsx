@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NitrowindProvider } from '@nitrofoundation/nitrowind';
 
 import AnimationsScreen from './app/animations';
+import BackgroundImageScreen from './app/background-image';
 import BackgroundsScreen from './app/backgrounds';
 import BordersScreen from './app/borders';
 import ContainersScreen from './app/containers';
@@ -37,6 +38,7 @@ type RootStackParamList = {
   Grid: undefined;
   Gradients: undefined;
   Effects: undefined;
+  BackgroundImage: undefined;
   Svg: undefined;
   Lists: undefined;
 };
@@ -136,6 +138,11 @@ export default function App() {
               name="Effects"
               component={EffectsScreen}
               options={{ title: 'Effects' }}
+            />
+            <Stack.Screen
+              name="BackgroundImage"
+              component={BackgroundImageScreen}
+              options={{ title: 'Background Image' }}
             />
             <Stack.Screen
               name="Svg"
