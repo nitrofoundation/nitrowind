@@ -23,6 +23,7 @@ type RootStackParamList = {
   Pseudo: undefined;
   Grid: undefined;
   Gradients: undefined;
+  Effects: undefined;
   Svg: undefined;
   Lists: undefined;
 };
