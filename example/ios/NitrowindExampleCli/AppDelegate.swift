@@ -40,30 +40,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // setBridge). Uses the ObjC runtime so no extra public headers are needed.
     attachNitroCssGradientApplier(factory: factory, attempt: 0)
 
-    // Same story for nitrolist: hand it the SurfacePresenter so it can wire the
-    // native scroll observer AND install its cold-path JSI channel (via the
-    // presenter's runtimeExecutor). Bridgeless never fires its `setBridge:`.
-    bootstrapNitroList(factory: factory, attempt: 0)
-
     return true
   }
-}
-
-private func bootstrapNitroList(factory: RCTReactNativeFactory, attempt: Int) {
-  guard attempt < 20 else { return }
-  let host = (factory.rootViewFactory as NSObject).value(forKey: "reactHost") as? NSObject
-  guard let presenter = host?.value(forKey: "surfacePresenter") as? NSObject else {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-      bootstrapNitroList(factory: factory, attempt: attempt + 1)
-    }
-    return
-  }
-  guard
-    let managerClass = NSClassFromString("NitroListScrollManager") as? NSObject.Type,
-    let shared = managerClass.perform(NSSelectorFromString("shared"))?.takeUnretainedValue()
-  else { return }
-  _ = shared.perform(
-    NSSelectorFromString("bootstrapWithSurfacePresenter:"), with: presenter)
 }
 
 private func attachNitroCssGradientApplier(factory: RCTReactNativeFactory, attempt: Int) {
