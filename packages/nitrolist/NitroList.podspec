@@ -24,7 +24,9 @@ Pod::Spec.new do |s|
 
   s.pod_target_xcconfig = {
     "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/cpp\"",
-    "CLANG_CXX_LANGUAGE_STANDARD" => "c++20"
+    "CLANG_CXX_LANGUAGE_STANDARD" => "c++20",
+    # File-based diagnostics (tmp/nitrolist-cull.log) in Debug builds only.
+    "GCC_PREPROCESSOR_DEFINITIONS[config=Debug]" => "$(inherited) NITROLIST_DEBUG_LOGS=1"
   }
 
   # React Native (Fabric) — validated against RN 0.86.

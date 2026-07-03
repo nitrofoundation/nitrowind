@@ -4,8 +4,7 @@
  * engine → ShadowTreeMutator commit), not on the JS thread. Cells are ordinary
  * nitrowind-styled React subtrees, committed once and toggled natively.
  *
- * See docs/nitrolist/ui-thread-engine.md. The native engine is being wired in
- * stages; until then this renders all cells (uncelled base).
+ * See docs/nitrolist/ui-thread-engine.md.
  */
 import { Text, View } from '@nitrofoundation/nitrowind';
 import { NitroList } from '@nitrofoundation/nitrolist';
@@ -48,7 +47,7 @@ export default function NitroListScreen() {
   return (
     <View className="flex-1 bg-surface">
       <Text className="px-4 pb-2 pt-3 text-xs text-muted">
-        {DATA.length} styled cells · native UI-thread engine
+        {DATA.length} styled cells · native UI-thread cull
       </Text>
       <NitroList
         data={DATA}

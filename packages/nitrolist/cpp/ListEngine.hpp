@@ -56,6 +56,11 @@ public:
     if (index < tags_.size()) tags_[index] = tag;
   }
 
+  /** The reported tag for a cell index (0 = none). */
+  Tag tagAt(std::size_t index) const {
+    return index < tags_.size() ? tags_[index] : 0;
+  }
+
   /** Apply a measured cell size (from native measurement); O(log n). */
   void setCellSize(std::size_t index, double size) {
     virtualizer_.setSize(index, size);
@@ -83,6 +88,28 @@ public:
     forEachTagInWindowNotIn(next, prev, d.toVisible);
     forEachTagInWindowNotIn(prev, next, d.toHidden);
     return d;
+  }
+
+  struct Snapshot {
+    std::vector<Tag> show;
+    std::vector<Tag> hide;
+  };
+
+  /**
+   * Partition ALL known cell tags against the current window. Used by the
+   * platform observer on scroll-end to self-heal missed deltas (e.g. cells that
+   * mounted mid-fling, or drift while measured sizes were still streaming in).
+   * O(n), so reserved for scroll-end — the per-frame path stays delta-based.
+   */
+  Snapshot reconcile() const {
+    Snapshot s;
+    if (!hasWindow_) return s;
+    const Window& w = culler_.current();
+    for (std::size_t i = 0; i < tags_.size(); ++i) {
+      if (tags_[i] == 0) continue;
+      (!w.empty && w.contains(i) ? s.show : s.hide).push_back(tags_[i]);
+    }
+    return s;
   }
 
   /** Full set of currently-visible cell tags (for a fresh applier attach). */

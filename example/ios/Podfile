@@ -30,5 +30,22 @@ target 'NitrowindExampleCli' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Force `-ObjC` on the app target so Obj-C classes from static-lib pods that
+    # nothing references directly (e.g. nitrolist's `NitroListInstallerModule`,
+    # an `RCT_EXPORT_MODULE` with no codegen spec) are still linked and run their
+    # `+load` — otherwise the linker dead-strips them and they never register,
+    # so `setBridge:` never fires and the JSI channel never installs.
+    installer.aggregate_targets.each do |aggregate_target|
+      aggregate_target.user_project.native_targets.each do |native_target|
+        native_target.build_configurations.each do |cfg|
+          flags = cfg.build_settings['OTHER_LDFLAGS'] || ['$(inherited)']
+          flags = [flags] if flags.is_a?(String)
+          flags << '-ObjC' unless flags.include?('-ObjC')
+          cfg.build_settings['OTHER_LDFLAGS'] = flags
+        end
+      end
+      aggregate_target.user_project.save
+    end
   end
 end

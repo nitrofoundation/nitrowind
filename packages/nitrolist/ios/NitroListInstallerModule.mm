@@ -11,6 +11,7 @@
 #endif
 
 #import "NitroListScrollManager.h"
+#import "NitroListJSI.h"
 #import "ListRegistry.hpp"
 
 #include <ReactCommon/RuntimeExecutor.h>
@@ -38,8 +39,13 @@ jsi::Function makeFn(jsi::Runtime &rt, const char *name, unsigned argc,
       rt, jsi::PropNameID::forAscii(rt, name), argc, std::move(fn));
 }
 
+} // namespace
+
+using namespace facebook;
+
 /** Install `global.__nitrolist*` cold-path functions (idempotent per runtime). */
-void installNitroListHostFunctions(jsi::Runtime &rt) {
+void nitrolist::installHostFunctions(jsi::Runtime &rt) {
+  NitroListLog(@"JSI install running");
   auto global = rt.global();
 
   // __nitrolistConfigure(listId, count, estimatedSize, gap, prerenderRatio)
@@ -49,6 +55,10 @@ void installNitroListHostFunctions(jsi::Runtime &rt) {
              [](jsi::Runtime &rt, const jsi::Value &, const jsi::Value *args,
                 size_t n) -> jsi::Value {
                if (n >= 4) {
+                 NitroListLog([NSString
+                     stringWithFormat:@"JS configure list=%d count=%.0f",
+                                      (int32_t)args[0].asNumber(),
+                                      args[1].asNumber()]);
                  nitrolist::ListRegistry::shared().configure(
                      (int32_t)args[0].asNumber(), (size_t)args[1].asNumber(),
                      args[2].asNumber(), args[3].asNumber(),
@@ -96,6 +106,8 @@ void installNitroListHostFunctions(jsi::Runtime &rt) {
                  const int32_t tag = (int32_t)args[1].asNumber();
                  const BOOL horizontal =
                      n >= 3 && args[2].isBool() ? args[2].getBool() : NO;
+                 NitroListLog([NSString
+                     stringWithFormat:@"JS attach list=%d svTag=%d", listId, tag]);
                  dispatch_async(dispatch_get_main_queue(), ^{
                    [[NitroListScrollManager shared] attachList:listId
                                                  scrollViewTag:tag
@@ -120,7 +132,6 @@ void installNitroListHostFunctions(jsi::Runtime &rt) {
                return jsi::Value::undefined();
              }));
 }
-} // namespace
 
 @implementation NitroListInstallerModule
 
@@ -130,7 +141,13 @@ RCT_EXPORT_MODULE(NitroListInstaller)
   return NO;
 }
 
+// NOTE: in bridgeless RN this `setBridge:` never fires (the legacy interop only
+// instantiates a module when JS touches a method/constant, and even then the
+// bridge is a proxy). The reliable bootstrap is the surface-presenter path in
+// `NitroListScrollManager bootstrapWithSurfacePresenter:`, invoked from the
+// AppDelegate. This method is kept only as a non-bridgeless fallback.
 - (void)setBridge:(RCTBridge *)bridge {
+  NitroListLog([NSString stringWithFormat:@"setBridge fired bridge=%d", bridge != nil]);
   if (bridge == nil) return;
 
 #if __has_include(<React/RCTSurfacePresenter.h>)
@@ -149,7 +166,7 @@ RCT_EXPORT_MODULE(NitroListInstaller)
         RCTRuntimeExecutorFromBridge(bridge);
     if (runtimeExecutor != nullptr) {
       runtimeExecutor([](facebook::jsi::Runtime &rt) {
-        installNitroListHostFunctions(rt);
+        nitrolist::installHostFunctions(rt);
       });
     }
   } @catch (NSException *e) {

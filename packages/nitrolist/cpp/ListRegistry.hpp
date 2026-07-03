@@ -51,6 +51,29 @@ public:
     return it->second.setViewport(scrollOffset, viewportExtent);
   }
 
+  /** Current window bounds (diagnostics). */
+  Window window(int32_t listId) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = engines_.find(listId);
+    if (it == engines_.end()) return {};
+    return it->second.window();
+  }
+
+  /** Scroll-end self-heal: all tags partitioned against the current window. */
+  ListEngine::Snapshot reconcile(int32_t listId) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = engines_.find(listId);
+    if (it == engines_.end()) return {};
+    return it->second.reconcile();
+  }
+
+  /** The reported tag for a cell index (0 = none / unknown list). */
+  Tag cellTag(int32_t listId, std::size_t index) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = engines_.find(listId);
+    return it != engines_.end() ? it->second.tagAt(index) : 0;
+  }
+
   std::vector<Tag> visibleTags(int32_t listId) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = engines_.find(listId);
