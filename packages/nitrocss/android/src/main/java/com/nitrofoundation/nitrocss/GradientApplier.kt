@@ -179,7 +179,9 @@ object GradientApplier {
     // changes don't invalidate this: the drawable rebuilds its shader from
     // `onBoundsChange` when the view resizes.
     if (state != null && state.tag == tag && view.background === state.wrapper) {
-      if (state.generation != entry.generation) {
+      // Repaint when the descriptor changed OR an animated angle override is
+      // live (the driver pushes a new angle every frame → re-shade each flush).
+      if (state.generation != entry.generation || entry.angleOverride != null) {
         state.gradient.update(entry, view)
         state.generation = entry.generation
       }
@@ -276,6 +278,7 @@ object GradientApplier {
           borderRadius = item.optDouble("borderRadius", 0.0),
           radial = descriptor.optString("gradientType") == "radial",
           angle = descriptor.optDouble("angle", 180.0),
+          angleOverride = if (item.has("angleOverride")) item.optDouble("angleOverride") else null,
           positionX = descriptor.optDouble("positionX", 0.5).toFloat(),
           positionY = descriptor.optDouble("positionY", 0.5).toFloat(),
           colors = parseColors(rawColors),
@@ -354,6 +357,8 @@ object GradientApplier {
     val borderRadius: Double,
     val radial: Boolean,
     val angle: Double,
+    /** Live per-frame animated angle from the JS driver, or null when static. */
+    val angleOverride: Double?,
     val positionX: Float,
     val positionY: Float,
     val colors: IntArray,
@@ -411,7 +416,7 @@ object GradientApplier {
 
     fun update(entry: Entry, view: View) {
       radial = entry.radial
-      angleDeg = entry.angle
+      angleDeg = entry.angleOverride ?: entry.angle
       centerX = entry.positionX
       centerY = entry.positionY
       stopColors = entry.colors

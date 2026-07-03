@@ -12,9 +12,11 @@ import com.margelo.nitro.nitrocss.views.HybridBackdropViewManager
  * non-view Nitro HybridObjects (`NativePlatform`, `ShadowRegistry`, etc.) are
  * autolinked by Nitrogen and do not go through this package.
  *
- * Gradients are NOT a view: engine-v2 paints them onto the target view's own
- * background from the C++ `GradientTargets` registry — see [GradientApplier],
- * installed here so it has a ReactContext for Fabric view lookups.
+ * Gradients / clip-paths / background-images are NOT views: engine-v2 paints
+ * them onto the target view's own layer from the C++ registries
+ * (`GradientTargets` / `ClipPathTargets` / `BackgroundImageTargets`) — see the
+ * respective appliers, installed here so they have a ReactContext for Fabric
+ * view lookups.
  */
 class NitroCssPackage : ReactPackage {
   init {
@@ -23,6 +25,8 @@ class NitroCssPackage : ReactPackage {
 
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
     GradientApplier.install(reactContext)
+    ClipPathApplier.install(reactContext)
+    BackgroundImageApplier.install(reactContext)
     return listOf(NitroCssInstallerModule(reactContext))
   }
 

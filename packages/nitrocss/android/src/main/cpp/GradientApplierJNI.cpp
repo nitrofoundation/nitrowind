@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include "gradient/GradientAngleOverrides.hpp"
 #include "gradient/GradientTargets.hpp"
 
 /**
@@ -38,6 +39,7 @@
 
 namespace {
 
+using nitrocss::GradientAngleOverrides;
 using nitrocss::GradientTargets;
 
 struct JGradientApplier : facebook::jni::JavaClass<JGradientApplier> {
@@ -70,6 +72,13 @@ Java_com_nitrofoundation_nitrocss_GradientApplier_nativeInstall(JNIEnv*, jobject
       facebook::jni::ThreadScope threadScope;
       JGradientApplier::onNativeInvalidate();
     });
+    // The animated gradient angle rides through the SAME applier: the JS driver
+    // pushes a per-frame angle into GradientAngleOverrides via JSI, and each
+    // push must repaint the gradient. Route its invalidation to the same flush.
+    GradientAngleOverrides::shared().setInvalidationListener([]() {
+      facebook::jni::ThreadScope threadScope;
+      JGradientApplier::onNativeInvalidate();
+    });
   });
 }
 
@@ -83,6 +92,11 @@ Java_com_nitrofoundation_nitrocss_GradientApplier_nativeSnapshotJson(JNIEnv* env
         ("generation", static_cast<int64_t>(entry.generation))
         ("borderRadius", entry.borderRadius)
         ("descriptor", entry.descriptor);
+    // Fold in the live animated-angle override (if any) so the applier paints a
+    // linear gradient at the driver's per-frame angle instead of the static one.
+    if (const auto angle = GradientAngleOverrides::shared().angleForTag(tag)) {
+      item["angleOverride"] = *angle;
+    }
     payload.push_back(std::move(item));
   }
   const std::string json = folly::toJson(payload);
