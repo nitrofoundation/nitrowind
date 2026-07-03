@@ -68,7 +68,7 @@ export default function App() {
         <NavigationContainer theme={navTheme}>
           <StatusBar barStyle="light-content" />
           <Stack.Navigator
-            initialRouteName="NitroList"
+            initialRouteName="Home"
             screenOptions={{
               headerStyle: { backgroundColor: '#6d28d9' },
               headerTintColor: '#ffffff',
