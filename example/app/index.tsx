@@ -114,6 +114,13 @@ const PAGES: Page[] = [
     tile: 'bg-linear-to-br from-fuchsia-500 to-cyan-400',
   },
   {
+    route: 'Effects',
+    title: 'Effects',
+    subtitle: 'Animated gradient angle, clip-path, background-image, text-shadow',
+    icon: '✨',
+    tile: 'bg-linear-45 from-fuchsia-500 to-cyan-400',
+  },
+  {
     route: 'Svg',
     title: 'SVG',
     subtitle: 'className-styled react-native-svg (fill-*, stroke-*)',

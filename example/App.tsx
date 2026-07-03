@@ -11,6 +11,7 @@ import AnimationsScreen from './app/animations';
 import BackgroundsScreen from './app/backgrounds';
 import BordersScreen from './app/borders';
 import ContainersScreen from './app/containers';
+import EffectsScreen from './app/effects';
 import GradientsScreen from './app/gradients';
 import GridScreen from './app/grid';
 import HomeScreen from './app/index';
@@ -35,6 +36,7 @@ type RootStackParamList = {
   Pseudo: undefined;
   Grid: undefined;
   Gradients: undefined;
+  Effects: undefined;
   Svg: undefined;
   Lists: undefined;
 };
@@ -62,7 +64,7 @@ export default function App() {
         <NavigationContainer theme={navTheme}>
           <StatusBar barStyle="light-content" />
           <Stack.Navigator
-            initialRouteName="Gradients"
+            initialRouteName="Home"
             screenOptions={{
               headerStyle: { backgroundColor: '#6d28d9' },
               headerTintColor: '#ffffff',
@@ -129,6 +131,11 @@ export default function App() {
               name="Gradients"
               component={GradientsScreen}
               options={{ title: 'Gradients' }}
+            />
+            <Stack.Screen
+              name="Effects"
+              component={EffectsScreen}
+              options={{ title: 'Effects' }}
             />
             <Stack.Screen
               name="Svg"

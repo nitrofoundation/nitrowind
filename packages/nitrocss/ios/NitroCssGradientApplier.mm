@@ -9,6 +9,8 @@
 
 #import "GradientTargets.hpp"
 #import "GradientAngleOverrides.hpp"
+#import "NitroCssClipPathApplier.h"
+#import "NitroCssBackgroundImageApplier.h"
 
 #include <atomic>
 #include <cctype>
@@ -405,6 +407,16 @@ CAGradientLayer *findGradientLayer(UIView *view) {
     });
   });
   [self setNeedsFlush];
+
+  // Cascade the attach to the sibling paint appliers. The example wires up only
+  // THIS applier (AppDelegate resolves "NitroCssGradientApplier" by name), and
+  // in bridgeless New Arch the installer module's `setBridge:` — where the
+  // siblings were attached — is never called. Attaching them here off the one
+  // applier that IS reliably wired guarantees clip-path and background-image
+  // paint on the same surface without extra host-app wiring.
+  [[NitroCssClipPathApplier shared] attachToSurfacePresenter:surfacePresenter];
+  [[NitroCssBackgroundImageApplier shared]
+      attachToSurfacePresenter:surfacePresenter];
 }
 
 - (void)setNeedsFlush {

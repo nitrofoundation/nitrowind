@@ -2515,7 +2515,7 @@ SPEC CHECKSUMS:
   BVLinearGradient: cb006ba232a1f3e4f341bb62c42d1098c284da70
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
   hermes-engine: ee405e16f7a2f5c41805cce74e41f4a48bf34bf3
-  NitroCss: 241aaf2907b2befc6a4d22d026a9885991b071b2
+  NitroCss: c15bce69e8c09b6a56453237e8fc45eba2c0d031
   NitroModules: 994eaa7fc39d1fb4b76bb61054312c9796c4a649
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
   RCTRequired: 30451112e6fef4e6f31b4e7eee0845156e35e4b0

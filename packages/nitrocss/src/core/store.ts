@@ -12,6 +12,7 @@ import {
   foldBackgroundImage,
   foldClipPath,
   foldGradient,
+  foldGradientAngle,
   foldTransform,
   normalizeShadow,
 } from "./normalize";
@@ -312,6 +313,7 @@ function resolveStylesUncached(
         applyBucketStyle(cqStyle, bucket.style);
         foldTransform(cqStyle);
         foldGradient(cqStyle);
+        foldGradientAngle(cqStyle);
         foldClipPath(cqStyle);
         foldBackgroundImage(cqStyle);
         normalizeShadow(cqStyle);
@@ -343,6 +345,9 @@ function resolveStylesUncached(
   foldGradient(styles);
   foldGradient(beforeStyle);
   foldGradient(afterStyle);
+  foldGradientAngle(styles);
+  foldGradientAngle(beforeStyle);
+  foldGradientAngle(afterStyle);
   foldClipPath(styles);
   foldClipPath(beforeStyle);
   foldClipPath(afterStyle);

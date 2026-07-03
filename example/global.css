@@ -32,6 +32,15 @@
    * `background-position: 25% 0% → 76% 100% → 25% 0%`.
    */
   --animate-gradient-shift: gradient-shift 8s ease-in-out infinite;
+
+  /*
+   * NitroCSS v2 — TRUE animated gradient angle. Unlike `gradient-shift` above
+   * (which fakes the sweep by translating an oversized layer), this animates the
+   * linear gradient's ANGLE natively: the compiler extracts an angle keyframe
+   * track, the runtime drives it per frame, and the native gradient applier
+   * rotates the CAGradientLayer's start/end points in place. Same view box.
+   */
+  --animate-gradient-angle-spin: gradient-angle-spin 6s linear infinite;
 }
 
 @keyframes gradient-shift {
@@ -44,6 +53,61 @@
   100% {
     transform: translateX(-70px) translateY(-28px);
   }
+}
+
+/*
+ * Angle track for the true animated gradient. The compiler picks up the
+ * angle-valued custom property from these keyframes and, because the same class
+ * also carries a linear gradient, emits a `--nitrocss-gradient-angle` track.
+ * On the web a browser would need `@property --gradient-angle { syntax:"<angle>" }`
+ * to interpolate this; NitroCSS native infers the angle track directly.
+ */
+@keyframes gradient-angle-spin {
+  0% {
+    --gradient-angle: 0deg;
+  }
+  100% {
+    --gradient-angle: 360deg;
+  }
+}
+
+/* --- clip-path (native CAShapeLayer mask, no SVG) --- */
+@utility clip-triangle {
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+@utility clip-hexagon {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+@utility clip-rhombus {
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+@utility clip-circle {
+  clip-path: circle(50%);
+}
+@utility clip-notch {
+  clip-path: inset(0 0 0 0 round 24px);
+}
+
+/* --- background-image (native raster paint on the view's own layer) --- */
+@utility bg-photo {
+  background-image: url("https://picsum.photos/id/1015/600/400");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+@utility bg-photo-contain {
+  background-image: url("https://picsum.photos/id/1025/400/400");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* --- text-shadow (native single-layer via RN textShadow*) --- */
+@utility text-glow {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+}
+@utility text-drop {
+  text-shadow: 2px 3px 4px rgba(0, 0, 0, 0.55);
 }
 
 .dark {

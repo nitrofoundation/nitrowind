@@ -129,6 +129,110 @@ export function foldBackgroundImage(style: RNStyle): void {
   s.backgroundPosition = `${px}% ${py}%`;
 }
 
+/** "6s" | "600ms" | 600 → milliseconds. */
+function toMs(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (typeof v !== "string") return 0;
+  const s = v.trim();
+  if (s.endsWith("ms")) return parseFloat(s) || 0;
+  if (s.endsWith("s")) return (parseFloat(s) || 0) * 1000;
+  return parseFloat(s) || 0;
+}
+
+/** "infinite" | "3" | 3 → count (-1 for infinite). */
+function toIterations(v: unknown): number {
+  if (v === "infinite") return -1;
+  const n = typeof v === "number" ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : 1;
+}
+
+/** Keyframe key ("0%"|"from"|"to"|"50%") → offset 0..1. */
+function stepOffset(key: string): number {
+  if (key === "from") return 0;
+  if (key === "to") return 1;
+  const n = parseFloat(key);
+  return Number.isFinite(n) ? n / 100 : 0;
+}
+
+/**
+ * Derive the animated gradient-angle track at RUNTIME. Tailwind compiles the
+ * gradient utilities and the angle animation to SEPARATE classes, so the
+ * compiler can't tie them together per-class — but by the time styles resolve,
+ * the merged node carries BOTH the folded linear `--nitrocss-gradient` and an
+ * `animationName` whose keyframes animate an angle custom property. Here we
+ * lift that into a `--nitrocss-gradient-angle` track (read by `View`, driven
+ * per-frame through the native override channel) and remove the angle custom
+ * property from `animationName` so Reanimated doesn't run a no-op animation.
+ * Native only — on web the browser interpolates the angle via `@property`.
+ */
+export function foldGradientAngle(style: RNStyle): void {
+  if (Platform.OS === "web") return;
+  const gradient = style["--nitrocss-gradient"] as
+    | { gradientType?: string }
+    | undefined;
+  if (
+    gradient == null ||
+    typeof gradient !== "object" ||
+    gradient.gradientType !== "linear"
+  ) {
+    return;
+  }
+  const animationName = style.animationName as
+    | Record<string, Record<string, unknown>>
+    | undefined;
+  if (animationName == null || typeof animationName !== "object") return;
+
+  // Find an angle-bearing custom property across the keyframe steps.
+  let angleProp: string | undefined;
+  for (const step of Object.values(animationName)) {
+    if (step == null || typeof step !== "object") continue;
+    for (const [prop, value] of Object.entries(step)) {
+      if (prop.startsWith("--") && typeof value === "number") {
+        angleProp = prop;
+        break;
+      }
+    }
+    if (angleProp) break;
+  }
+  if (!angleProp) return;
+
+  const keyframes = Object.entries(animationName)
+    .map(([key, step]) => ({
+      at: stepOffset(key),
+      angle: typeof step?.[angleProp] === "number" ? (step[angleProp] as number) : 0,
+    }))
+    .filter((k) => k.angle !== undefined)
+    .sort((a, b) => a.at - b.at);
+  if (keyframes.length < 2) return;
+
+  style[GRADIENT_ANGLE_PROP] = {
+    durationMs: toMs(style.animationDuration),
+    delayMs: toMs(style.animationDelay),
+    iterations: toIterations(style.animationIterationCount),
+    direction: (style.animationDirection as string) ?? "normal",
+    easing: (style.animationTimingFunction as string) ?? "linear",
+    keyframes,
+  } as unknown as RNStyle[string];
+
+  // Strip the angle custom prop from every step; drop steps that become empty,
+  // and remove the whole animation if it was only driving the angle.
+  let remainingProps = false;
+  for (const step of Object.values(animationName)) {
+    if (step && typeof step === "object") {
+      delete step[angleProp];
+      if (Object.keys(step).length > 0) remainingProps = true;
+    }
+  }
+  if (!remainingProps) {
+    delete style.animationName;
+    delete style.animationDuration;
+    delete style.animationTimingFunction;
+    delete style.animationIterationCount;
+    delete style.animationDelay;
+    delete style.animationDirection;
+  }
+}
+
 /**
  * Platform-gated gradient fold. Native emits the compact numeric descriptor
  * (routed by the C++ engine to the platform gradient applier, which paints a

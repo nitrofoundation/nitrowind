@@ -58,7 +58,8 @@ namespace {
  * runtime, so we re-install on a fresh global rather than assuming it survives.
  */
 void installGradientAngleHostFunctions(jsi::Runtime& runtime) {
-  auto& global = runtime.global();
+  // `global()` returns a jsi::Object by value; bind by value (Object is movable).
+  auto global = runtime.global();
 
   auto setAngle = jsi::Function::createFromHostFunction(
       runtime,
