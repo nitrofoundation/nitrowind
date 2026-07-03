@@ -303,6 +303,16 @@ void NitroCssCore::link(Tag tag,
                          SharedFolly inlineStyle,
                          std::vector<LinkedAccent> accents,
                          Tag containerTag) {
+  // A freshly-linked node must never inherit a stale animated-gradient-angle
+  // override left on its Fabric tag by a previous occupant. Fabric frees tags on
+  // unmount/reload and REUSES them for later mounts; an animated gradient whose
+  // JS driver cleanup did not run (abrupt reload, or a screen kept mounted by
+  // react-native-screens then destroyed) leaves a frozen angle in the registry.
+  // Clearing on link guarantees this node starts from its own descriptor angle;
+  // if it is itself an animated gradient, its JS driver re-sets the override
+  // right after mount (useEffect runs post-link).
+  GradientAngleOverrides::shared().clearAngle(tag);
+
   LinkedNode node;
   node.tag = tag;
   node.family = std::move(family);
