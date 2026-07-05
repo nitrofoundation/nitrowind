@@ -52,14 +52,15 @@ export default function Effects() {
               rounded-full pill
             </Text>
           </View>
-          <View className="btn-gradient-border h-28 items-center justify-center rounded-2xl">
+          <View className="btn-gradient-border h-28 items-center justify-center rounded-2xl animate-gradient-angle-spin">
             <Text className="text-sm font-bold text-on-surface">
-              rounded-2xl card
+              rotating border · animate-gradient-angle-spin
             </Text>
           </View>
           <Caption>
             background: linear-gradient(…) padding-box, linear-gradient(…)
-            border-box · border: 4px solid transparent
+            border-box · border: 4px solid transparent — the angle keyframes
+            rotate the border gradient natively.
           </Caption>
         </View>
       </Section>
