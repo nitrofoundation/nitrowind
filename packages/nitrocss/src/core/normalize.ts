@@ -216,13 +216,18 @@ export function foldGradientAngle(style: RNStyle): void {
     keyframes,
   } as unknown as RNStyle[string];
 
-  // Strip the angle custom prop from every step; drop steps that become empty,
-  // and remove the whole animation if it was only driving the angle.
+  // Strip the angle custom prop into NEW step objects — never in place. The
+  // merged style holds the compiled table's keyframe objects BY REFERENCE
+  // (applyBucketStyle assigns shallowly), so an in-place `delete` would destroy
+  // the angle keyframes for every node that resolves the same class afterwards:
+  // the first animated node works, all later ones render a static gradient.
   let remainingProps = false;
-  for (const step of Object.values(animationName)) {
+  const stripped: Record<string, Record<string, unknown>> = {};
+  for (const [key, step] of Object.entries(animationName)) {
     if (step && typeof step === "object") {
-      delete step[angleProp];
-      if (Object.keys(step).length > 0) remainingProps = true;
+      const { [angleProp]: _angle, ...rest } = step;
+      stripped[key] = rest;
+      if (Object.keys(rest).length > 0) remainingProps = true;
     }
   }
   if (!remainingProps) {
@@ -232,6 +237,8 @@ export function foldGradientAngle(style: RNStyle): void {
     delete style.animationIterationCount;
     delete style.animationDelay;
     delete style.animationDirection;
+  } else {
+    style.animationName = stripped as unknown as RNStyle[string];
   }
 }
 
