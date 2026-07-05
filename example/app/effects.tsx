@@ -52,15 +52,27 @@ export default function Effects() {
               rounded-full pill
             </Text>
           </View>
-          <View className="btn-gradient-border h-28 items-center justify-center rounded-2xl animate-gradient-angle-spin">
-            <Text className="text-sm font-bold text-on-surface">
-              rotating border · animate-gradient-angle-spin
-            </Text>
+          <View className="flex-row items-center justify-center gap-3">
+            {/* On a SQUARE box a rotating linear gradient reads perfectly
+                uniform. On wide boxes the same constant angular speed looks
+                like it surges as the axis crosses vertical — that is linear-
+                gradient optics (a browser does the same), not jank. */}
+            <View className="btn-gradient-border h-36 w-36 items-center justify-center rounded-3xl animate-gradient-angle-spin">
+              <Text className="text-center text-sm font-bold text-on-surface">
+                square{'\n'}rotating
+              </Text>
+            </View>
+            <View className="btn-gradient-border h-36 flex-1 items-center justify-center rounded-3xl animate-gradient-angle-spin">
+              <Text className="text-center text-sm font-bold text-on-surface">
+                wide{'\n'}rotating
+              </Text>
+            </View>
           </View>
           <Caption>
             background: linear-gradient(…) padding-box, linear-gradient(…)
-            border-box · border: 4px solid transparent — the angle keyframes
-            rotate the border gradient natively.
+            border-box · border + angle keyframes. The wide ring appears to
+            surge near vertical — constant angular speed, linear-gradient
+            optics on a wide box (compare the square).
           </Caption>
         </View>
       </Section>
