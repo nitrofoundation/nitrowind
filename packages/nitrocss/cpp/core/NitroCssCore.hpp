@@ -163,6 +163,15 @@ public:
   // --- Recompute -----------------------------------------------------------
   void recompute(uint32_t changedMask);
 
+  /**
+   * Re-resolve and re-commit EVERY linked node, ignoring dependency masks.
+   * Used when the compiled style tables themselves change (dev hot-reload of
+   * the stylesheet): unlike {@link recompute}, this also re-resolves nodes with
+   * a zero dependency mask (static utilities like `btn-gradient-border`), which
+   * `recompute` skips because no runtime dependency flagged them.
+   */
+  void recomputeAll();
+
   // --- Listeners -----------------------------------------------------------
   int addDependencyListener(DependencyListener listener);
   void removeDependencyListener(int id);

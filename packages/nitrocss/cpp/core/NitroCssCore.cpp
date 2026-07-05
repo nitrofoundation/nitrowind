@@ -833,6 +833,27 @@ void NitroCssCore::recompute(uint32_t changedMask) {
   }
 }
 
+void NitroCssCore::recomputeAll() {
+  const ResolveContext ctx = runtimeState().toContext();
+  std::vector<NodeMutation> batch;
+
+  index_.forEachActive([&](const LinkedNode& node) {
+    folly::dynamic props = resolveForNode(node, ctx);
+    for (const auto& accent : node.accents) {
+      folly::dynamic accentProps = resolveAccent(accent, ctx);
+      if (!accentProps.isObject()) continue;
+      for (const auto& pair : accentProps.items()) {
+        props[pair.first] = pair.second;
+      }
+    }
+    batch.push_back({node.family, node.surfaceId, std::move(props)});
+  });
+
+  if (!batch.empty()) {
+    ShadowTreeMutator::commit(batch);
+  }
+}
+
 void NitroCssCore::commitResolvedNode(const LinkedNode& node,
                                        const ResolveContext& ctx) {
   if (node.family == nullptr) return;

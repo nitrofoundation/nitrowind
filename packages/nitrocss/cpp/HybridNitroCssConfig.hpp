@@ -25,7 +25,13 @@ public:
   }
 
   void setCompiledStyles(const std::string& json) override {
-    ::nitrocss::NitroCssCore::shared().styleEngine().setCompiledStyles(json);
+    auto& core = ::nitrocss::NitroCssCore::shared();
+    core.styleEngine().setCompiledStyles(json);
+    // Dev hot-reload of the stylesheet: the tables just changed, so re-resolve
+    // every already-linked node against them. At first boot no nodes are linked
+    // yet, so this is a no-op; on a Fast Refresh it repaints live without a full
+    // reload. Cheap when idle (walks the linked-node set only).
+    core.recomputeAll();
   }
 };
 
