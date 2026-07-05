@@ -63,7 +63,9 @@ export function extractBoxShadow(
     const boxShadow = resolved.replace(BARE_NUMBER, (m) => `${m}px`);
     return { boxShadow, ...shadowColor };
   }
-  return { boxShadow: layers, ...extractNativeShadow(layers), ...shadowColor };
+  return { boxShadow: layers, 
+    // ...extractNativeShadow(layers), ...shadowColor
+   };
 }
 
 function extractShadowColor(

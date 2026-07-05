@@ -87,6 +87,19 @@
 @utility clip-notch {
   clip-path: inset(0 0 0 0 round 24px);
 }
+/*
+ * Gradient border, the web CSS way: two nested rounded rects in one path with
+ * the `evenodd` fill rule — the overlap cancels, so only the 4px ring between
+ * them is kept. Put this on a gradient layer and the gradient IS the border.
+ * Coordinates are absolute px, sized for a 160x112 tile (w-40 h-28):
+ * outer r=24, inner inset 4px r=20 (bezier arc constant c = 0.5523·r).
+ */
+@utility clip-border-ring {
+  clip-path: path(
+    evenodd,
+    "M24,0 L136,0 C149.25,0 160,10.75 160,24 L160,88 C160,101.25 149.25,112 136,112 L24,112 C10.75,112 0,101.25 0,88 L0,24 C0,10.75 10.75,0 24,0 Z M24,4 L136,4 C147.05,4 156,12.95 156,24 L156,88 C156,99.05 147.05,108 136,108 L24,108 C12.95,108 4,99.05 4,88 L4,24 C4,12.95 12.95,4 24,4 Z"
+  );
+}
 
 /* --- background-image (native raster paint on the view's own layer) --- */
 @utility bg-photo {

@@ -48,7 +48,7 @@ export type ClipPathDescriptor =
       left: ClipValue;
       round?: number;
     }
-  | { type: "path"; d: string };
+  | { type: "path"; d: string; fr?: "evenodd" };
 
 /**
  * Coerce a single length/percentage token into the contract `{ v, u }` shape.
@@ -167,9 +167,15 @@ function parseInset(raw: string): ClipPathDescriptor | undefined {
 }
 
 function parsePath(raw: string): ClipPathDescriptor | undefined {
-  const match = /^\s*(?:[a-z-]+\s*,\s*)?["']([^"']*)["']\s*$/i.exec(raw);
-  const d = match?.[1]?.trim();
-  return d ? { type: "path", d } : undefined;
+  const match = /^\s*(?:([a-z-]+)\s*,\s*)?["']([^"']*)["']\s*$/i.exec(raw);
+  const d = match?.[2]?.trim();
+  if (!d) return undefined;
+  // Keep the CSS fill-rule: `path(evenodd, "…")` is how the web cuts holes —
+  // e.g. a gradient border ring from two nested rounded rects. Non-zero is the
+  // default, so only even-odd needs a marker.
+  return match?.[1]?.toLowerCase() === "evenodd"
+    ? { type: "path", d, fr: "evenodd" }
+    : { type: "path", d };
 }
 
 const SHAPE_RE = /^([a-z-]+)\((.*)\)$/is;

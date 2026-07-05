@@ -240,6 +240,16 @@ UIBezierPath *pathForDescriptor(const folly::dynamic &descriptor, CGSize size) {
   return nil;
 }
 
+/**
+ * CSS `path(evenodd, "…")` → even-odd mask fill (holes where subpaths overlap,
+ * e.g. a border ring from two nested rounded rects). Everything else keeps
+ * CAShapeLayer's non-zero default.
+ */
+bool clipDescriptorUsesEvenOdd(const folly::dynamic &descriptor) {
+  auto *frPtr = descriptor.get_ptr("fr");
+  return frPtr != nullptr && frPtr->isString() && frPtr->getString() == "evenodd";
+}
+
 CAShapeLayer *findMaskLayer(UIView *view) {
   CALayer *mask = view.layer.mask;
   if ([mask.name isEqualToString:kNitroCssClipPathLayerName] &&
@@ -417,6 +427,9 @@ CAShapeLayer *findMaskLayer(UIView *view) {
   }
   mask.frame = bounds;
   mask.path = path.CGPath;
+  mask.fillRule = clipDescriptorUsesEvenOdd(entry.descriptor)
+                      ? kCAFillRuleEvenOdd
+                      : kCAFillRuleNonZero;
 
   objc_setAssociatedObject(view, kClipAppliedTagKey, @(tag),
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);

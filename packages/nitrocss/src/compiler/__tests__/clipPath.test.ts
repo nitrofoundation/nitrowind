@@ -116,6 +116,18 @@ describe("extractClipPath", () => {
     });
   });
 
+  it("keeps the evenodd fill rule (border-ring holes) and drops nonzero", () => {
+    expect(descriptorOf(extract('path(evenodd, "M0 0 L10 10 Z")'))).toEqual({
+      type: "path",
+      d: "M0 0 L10 10 Z",
+      fr: "evenodd",
+    });
+    expect(descriptorOf(extract('path(nonzero, "M0 0 L10 10 Z")'))).toEqual({
+      type: "path",
+      d: "M0 0 L10 10 Z",
+    });
+  });
+
   it("returns undefined for none / empty / unparseable", () => {
     expect(extract("none")).toBeUndefined();
     expect(extract("")).toBeUndefined();

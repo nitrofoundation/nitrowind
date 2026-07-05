@@ -36,7 +36,7 @@ type ClipPathDescriptor =
       left: ClipLen;
       round?: number;
     }
-  | { type: "path"; d: string };
+  | { type: "path"; d: string; fr?: "evenodd" };
 
 interface BackgroundImageDescriptor {
   url: string;
@@ -75,7 +75,9 @@ function clipPathToCss(desc: ClipPathDescriptor): string | undefined {
         : `inset(${box})`;
     }
     case "path":
-      return `path("${desc.d}")`;
+      return desc.fr === "evenodd"
+        ? `path(evenodd, "${desc.d}")`
+        : `path("${desc.d}")`;
     default:
       return undefined;
   }
