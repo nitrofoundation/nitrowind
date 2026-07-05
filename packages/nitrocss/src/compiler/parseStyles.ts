@@ -14,6 +14,7 @@ import {
 } from "./container";
 import {
   extractBackgroundImage,
+  extractBorderGradient,
   extractBoxShadow,
   extractClipPath,
   extractFilter,
@@ -28,6 +29,7 @@ import {
   foldTransition,
   isAnimationProp,
   isBackgroundImageProp,
+  isBorderGradientProp,
   isBoxShadowProp,
   isClipPathProp,
   isFilterProp,
@@ -389,6 +391,12 @@ export function parseStyles(
     if (boxShadow !== undefined) Object.assign(style, boxShadow);
     const filter = extractFilter(rule.declarations, ruleResolve);
     if (filter !== undefined) Object.assign(style, filter);
+    // The web gradient-border recipe (`background: <fill> padding-box,
+    // <gradient> border-box` + transparent border) bakes straight into the
+    // final gradient descriptor — it is authored as one literal declaration,
+    // so no cross-class marker merge is needed.
+    const borderGradient = extractBorderGradient(rule.declarations);
+    if (borderGradient !== undefined) Object.assign(style, borderGradient);
     // Gradient utilities (`bg-linear-*`, `from-*`, `via-*`, `to-*`, `bg-radial`)
     // compile to `--nw-gradient-*` marker props that fold into the compact
     // numeric gradient descriptor once every matching class has merged.
@@ -474,6 +482,10 @@ export function parseStyles(
         mask = union(mask, dependencyFromValue(decl.value));
       }
       if (isParsedProp(decl.prop)) continue;
+      // `background`/`border` shorthands consumed by the gradient-border fold.
+      if (borderGradient !== undefined && isBorderGradientProp(decl.prop)) {
+        continue;
+      }
       const rnProps = rnPropsForSelector(rule.selector, decl.prop);
       // Safe-area values become dynamic descriptors resolved against live
       // insets by the runtime + native engine (no React re-render on change).

@@ -31,6 +31,10 @@ export {
   isFilterProp,
 } from "./filter";
 export {
+  extractBorderGradient,
+  isBorderGradientProp,
+} from "./borderGradient";
+export {
   angleFromPosition,
   extractGradient,
   foldGradient,

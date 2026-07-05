@@ -312,6 +312,14 @@ struct ParsedDescriptor {
   double positionY = 0.5;
   std::vector<std::string> colors;
   std::vector<double> locations;
+  /**
+   * Gradient-border recipe (`background: <fill> padding-box, <gradient>
+   * border-box` + transparent border): `inner` is the padding-box fill color
+   * painted as a sublayer inset by `borderWidth` — so the gradient shows only
+   * through the border ring. Empty `inner` = plain gradient.
+   */
+  std::string inner;
+  double borderWidth = 0.0;
 };
 
 ParsedDescriptor parseDescriptor(const folly::dynamic &descriptor) {
@@ -342,6 +350,11 @@ ParsedDescriptor parseDescriptor(const folly::dynamic &descriptor) {
       if (location.isNumber()) out.locations.push_back(location.asDouble());
     }
   }
+  if (auto *inner = descriptor.get_ptr("inner");
+      inner != nullptr && inner->isString()) {
+    out.inner = inner->getString();
+  }
+  out.borderWidth = number("bw", 0.0);
   return out;
 }
 
@@ -569,9 +582,15 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   // the owner's radius onto the layer + masksToBounds. The engine passes the
   // resolved style's uniform borderRadius; fall back to whatever RN already
   // set on the view's own layer (per-corner radii are a known v1 limit).
-  const CGFloat radius = entry.borderRadius > 0
+  const CGFloat rawRadius = entry.borderRadius > 0
       ? (CGFloat)entry.borderRadius
       : view.layer.cornerRadius;
+  // CSS clamps border-radius to half the box (pill = huge radius); CALayer
+  // does not — mirror the clamp so `rounded-full` renders correctly.
+  const CGFloat halfExtent =
+      std::min(bounds.size.width, bounds.size.height) / 2;
+  const CGFloat radius =
+      halfExtent > 0 ? std::min(rawRadius, halfExtent) : rawRadius;
   layer.cornerRadius = radius;
   layer.cornerCurve = kCACornerCurveContinuous;
   layer.masksToBounds = YES;
@@ -602,6 +621,36 @@ CAGradientLayer *findGradientLayer(UIView *view) {
       layer.startPoint = fixed.first;
       layer.endPoint = fixed.second;
     }
+  }
+
+  // Gradient-border inner fill — the recipe's padding-box layer: a solid
+  // sublayer inset by the border width, so the gradient beneath shows only
+  // through the transparent border ring. Kept as a CHILD of the gradient
+  // layer: same z-order, clipped by its mask, removed with it on cleanup.
+  static NSString *const kInnerLayerName = @"nitrocss.gradient.inner";
+  CALayer *inner = nil;
+  for (CALayer *sublayer in layer.sublayers) {
+    if ([sublayer.name isEqualToString:kInnerLayerName]) {
+      inner = sublayer;
+      break;
+    }
+  }
+  if (!d.inner.empty() && d.borderWidth > 0) {
+    if (inner == nil) {
+      inner = [CALayer layer];
+      inner.name = kInnerLayerName;
+      [layer addSublayer:inner];
+    }
+    const CGFloat bw = (CGFloat)d.borderWidth;
+    inner.frame = CGRectInset(CGRectMake(0, 0, bounds.size.width,
+                                         bounds.size.height),
+                              bw, bw);
+    inner.backgroundColor = colorFromHexString(d.inner).CGColor;
+    // CSS: the padding-box radius is the border-box radius minus the width.
+    inner.cornerRadius = std::max((CGFloat)0, radius - bw);
+    inner.cornerCurve = kCACornerCurveContinuous;
+  } else if (inner != nil) {
+    [inner removeFromSuperlayer];
   }
 
   objc_setAssociatedObject(view, kAppliedTagKey, @(tag),

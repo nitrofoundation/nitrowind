@@ -44,27 +44,23 @@ export default function Effects() {
 
       <Section
         title="Gradient border"
-        subtitle="The web way: clip-path: path(evenodd, …) keeps only the ring between two rounded rects — the gradient itself is the border."
+        subtitle="The web recipe: background padding-box + border-box layers over a transparent border — radius-aware, so rounded-full just works."
       >
-        <View className="flex-row flex-wrap gap-3">
-          <View className="gap-2">
-            <View className="h-28 w-40">
-              <View className="absolute inset-0 bg-linear-to-br from-fuchsia-500 to-cyan-400 clip-border-ring" />
-              <View className="flex-1 items-center justify-center">
-                <Text className="text-sm font-bold text-on-surface">static</Text>
-              </View>
-            </View>
-            <Caption>path(evenodd) ring</Caption>
+        <View className="gap-3">
+          <View className="btn-gradient-border h-14 items-center justify-center rounded-full">
+            <Text className="text-base font-bold text-on-surface">
+              rounded-full pill
+            </Text>
           </View>
-          <View className="gap-2">
-            <View className="h-28 w-40">
-              <View className="absolute inset-0 bg-linear-45 from-fuchsia-500 via-violet-500 to-cyan-400 animate-gradient-angle-spin clip-border-ring" />
-              <View className="flex-1 items-center justify-center">
-                <Text className="text-sm font-bold text-on-surface">animated</Text>
-              </View>
-            </View>
-            <Caption>+ gradient-angle-spin</Caption>
+          <View className="btn-gradient-border h-28 items-center justify-center rounded-2xl">
+            <Text className="text-sm font-bold text-on-surface">
+              rounded-2xl card
+            </Text>
           </View>
+          <Caption>
+            background: linear-gradient(…) padding-box, linear-gradient(…)
+            border-box · border: 4px solid transparent
+          </Caption>
         </View>
       </Section>
 

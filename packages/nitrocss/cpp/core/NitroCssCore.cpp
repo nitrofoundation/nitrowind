@@ -755,7 +755,20 @@ folly::dynamic NitroCssCore::resolveForNode(const LinkedNode& node,
           r != nullptr && r->isNumber()) {
         radius = r->asDouble();
       }
-      GradientTargets::shared().setDescriptor(node.tag, *gradient, radius);
+      // Gradient-border descriptors (an `inner` fill painted over the
+      // gradient's padding box) also need the resolved border width to size
+      // the inset — the width can come from a different class than the
+      // descriptor, so attach it here, after the buckets merged.
+      if (gradient->get_ptr("inner") != nullptr) {
+        folly::dynamic descriptor = *gradient;
+        if (auto* bw = style.get_ptr("borderWidth");
+            bw != nullptr && bw->isNumber()) {
+          descriptor["bw"] = bw->asDouble();
+        }
+        GradientTargets::shared().setDescriptor(node.tag, descriptor, radius);
+      } else {
+        GradientTargets::shared().setDescriptor(node.tag, *gradient, radius);
+      }
     }
     style.erase("--nitrocss-gradient");
   } else if (node.tag != 0) {

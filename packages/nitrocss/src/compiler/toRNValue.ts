@@ -57,7 +57,11 @@ const UNITLESS = new Set([
   "shadowOpacity",
 ]);
 
-const LENGTH_RE = /^(-?\d*\.?\d+)(px|rem|em|pt)?$/;
+// Exponent support matters: Tailwind v4's `rounded-full` emits the CSS float
+// max in scientific notation (`3.40282e38px` — its "infinite radius"). RN and
+// the native gradient applier both clamp radii to half the box, so the huge
+// number is safe to pass through as a plain number.
+const LENGTH_RE = /^(-?\d*\.?\d+(?:e[+-]?\d+)?)(px|rem|em|pt)?$/i;
 const PERCENT_RE = /^-?\d*\.?\d+%$/;
 
 function matchingParen(value: string, openIndex: number): number {
