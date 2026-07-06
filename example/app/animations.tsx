@@ -53,29 +53,34 @@ function PillButton({
   );
 }
 
-export default function Animations() {
+const Re = () => {
   const [replayKey, setReplayKey] = useState(0);
+
+  return <Section
+    title="Entering"
+    subtitle="Entering animations baked from class names. Tap Replay to remount them."
+>
+    <PillButton label="Replay" onPress={() => setReplayKey((k) => k + 1)} />
+    <View className="flex-row flex-wrap gap-3">
+      {ENTERING.map((a) => (
+        <View key={`${replayKey}-${a.cls}`} className="w-[30%] gap-2">
+          <View
+            className={`h-16 items-center justify-center rounded-2xl bg-violet-500 entering-duration-500 ${a.cls}`}
+          >
+            <View className="h-4 w-4 rounded-full bg-white/90" />
+          </View>
+          <Caption>{a.label}</Caption>
+        </View>
+      ))}
+    </View>
+  </Section>
+}
+
+export default function Animations() {
 
   return (
     <Screen>
-      <Section
-        title="Entering"
-        subtitle="Entering animations baked from class names. Tap Replay to remount them."
-      >
-        <PillButton label="Replay" onPress={() => setReplayKey((k) => k + 1)} />
-        <View className="flex-row flex-wrap gap-3">
-          {ENTERING.map((a) => (
-            <View key={`${replayKey}-${a.cls}`} className="w-[30%] gap-2">
-              <View
-                className={`h-16 items-center justify-center rounded-2xl bg-violet-500 entering-duration-500 ${a.cls}`}
-              >
-                <View className="h-4 w-4 rounded-full bg-white/90" />
-              </View>
-              <Caption>{a.label}</Caption>
-            </View>
-          ))}
-        </View>
-      </Section>
+      <Re />
 
       <Section
         title="Looping keyframes"

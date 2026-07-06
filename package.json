@@ -6,6 +6,7 @@
   "license": "MIT",
   "workspaces": [
     "packages/*",
+    "docs-app",
     "example"
   ],
   "resolutions": {
@@ -14,6 +15,8 @@
   },
   "scripts": {
     "build": "turbo run build",
+    "docs": "yarn workspace docs-app start",
+    "docs:build": "yarn workspace docs-app build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "turbo run lint",

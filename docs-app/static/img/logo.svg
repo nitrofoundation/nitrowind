@@ -1,0 +1,34 @@
+<svg width="280" height="56" viewBox="0 0 280 56" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nitrowind">
+  <defs>
+    <linearGradient id="nitroWindA" x1="6" y1="45" x2="52" y2="8" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0E7490"/>
+      <stop offset="0.48" stop-color="#06B6D4"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="nitroWindB" x1="16" y1="48" x2="61" y2="10" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14B8A6"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="nitroSpark" x1="43" y1="10" x2="58" y2="25" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F97316"/>
+      <stop offset="1" stop-color="#DB2777"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(5 5)">
+    <path d="M8 39.5C18.2 20.6 31.5 16.2 47 29.8C51.4 33.6 56.2 34.1 61.5 30.8C57.7 40.3 46.7 43.6 37.4 35.7C26.7 26.7 18.9 27.6 8 39.5Z" fill="url(#nitroWindA)"/>
+    <path d="M9.5 22.6C19.8 7.4 32.7 6.3 45.4 18.1C50.1 22.5 55.2 22.7 60.2 18.9C56.9 28.7 46.4 32.8 37.1 24.8C26.8 15.8 18.7 15.6 9.5 22.6Z" fill="url(#nitroWindB)"/>
+    <path d="M16.4 33.7C24.1 25.2 31.2 25.3 39.6 32.6C43.6 36.1 48 37.2 52.9 35.9C45.1 44.7 35.3 45.3 26.5 37.5C22.8 34.2 19.6 33.1 16.4 33.7Z" fill="#67E8F9" fill-opacity="0.62"/>
+    <circle cx="48.8" cy="13.2" r="5.8" fill="url(#nitroSpark)"/>
+    <path d="M48.8 9.6V13.2L51.3 15.7" stroke="#FFF7ED" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M14.5 45.5C26.3 49.1 40.9 48.5 53.7 43.4" stroke="#0F766E" stroke-width="3" stroke-linecap="round" opacity="0.34"/>
+  </g>
+
+  <text x="81" y="37.5"
+    fill="#111827"
+    font-family="Inter, SF Pro Display, Segoe UI, system-ui, sans-serif"
+    font-size="29"
+    font-weight="760"
+    letter-spacing="-0.25">Nitrowind</text>
+  <path d="M81.5 43.4C107 47.1 139.5 47 170.5 42.9" stroke="#22D3EE" stroke-width="2.4" stroke-linecap="round" opacity="0.5"/>
+</svg>

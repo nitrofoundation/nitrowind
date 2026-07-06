@@ -1,0 +1,24 @@
+---
+title: Metro API
+description: Metro plugin entry points.
+---
+
+# Metro API
+
+## Nitrowind
+
+```js
+const { withNitrowindMetroConfig } = require("@nitrofoundation/nitrowind/metro");
+```
+
+Use this for Tailwind v4 projects.
+
+## Nitrocss
+
+```js
+const { withNitroCssMetroConfig } = require("@nitrofoundation/nitrocss/metro");
+```
+
+Use this for plain-CSS projects.
+
+Both plugins register a transformer that turns your CSS entry file into a compiled style artifact and wires runtime registration into the bundle.

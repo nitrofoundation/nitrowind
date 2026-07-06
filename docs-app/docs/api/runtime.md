@@ -1,0 +1,39 @@
+---
+title: Runtime API
+description: Providers, hooks, runtime helpers, and style registration exports.
+---
+
+# Runtime API
+
+Import from `@nitrofoundation/nitrowind` for the Tailwind wrapper, or `@nitrofoundation/nitrocss` for the core package.
+
+## Providers
+
+| Export | Description |
+| --- | --- |
+| `NitrowindProvider` | Alias of `NitroCssProvider`. |
+| `NitroCssProvider` | Starts runtime observation and provides snapshot state. |
+
+## Hooks
+
+| Export | Description |
+| --- | --- |
+| `useNitrowind` | Alias of `useNitroCss`. |
+| `useNitroCss` | Runtime context with snapshot, theme name, and setters. |
+| `useRuntimeSnapshot` | Current runtime snapshot. |
+| `useTheme` | Current theme state. |
+| `useColorScheme` | Color-scheme state. |
+| `useDimensions` | Screen dimensions. |
+| `useInsets` | Safe-area insets. |
+| `useFontScale` | Font scale. |
+
+## Low-level exports
+
+| Export | Description |
+| --- | --- |
+| `registerSerializedStyles` | Register a compiled style artifact. |
+| `registerStyles` | Register an in-memory artifact. |
+| `resolveStyles` | Resolve className to styles for the current runtime path. |
+| `resolveStylesForPlatform` | Resolve className for a specific platform. |
+| `setNativeProps` | Imperatively update native props where supported. |
+| `runtime` | JS runtime manager. |

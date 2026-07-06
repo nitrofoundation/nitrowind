@@ -1,0 +1,31 @@
+---
+title: Component API
+description: Component exports and props.
+---
+
+# Component API
+
+Component exports accept the original React Native props plus `className`.
+
+```tsx
+import { View, Text, Pressable } from "@nitrofoundation/nitrowind";
+
+<Pressable className="rounded-lg bg-teal-700 p-3 active:bg-teal-800">
+  <Text className="text-white">Save</Text>
+</Pressable>;
+```
+
+## Exported components
+
+| Export | Notes |
+| --- | --- |
+| `View` | Supports generated pseudo shims and container markers. |
+| `Text` | Supports text styles and text shadow props. |
+| `Pressable` | Drives active, hover, focus, disabled, and group state. |
+| `TextInput` | Supports placeholder and selection color mappings. |
+| `ScrollView` | Supports className-aware content containers. |
+| `FlatList` | Supports className-aware list style props. |
+| `SectionList` | Supports className-aware list style props. |
+| Other RN host wrappers | `Image`, `ImageBackground`, `Switch`, touchables, and more. |
+
+Type exports include `NitrowindViewProps`, `NitrowindTextProps`, `NitrowindScrollViewProps`, `NitrowindFlatListProps`, and `NitrowindSectionListProps`.
