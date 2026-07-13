@@ -1,0 +1,41 @@
+{
+  "$schema": "https://unpkg.com/release-it@19/schema/release-it.json",
+  "git": {
+    "requireCleanWorkingDir": true,
+    "requireUpstream": true,
+    "commit": true,
+    "commitMessage": "chore(release): v${version}",
+    "tag": true,
+    "tagName": "v${version}",
+    "push": true
+  },
+  "npm": false,
+  "github": {
+    "release": true,
+    "releaseName": "v${version}"
+  },
+  "hooks": {
+    "before:bump": [
+      "yarn typecheck:packages",
+      "yarn test:packages",
+      "yarn build:packages"
+    ],
+    "after:bump": [
+      "yarn install --mode=update-lockfile",
+      "yarn workspace @nitrofoundation/nitrowind-skills generate:skills"
+    ],
+    "before:git": "git add yarn.lock packages/*/package.json packages/nitrowind-skills/skills"
+  },
+  "plugins": {
+    "./scripts/release/workspace-version-plugin.mjs": {
+      "manifest": "package.json"
+    },
+    "@release-it-plugins/workspaces": {
+      "workspaces": [
+        "packages/*"
+      ],
+      "skipChecks": true,
+      "publishCommand": "node scripts/release/publish-workspace.mjs"
+    }
+  }
+}
