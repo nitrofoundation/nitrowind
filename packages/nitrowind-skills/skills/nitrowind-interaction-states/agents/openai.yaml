@@ -1,0 +1,4 @@
+interface:
+  display_name: "Interaction States"
+  short_description: "Build pressed, focused, disabled, hover, and group-state UI with native state-aware variants."
+  default_prompt: "Help me with nitrowind interaction states in my Nitrowind app."

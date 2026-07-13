@@ -121,6 +121,9 @@
     "cpp",
     "ios",
     "android",
+    "!android/.cxx",
+    "!android/build",
+    "!android/.DS_Store",
     "nitrogen/generated",
     "nitro.json",
     "NitroCss.podspec",
@@ -130,9 +133,14 @@
     "!**/__tests__",
     "!**/*.tsbuildinfo"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "nitrogen": "nitrogen",
     "build": "bob build",
+    "prepack": "yarn nitrogen && yarn build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "oxlint src",

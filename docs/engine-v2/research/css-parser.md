@@ -15,8 +15,8 @@ All paths absolute. Design is rename-agnostic (type/file names illustrative).
 
 Location (source tree, and confirmed **shipped in the prebuilt framework**):
 - Source headers: `/Users/ashwithsaldanha/MyWork/nitrowind/node_modules/react-native/ReactCommon/react/renderer/css/`
-- Prebuilt (example app): `/Users/ashwithsaldanha/MyWork/nitrowind/example/ios/Pods/React-Core-prebuilt/React.xcframework/Headers/React_renderercss/react/renderer/css/`
-- Public Pods headers: `/Users/ashwithsaldanha/MyWork/nitrowind/example/ios/Pods/Headers/Public/React-renderercss/react/renderer/css/`
+- Prebuilt (example app): `/Users/ashwithsaldanha/MyWork/nitrowind/apps/example/ios/Pods/React-Core-prebuilt/React.xcframework/Headers/React_renderercss/react/renderer/css/`
+- Public Pods headers: `/Users/ashwithsaldanha/MyWork/nitrowind/apps/example/ios/Pods/Headers/Public/React-renderercss/react/renderer/css/`
 
 All 27 `CSS*.h` are present in **both** the prebuilt xcframework and the public
 Pods headers (verified by directory listing). The pod is `React-renderercss`

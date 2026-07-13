@@ -36,5 +36,5 @@
       "kotlin": "HybridBackdropView"
     }
   },
-  "ignorePaths": ["node_modules", "lib", "example"]
+  "ignorePaths": ["node_modules", "lib", "apps"]
 }

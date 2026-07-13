@@ -200,7 +200,7 @@ oversized gradient. RN + Reanimated can't animate any `experimental_background*`
 (§1d), so we reproduce the same diagonal sweep by **translating an oversized
 gradient layer** — `translateX/Y` are fully animatable.
 
-Live in `example/global.css` (lines 26–47) and `example/app/gradients.tsx`:
+Live in `apps/example/global.css` (lines 26–47) and `apps/example/app/gradients.tsx`:
 
 ```css
 /* mirrors background-position: 25% 0% → 76% 100% → 25% 0% */

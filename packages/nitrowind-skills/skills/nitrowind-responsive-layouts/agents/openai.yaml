@@ -1,0 +1,4 @@
+interface:
+  display_name: "Responsive Layouts"
+  short_description: "Adapt React Native layouts to screen dimensions, orientation, platform, RTL, and font scale."
+  default_prompt: "Help me with nitrowind responsive layouts in my Nitrowind app."

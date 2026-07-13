@@ -71,7 +71,7 @@ nitrowind/
 │       ├── cpp/              # ShadowTree runtime, registry, Fabric integration
 │       ├── ios/              # Swift platform bridge
 │       └── android/          # JNI + CMake glue
-└── example/                  # Expo demo app
+└── apps/example/             # Expo demo app
 ```
 
 ## Legal note

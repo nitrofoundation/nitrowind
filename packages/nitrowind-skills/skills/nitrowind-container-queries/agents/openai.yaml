@@ -1,0 +1,4 @@
+interface:
+  display_name: "Container Queries"
+  short_description: "Create parent-size-aware components with named, width, height, and custom container queries."
+  default_prompt: "Help me with nitrowind container queries in my Nitrowind app."

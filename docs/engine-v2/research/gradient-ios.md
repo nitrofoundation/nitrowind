@@ -389,7 +389,7 @@ Anchored to `packages/nitrocss` as it exists today (rename tokens at implementat
 
 7. **JS export.** Add `getHostComponent(...)` wiring for `GradientView` and re-export from the engine's public JS entry so the engine's style layer can mount it and feed the descriptor.
 
-8. **Build/verify.** `pod install` in the example app (`example/`), run iOS, and diff the visual output against `experimental_backgroundImage` for a matrix of angles (0/45/90/135/180/270), radial center positions, multi-stop + transparent fades, and rounded corners.
+8. **Build/verify.** `pod install` in the example app (`apps/example/`), run iOS, and diff the visual output against `experimental_backgroundImage` for a matrix of angles (0/45/90/135/180/270), radial center positions, multi-stop + transparent fades, and rounded corners.
 
 ---
 

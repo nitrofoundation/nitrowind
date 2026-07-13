@@ -1,0 +1,4 @@
+interface:
+  display_name: "Background Images"
+  short_description: "Paint native background images with cover, contain, stretch, repeat, repeat-x, repeat-y, and focal position."
+  default_prompt: "Help me with nitrowind background images in my Nitrowind app."

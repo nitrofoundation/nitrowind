@@ -2,6 +2,8 @@
 
 **The fastest Tailwind bindings for React Native — fully open source.**
 
+Read [CONTRIBUTING.md](CONTRIBUTING.md) to set up the workspace and contribute.
+
 nitrowind compiles your Tailwind class names at build time and applies them with
 a native **C++ ShadowTree engine**. Theme switches, color-scheme changes, and
 dimension/orientation/RTL updates are computed in C++ and committed directly to
@@ -50,7 +52,7 @@ See [plans/](plans/) for the full design notes.
 | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | [`packages/nitrocss`](packages/nitrocss) → `@nitrofoundation/nitrocss`   | The core engine: plain-CSS compiler, C++ ShadowTree resolver engine, native iOS/Android integration, and component bindings. |
 | [`packages/nitrowind`](packages/nitrowind) → `@nitrofoundation/nitrowind` | The Tailwind wrapper: Tailwind v4 compiler + Metro plugin on top of the core engine, re-exporting its components.            |
-| [`example`](example)                                                | A React Native 0.86 demo app (uses the Tailwind wrapper).                                                                    |
+| [`apps/example`](apps/example)                                      | A React Native 0.86 demo app (uses the Tailwind wrapper).                                                                    |
 
 ---
 
@@ -143,10 +145,12 @@ Gradle project `:nitrocss`):
 ## Development
 
 ```sh
-bun install
-bun run typecheck   # TypeScript across the workspace
-bun run test        # compiler unit tests (vitest)
-bun run nitrogen    # regenerate Nitro bindings (in packages/nitrocss)
+corepack enable
+yarn install --immutable
+yarn typecheck:packages # TypeScript across publishable packages
+yarn test:packages      # compiler unit tests (Vitest)
+yarn build:packages     # package artifacts
+yarn nitrogen           # regenerate Nitro bindings (in packages/nitrocss)
 ```
 
 > The C++ engine and native bridges are written against the RN 0.86 Fabric APIs.

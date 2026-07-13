@@ -1,0 +1,4 @@
+interface:
+  display_name: "Safe Area Layout"
+  short_description: "Apply safe-area-aware spacing and screen layouts without manually threading inset values through every component."
+  default_prompt: "Help me with nitrowind safe area in my Nitrowind app."

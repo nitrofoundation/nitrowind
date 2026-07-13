@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nitrowind Setup"
+  short_description: "Install Nitrowind, configure Metro, and connect a Tailwind v4 CSS entry file."
+  default_prompt: "Help me with nitrowind setup in my Nitrowind app."

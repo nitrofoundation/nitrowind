@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nitrowind Animations"
+  short_description: "Add entering, exiting, layout, spring, easing, and CSS-keyframe animation helpers through Reanimated."
+  default_prompt: "Help me with nitrowind animations in my Nitrowind app."

@@ -18,7 +18,7 @@
 
 ## Example app
 
-`example/` — Expo (SDK 54, RN 0.81.5) recreating the uniwind-pro demo:
+`apps/example/` — Expo (SDK 54, RN 0.81.5) recreating the uniwind-pro demo:
 theme switcher, recipe cards, animated transitions. Used as the manual + e2e
 verification surface. A `USE_ENGINE` flag toggles native engine vs JS fallback to compare.
 

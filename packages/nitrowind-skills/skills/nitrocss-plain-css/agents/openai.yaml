@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nitrocss Plain CSS"
+  short_description: "Use the native Nitrowind engine directly with authored CSS classes instead of Tailwind utilities."
+  default_prompt: "Help me with nitrocss plain css in my Nitrowind app."

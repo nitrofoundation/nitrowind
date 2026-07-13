@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nitrowind Theming"
+  short_description: "Create named themes and adaptive light, dark, and system-driven styling."
+  default_prompt: "Help me with nitrowind theming in my Nitrowind app."

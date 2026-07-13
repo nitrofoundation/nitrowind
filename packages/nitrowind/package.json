@@ -84,8 +84,13 @@
     "!**/__tests__",
     "!**/*.tsbuildinfo"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "bob build",
+    "prepack": "yarn build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "oxlint src",

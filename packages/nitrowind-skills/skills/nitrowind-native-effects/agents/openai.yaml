@@ -1,0 +1,4 @@
+interface:
+  display_name: "Native Visual Effects"
+  short_description: "Use native gradients, gradient borders, shadows, filters, text shadows, and clip paths with deliberate platform fallbacks."
+  default_prompt: "Help me with nitrowind native effects in my Nitrowind app."

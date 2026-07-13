@@ -6,8 +6,7 @@
   "license": "MIT",
   "workspaces": [
     "packages/*",
-    "docs-app",
-    "example"
+    "apps/*"
   ],
   "resolutions": {
     "react": "19.2.7",
@@ -15,15 +14,22 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "docs": "yarn workspace docs-app start",
-    "docs:build": "yarn workspace docs-app build",
+    "docs": "yarn workspace nitrowind-docs start",
+    "docs:build": "yarn workspace nitrowind-docs build",
+    "release": "release-it",
+    "release:dry-run": "release-it --dry-run",
     "typecheck": "turbo run typecheck",
+    "typecheck:packages": "turbo run typecheck --filter=@nitrofoundation/nitrocss --filter=@nitrofoundation/nitrowind --filter=@nitrofoundation/nitrowind-skills",
     "test": "turbo run test",
+    "test:packages": "turbo run test --filter=@nitrofoundation/nitrocss --filter=@nitrofoundation/nitrowind",
     "lint": "turbo run lint",
+    "build:packages": "turbo run build --filter=@nitrofoundation/nitrocss --filter=@nitrofoundation/nitrowind --filter=@nitrofoundation/nitrowind-skills",
     "nitrogen": "turbo run nitrogen",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
+    "@release-it-plugins/workspaces": "5.0.3",
+    "release-it": "19.2.4",
     "turbo": "2.5.4",
     "typescript": "5.9.2"
   },

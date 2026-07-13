@@ -1,0 +1,4 @@
+interface:
+  display_name: "Components and Interop"
+  short_description: "Style React Native primitives and third-party components with className-aware wrappers."
+  default_prompt: "Help me with nitrowind components interop in my Nitrowind app."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Native Props"
+  short_description: "Map className styles to native component props such as colors, indicators, and component-specific visual settings."
+  default_prompt: "Help me with nitrowind native props in my Nitrowind app."

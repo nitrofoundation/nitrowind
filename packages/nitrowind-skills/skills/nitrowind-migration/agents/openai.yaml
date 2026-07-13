@@ -1,0 +1,4 @@
+interface:
+  display_name: "Migrate to Nitrowind"
+  short_description: "Move a NativeWind or Uniwind project to Nitrowind without guessing at configuration changes."
+  default_prompt: "Help me with nitrowind migration in my Nitrowind app."

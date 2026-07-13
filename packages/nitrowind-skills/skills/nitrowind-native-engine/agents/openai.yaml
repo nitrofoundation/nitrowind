@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nitrowind Native Engine"
+  short_description: "Work with the native C++ ShadowTree engine, runtime dependencies, diagnostics, and safe fallbacks."
+  default_prompt: "Help me with nitrowind native engine in my Nitrowind app."

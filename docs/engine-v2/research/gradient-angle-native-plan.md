@@ -419,5 +419,5 @@ Repo sources used for the NitroCSS side:
 - [packages/nitrocss/src/compiler/parsers/animations.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/compiler/parsers/animations.ts)
 - [packages/nitrocss/src/compiler/parseStyles.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/compiler/parseStyles.ts)
 - [packages/nitrocss/src/compiler/__tests__/gradient.test.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/compiler/__tests__/gradient.test.ts)
-- [example/app/gradients.tsx](/Users/ashwithsaldanha/MyWork/nitrowind/example/app/gradients.tsx)
-- [example/global.css](/Users/ashwithsaldanha/MyWork/nitrowind/example/global.css)
+- [apps/example/app/gradients.tsx](/Users/ashwithsaldanha/MyWork/nitrowind/apps/example/app/gradients.tsx)
+- [apps/example/global.css](/Users/ashwithsaldanha/MyWork/nitrowind/apps/example/global.css)

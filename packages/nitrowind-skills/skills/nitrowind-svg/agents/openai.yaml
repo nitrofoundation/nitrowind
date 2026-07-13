@@ -1,0 +1,4 @@
+interface:
+  display_name: "SVG Styling"
+  short_description: "Use Tailwind className styles for react-native-svg paint, stroke, fill, and sizing properties."
+  default_prompt: "Help me with nitrowind svg in my Nitrowind app."
