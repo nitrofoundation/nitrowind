@@ -1,0 +1,11 @@
+services:
+  docs:
+    build:
+      context: ../..
+      dockerfile: apps/nitrowind-docs/Dockerfile
+      args:
+        DOCS_URL: ${DOCS_URL:-http://localhost:8080}
+        DOCS_BASE_URL: ${DOCS_BASE_URL:-/}
+    ports:
+      - "${DOCS_PORT:-8080}:8080"
+    restart: unless-stopped

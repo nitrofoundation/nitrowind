@@ -48,6 +48,22 @@ yarn docs:build
 
 The package checks cover the libraries that are published to npm. The documentation build checks the Docusaurus site. For a React Native app change, also run the example app on the platform you changed.
 
+## Deploy documentation
+
+Documentation is a static site served with Docker, with no GitHub Actions deployment. Start it locally at [http://localhost:8080](http://localhost:8080):
+
+```sh
+yarn docs:docker:up
+```
+
+For a VPS, set the public URL while starting the container. Point your NitroPush reverse proxy at port `8080` and terminate TLS there:
+
+```sh
+DOCS_URL=https://docs.example.com yarn docs:docker:up
+```
+
+Use `yarn docs:docker:logs` to follow the server logs and `yarn docs:docker:down` to stop it. See `apps/nitrowind-docs/README.md` for the full deployment reference.
+
 ## Pull requests
 
 Use a clear title that describes the user-visible effect. In the pull request body, explain the problem, the approach, and how you verified it. Include screenshots or recordings for visual documentation and example-app changes.

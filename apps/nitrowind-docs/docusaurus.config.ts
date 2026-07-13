@@ -3,13 +3,16 @@ import type { Options as PresetOptions } from "@docusaurus/preset-classic";
 import type { Options as DocsOptions } from "@docusaurus/plugin-content-docs";
 import { themes as prismThemes } from "prism-react-renderer";
 
+const docsUrl = process.env.DOCS_URL ?? "http://localhost:8080";
+const docsBaseUrl = process.env.DOCS_BASE_URL ?? "/";
+
 const config: Config = {
   title: "Nitrowind",
   tagline: "Open-source Tailwind bindings for React Native, powered by a native C++ ShadowTree engine.",
   favicon: "img/favicon.svg",
-  url: "https://nitrowind.dev",
-  baseUrl: "/",
-  organizationName: "nitrofoundation",
+  url: docsUrl,
+  baseUrl: docsBaseUrl,
+  organizationName: "AshwithJoylan",
   projectName: "nitrowind",
   trailingSlash: false,
   onBrokenLinks: "throw",
@@ -35,7 +38,7 @@ const config: Config = {
         docs: {
           routeBasePath: "/",
           sidebarPath: "./sidebars.ts",
-          editUrl: "https://github.com/nitrofoundation/nitrowind/tree/main/apps/nitrowind-docs/",
+          editUrl: "https://github.com/AshwithJoylan/nitrowind/tree/main/apps/nitrowind-docs/",
         } satisfies DocsOptions,
         blog: false,
         theme: {
@@ -85,7 +88,7 @@ const config: Config = {
           position: "left",
         },
         {
-          href: "https://github.com/nitrofoundation/nitrowind",
+          href: "https://github.com/AshwithJoylan/nitrowind",
           label: "GitHub",
           position: "right",
         },
