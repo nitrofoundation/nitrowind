@@ -1,0 +1,11 @@
+name: nitrowind-docs
+
+services:
+  docs:
+    image: caddy:2.10-alpine
+    ports:
+      - "${DOCS_PORT:-8080}:8080"
+    volumes:
+      - ./current/build:/usr/share/caddy:ro
+      - ./current/Caddyfile:/etc/caddy/Caddyfile:ro
+    restart: unless-stopped

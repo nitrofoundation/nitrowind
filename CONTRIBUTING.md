@@ -56,13 +56,15 @@ Documentation is a static site served with Docker, with no GitHub Actions deploy
 yarn docs:docker:up
 ```
 
-For a VPS, set the public URL while starting the container. Point your NitroPush reverse proxy at port `8080` and terminate TLS there:
+Deploy a locally built static release to the NitroPush VPS with SSH:
 
 ```sh
-DOCS_URL=https://docs.example.com yarn docs:docker:up
+NITROPUSH_VPS_HOST=docs.example.com \
+NITROPUSH_DOCS_URL=https://docs.example.com \
+yarn docs:deploy
 ```
 
-Use `yarn docs:docker:logs` to follow the server logs and `yarn docs:docker:down` to stop it. See `apps/nitrowind-docs/README.md` for the full deployment reference.
+Use `yarn docs:docker:logs` to follow the local server logs and `yarn docs:docker:down` to stop it. See `apps/nitrowind-docs/README.md` for all VPS deployment settings.
 
 ## Pull requests
 
