@@ -1,7 +1,7 @@
 /**
- * `@nitrofoundation/nitrowind/compiler` — the Tailwind side of the toolchain.
+ * `nitrowind/compiler` — the Tailwind side of the toolchain.
  *
- * Re-exports the whole `@nitrofoundation/nitrocss/compiler` surface (types,
+ * Re-exports the whole `/nitrocss/compiler` surface (types,
  * `compileFromCss`, container/inset/platform helpers, …) and adds the
  * Tailwind-specific pieces that live here: the oxide candidate scanner, the
  * Tailwind v4 CSS build (`compileCss`), the synthesized utility stylesheets

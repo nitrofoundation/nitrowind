@@ -5,10 +5,10 @@
 > family will be renamed later, so engine internals avoid hardcoding the current name.
 
 > **2026-07 restructure:** the engine described here now ships as
-> **`@nitrofoundation/nitrocss`** (`packages/nitrocss` — C++ engine, iOS/Android natives,
-> TS runtime, components, plain-CSS compiler), with **`@nitrofoundation/nitrowind`** as a thin
+> **`nitrocss`** (`packages/nitrocss` — C++ engine, iOS/Android natives,
+> TS runtime, components, plain-CSS compiler), with **`nitrowind`** as a thin
 > Tailwind wrapper on top. Older `packages/nitrowind/...` code paths in these docs map to
-> `packages/nitrocss/...`; artifact markers are `--nitrocss-*`. See `STATUS.md` (2026-07-03).
+> `packages/nitro-css/...`; artifact markers are `--nitrocss-*`. See `STATUS.md` (2026-07-03).
 
 ## Intent
 
@@ -30,7 +30,7 @@ Native's *experimental* features and feature flags.
 
 ## Build order (after docs are reviewed)
 
-1. **Grid engine** — wire `packages/nitrocss/cpp/grid/GridLayoutEngine` via `LayoutObserver`
+1. **Grid engine** — wire `packages/nitro-css/cpp/grid/GridLayoutEngine` via `LayoutObserver`
    (`LayoutMetrics`) → engine → `ShadowTreeMutator::commit` per-item box; drop the native
    `onLayout` fallback (keep for web).
 2. **Gradient engine** — HybridView + compiler `--nitrocss-gradient` descriptor; background

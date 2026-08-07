@@ -1,6 +1,6 @@
 {
   "name": "@nitrofoundation/nitrocss",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.0",
   "description": "Core native CSS engine for React Native — compiles plain CSS to native styles and commits them through a C++ ShadowTree engine.",
   "license": "MIT",
   "author": "NitroFoundation contributors",

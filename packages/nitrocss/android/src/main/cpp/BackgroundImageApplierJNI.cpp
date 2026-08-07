@@ -32,7 +32,7 @@ using nitrocss::BackgroundImageTargets;
 struct JBackgroundImageApplier
     : facebook::jni::JavaClass<JBackgroundImageApplier> {
   static constexpr auto kJavaDescriptor =
-      "Lcom/nitrofoundation/nitrocss/BackgroundImageApplier;";
+      "Lcom/nitrofoundation/nitro-css/BackgroundImageApplier;";
 
   static void onNativeInvalidate() {
     static const auto method =

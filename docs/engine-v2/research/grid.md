@@ -31,9 +31,9 @@ All paths are absolute. This is rename-agnostic: names like `gridTags_`,
 
 ---
 
-## 1. Current JS grid — `packages/nitrocss/src/components/grid.tsx`
+## 1. Current JS grid — `packages/nitro-css/src/components/grid.tsx`
 
-File: `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/components/grid.tsx` (790 lines).
+File: `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/components/grid.tsx` (790 lines).
 
 ### 1a. `useGridFallback` — the measure→setState→re-render loop (lines 747-789)
 
@@ -72,11 +72,11 @@ and any container resize repeats the cycle. `web` short-circuits (`Platform.OS
 !== "web"`), leaving `className` for browser CSS grid.
 
 Consumers:
-- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/components/View.tsx:61`
+- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/components/View.tsx:61`
   — `useGridFallback(children, className, handleLayout, [...])`, wires
   `gridFallback.onLayout` onto the host (`View.tsx:86`) and renders
   `gridFallback.children` (`View.tsx:91`).
-- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/hoc/withNitroCss.tsx:397`
+- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/hoc/withNitroCss.tsx:397`
   — same, for any `withNitrowind`-wrapped component (Stacks, etc.).
 
 ### 1b. `withGridFallback` — the JS layout algorithm (lines 629-745)
@@ -154,17 +154,17 @@ same or grid items will overflow their padded container.
 - `calculateGridContentWidth(...)` (588) — padding subtraction.
 
 Test coverage today:
-`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/components/__tests__/grid.test.ts`
+`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/components/__tests__/grid.test.ts`
 exercises `withGridFallback` output shapes (widths, spans, areas, templates).
 
 ---
 
-## 2. Existing native engine — `packages/nitrocss/cpp/grid/`
+## 2. Existing native engine — `packages/nitro-css/cpp/grid/`
 
 Files:
-- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/grid/GridTypes.hpp`
-- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/grid/GridLayoutEngine.hpp`
-- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/grid/GridLayoutEngine.cpp`
+- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/grid/GridTypes.hpp`
+- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/grid/GridLayoutEngine.hpp`
+- `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/grid/GridLayoutEngine.cpp`
 
 Namespace `nitrowind::grid`.
 
@@ -282,9 +282,9 @@ columns, gap, span)` (134) — the equal-track path used by simple `grid-cols-N`
    (`shadowNodeWrapperFromRef`, 63), builds a `ShadowNodeHandle`, and calls
    `engine.Registry.link(handle, className, componentName, dependencies, accents,
    inline, state, undefined, context)` (`internal.ts:131`).
-3. Nitro spec: `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/specs/ShadowRegistry.nitro.ts:38`
+3. Nitro spec: `/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/specs/ShadowRegistry.nitro.ts:38`
    → C++ `HybridShadowRegistry::link`
-   (`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/HybridShadowRegistry.hpp:30`)
+   (`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/HybridShadowRegistry.hpp:30`)
    → `NitrowindCore::link` (`NitrowindCore.cpp:214`).
 4. `NitrowindCore::link` builds a `LinkedNode`, folds in the engine's own
    dependency mask (line 232), and — crucially for us — **classifies the node**:
@@ -299,14 +299,14 @@ columns, gap, span)` (134) — the equal-track path used by simple `grid-cols-N`
 `Tag`, and trigger a measure/layout pass.
 
 The registry itself: `DependencyIndex index_` +
-`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/registry/LinkedNode.hpp`
+`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/registry/LinkedNode.hpp`
 (the `LinkedNode` struct — add grid fields here, mirroring `isContainer` /
 `containerName`).
 
-### 3b. Post-layout observer — `packages/nitrocss/cpp/fabric/LayoutObserver.*`
+### 3b. Post-layout observer — `packages/nitro-css/cpp/fabric/LayoutObserver.*`
 
 This is the hook the prompt refers to. File
-`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/fabric/LayoutObserver.cpp`.
+`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/fabric/LayoutObserver.cpp`.
 
 - `LayoutObserver` is a Fabric `UIManagerMountHook`; `registerWith` calls
   `uiManager.registerMountHook(*this)` (line 26).
@@ -337,9 +337,9 @@ Early-out guard to update: line 123 `if (containers.empty() && groups.empty() &&
 structuralPseudoTags.empty()) return;` — add `&& gridTags.empty()` so grid still
 runs when no containers exist. Same in `remeasure` line 172.
 
-### 3c. Commit path — `packages/nitrocss/cpp/fabric/ShadowTreeMutator`
+### 3c. Commit path — `packages/nitro-css/cpp/fabric/ShadowTreeMutator`
 
-`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/fabric/ShadowTreeMutator.cpp`.
+`/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/fabric/ShadowTreeMutator.cpp`.
 
 `ShadowTreeMutator::commit(std::vector<NodeMutation>)` (line 19): groups
 mutations by `SurfaceId`, opens **one** `shadowTree.commit` per surface, and

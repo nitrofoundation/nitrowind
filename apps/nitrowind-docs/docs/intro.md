@@ -47,8 +47,8 @@ It is built as two packages:
 
 | Package | Use it when |
 | --- | --- |
-| `@nitrofoundation/nitrowind` | You want Tailwind v4 utilities, platform variants, safe-area utilities, animation helpers, and the full className workflow. |
-| `@nitrofoundation/nitrocss` | You want the native CSS engine directly with plain CSS classes and no Tailwind requirement. |
+| `nitrowind` | You want Tailwind v4 utilities, platform variants, safe-area utilities, animation helpers, and the full className workflow. |
+| `nitrocss` | You want the native CSS engine directly with plain CSS classes and no Tailwind requirement. |
 
 The engine compiles styles at build time, links rendered Fabric nodes to a native C++ resolver, and updates affected native props when runtime state changes. Theme switches, dark mode, dimensions, safe-area insets, RTL, font scale, group state, and container size changes can be recomputed without asking React to re-render your tree.
 
@@ -56,7 +56,7 @@ The engine compiles styles at build time, links rendered Fabric nodes to a nativ
 
 - Tailwind v4 utilities in React Native via `className`.
 - A native C++ ShadowTree engine for steady-state style updates.
-- A plain-CSS path through `@nitrofoundation/nitrocss`.
+- A plain-CSS path through `nitrocss`.
 - Platform variants like `ios:`, `android:`, `web:`, `native:`, `macos:`, and `windows:`.
 - Dark mode, themes, responsive styles, safe-area utilities, pseudo states, group variants, and container queries.
 - Styled React Native primitives, scrollables, SVG primitives, and wrappers for third-party components.
@@ -66,7 +66,7 @@ The engine compiles styles at build time, links rendered Fabric nodes to a nativ
 
 Nitrowind targets React Native `0.86` with the new architecture, Fabric, and bridgeless runtime.
 
-The native engine is autolinked through `@nitrofoundation/nitrocss`. Web, tests, and environments without the native module use the JS fallback resolver.
+The native engine is autolinked through `nitrocss`. Web, tests, and environments without the native module use the JS fallback resolver.
 
 ## Docs map
 

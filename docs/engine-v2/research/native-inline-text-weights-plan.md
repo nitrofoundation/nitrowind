@@ -1,7 +1,7 @@
 # Native inline text weights — plan
 
 Status: **planning only, not implemented.** Supersedes the JS-only inline
-normalization currently in `packages/nitrocss/src/components/Text.tsx`
+normalization currently in `packages/nitro-css/src/components/Text.tsx`
 (`normalizeInlineText`, which maps `<b>`/`<strong>` → nested `<Text fontWeight>`
 and `<br/>` → `"\n"`).
 

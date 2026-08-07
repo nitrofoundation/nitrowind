@@ -254,19 +254,19 @@ referenced in `RCTScrollViewComponentView.mm` (`_adjustForMaintainVisibleContent
 
 Our engine already has the three primitives this needs. Confirmed in-repo:
 
-- **`ShadowTreeMutator`** — `packages/nitrocss/cpp/fabric/ShadowTreeMutator.hpp`:
+- **`ShadowTreeMutator`** — `packages/nitro-css/cpp/fabric/ShadowTreeMutator.hpp`:
   `static bool commit(const std::vector<NodeMutation>&)`, where
   `struct NodeMutation { Tag tag; folly::dynamic props; }`. It opens one
   `ShadowTree::commit` per surface and `ShadowNode::cloneTree`s the path from root to
   each mutated node, merging props via the component descriptor. **This is our
   visibility toggle** — no UIView `hidden` poke needed; we mutate props on the shadow
   node.
-- **`LayoutObserver`** — `packages/nitrocss/cpp/fabric/LayoutObserver.{hpp,cpp}`:
+- **`LayoutObserver`** — `packages/nitro-css/cpp/fabric/LayoutObserver.{hpp,cpp}`:
   a `UIManagerMountHook` (`shadowTreeDidMount`) that walks the committed tree and reads
   `layoutable->getLayoutMetrics().frame` (size + origin) straight off shadow nodes.
   **This is our geometry source** — and, unlike RN, it's shadow-tree geometry, not
   UIKit `convertRect:`.
-- **`LinkedNode`** — `packages/nitrocss/cpp/registry/LinkedNode.hpp`: keyed by
+- **`LinkedNode`** — `packages/nitro-css/cpp/registry/LinkedNode.hpp`: keyed by
   `Tag`, holds the stable `ShadowNodeFamily::Shared` (survives per-commit
   ShadowNode replacement). **This is our per-item handle** and our registration set.
 
@@ -407,8 +407,8 @@ commit**, not `self.hidden = YES`. Concretely:
 
 ### Engine primitives to build on (in-repo)
 
-- `packages/nitrocss/cpp/fabric/ShadowTreeMutator.hpp` — `commit(vector<NodeMutation{Tag,folly::dynamic props}>)`.
-- `packages/nitrocss/cpp/fabric/LayoutObserver.{hpp,cpp}` — `shadowTreeDidMount` walk reading `getLayoutMetrics().frame`.
-- `packages/nitrocss/cpp/registry/LinkedNode.hpp` — `Tag` → `ShadowNodeFamily::Shared` per-item handle.
+- `packages/nitro-css/cpp/fabric/ShadowTreeMutator.hpp` — `commit(vector<NodeMutation{Tag,folly::dynamic props}>)`.
+- `packages/nitro-css/cpp/fabric/LayoutObserver.{hpp,cpp}` — `shadowTreeDidMount` walk reading `getLayoutMetrics().frame`.
+- `packages/nitro-css/cpp/registry/LinkedNode.hpp` — `Tag` → `ShadowNodeFamily::Shared` per-item handle.
 
 STATUS: DONE

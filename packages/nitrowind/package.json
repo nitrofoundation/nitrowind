@@ -1,7 +1,7 @@
 {
   "name": "@nitrofoundation/nitrowind",
-  "version": "0.1.0",
-  "description": "The fastest Tailwind bindings for React Native — a thin Tailwind CSS wrapper around @nitrofoundation/nitrocss, the fully open-source native C++ ShadowTree styling engine.",
+  "version": "0.1.0-beta.0",
+  "description": "The fastest Tailwind bindings for React Native — a thin Tailwind CSS wrapper around nitrocss, the fully open-source native C++ ShadowTree styling engine.",
   "license": "MIT",
   "author": "Nitrowind contributors",
   "repository": "https://github.com/nitrowind/nitrowind",

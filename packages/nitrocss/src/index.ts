@@ -3,8 +3,8 @@
  * React Native, driven by plain-CSS class names.
  *
  * Public runtime API only — the build-time compiler lives under
- * `@nitrofoundation/nitrocss/compiler` (node-only; never import it from app
- * code) and the Metro plugin under `@nitrofoundation/nitrocss/metro`.
+ * `nitro-css/compiler` (node-only; never import it from app
+ * code) and the Metro plugin under `nitro-css/metro`.
  */
 
 import "./types/react-native";

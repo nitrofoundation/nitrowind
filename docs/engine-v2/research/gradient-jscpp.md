@@ -52,7 +52,7 @@ compiler emits --nw-gradient-* marker props   (UNCHANGED upstream)
 
 ### 1a. The marker props (upstream — keep as-is)
 
-`packages/nitrocss/src/compiler/parsers/gradient.ts`
+`packages/nitro-css/src/compiler/parsers/gradient.ts`
 
 Tailwind v4 splits a gradient across `bg-linear-*`/`bg-radial` (type + geometry)
 and `from-*`/`via-*`/`to-*` (color stops). nitrowind lowers each to its own
@@ -104,11 +104,11 @@ export function foldGradient(style: RNStyle): void {
 }
 ```
 
-Re-exported by `packages/nitrocss/src/core/normalize.ts` (line 2/6) and invoked in
+Re-exported by `packages/nitro-css/src/core/normalize.ts` (line 2/6) and invoked in
 `store.ts` after every merge (lines 335-337) plus for container-query buckets
 (line 308).
 
-The C++ mirror is `packages/nitrocss/cpp/NitroCssEngine.cpp` `foldGradient(folly::dynamic&)`
+The C++ mirror is `packages/nitro-css/cpp/NitroCssEngine.cpp` `foldGradient(folly::dynamic&)`
 (lines 175-209), string-identical, driven by `kGradientProps[]` (lines 161-166) and
 called from `NitroCssEngine::resolve()` (line 520, after `foldTransform`, before
 `normalizeShadow`). **Both folds must be changed together — a native theme-swap
@@ -127,7 +127,7 @@ style["--nitrowind-gradient"] = GradientDescriptor
 ```
 
 ```ts
-// packages/nitrocss/src/compiler/parsers/gradient.ts  (new export)
+// packages/nitro-css/src/compiler/parsers/gradient.ts  (new export)
 export const GRADIENT_DESCRIPTOR_PROP = "--nitrowind-gradient";
 
 export interface GradientDescriptor {
@@ -264,7 +264,7 @@ you — you import that generated component, you don't hand-write the config.
 
 ### 2c. Spec to author
 
-`packages/nitrocss/src/specs/GradientView.nitro.ts`:
+`packages/nitro-css/src/specs/GradientView.nitro.ts`:
 
 ```ts
 import type { HybridView, HybridViewProps } from "react-native-nitro-modules";
@@ -306,7 +306,7 @@ Notes:
 
 ### 2d. `nitro.json` autolinking
 
-`packages/nitrocss/nitro.json` currently registers HybridObjects only. Add the
+`packages/nitro-css/nitro.json` currently registers HybridObjects only. Add the
 view under `autolinking` with the `swift`/`kotlin` keys (this is what tells
 nitrogen to generate the view + host component):
 
@@ -333,7 +333,7 @@ output directly and web/no-native builds degrade to `null` (same lazy pattern as
 `components/animated.ts` `getAnimatedView`):
 
 ```ts
-// packages/nitrocss/src/components/gradient.ts
+// packages/nitro-css/src/components/gradient.ts
 import { Platform } from "react-native";
 import type { ComponentType } from "react";
 
@@ -355,7 +355,7 @@ export function getGradientView(): ComponentType<any> | null {
 
 ---
 
-## 3. `View` integration (`packages/nitrocss/src/components/View.tsx`)
+## 3. `View` integration (`packages/nitro-css/src/components/View.tsx`)
 
 Today `View.tsx`:
 - resolves styles via `resolveStylesForPlatform(className, snapshot, pseudo)`
@@ -561,7 +561,7 @@ work has scalar targets to interpolate.
    `folly::dynamic` object with identical `angleFromPosition`/`parsePct` results.
    Add a cross-check test (JS vs C++) like the transform-fold discipline noted in
    the file headers.
-4. **Spec.** Add `packages/nitrocss/src/specs/GradientView.nitro.ts`
+4. **Spec.** Add `packages/nitro-css/src/specs/GradientView.nitro.ts`
    (`GradientViewProps` = `descriptor` + `borderRadius`; `ios:'swift'`,
    `android:'kotlin'`). Register in `nitro.json` `autolinking`. Run nitrogen.
 5. **Native impls.** `HybridGradientView.swift` (CAGradientLayer:

@@ -8,7 +8,7 @@ description: Install Nitrowind and wire it into a React Native or Expo app.
 Install the Tailwind wrapper, the core native engine, Tailwind CSS, and Nitro modules:
 
 ```bash
-yarn add @nitrofoundation/nitrowind @nitrofoundation/nitrocss tailwindcss react-native-nitro-modules
+yarn add nitrowind nitrocss tailwindcss react-native-nitro-modules
 ```
 
 Optional peers:

@@ -8,7 +8,7 @@ Read-only research for the engine-v2 initiative. Two parts:
 Environment as researched:
 
 - `react-native` **0.86.0** (`node_modules/react-native/package.json`).
-- `react-native-nitro-modules` / `nitrogen` **0.35.9** (`packages/nitrocss/package.json`). Nitro >= 0.34 exposes `HybridView` + `getHostComponent`, which is what the gradient view rides on.
+- `react-native-nitro-modules` / `nitrogen` **0.35.9** (`packages/nitro-css/package.json`). Nitro >= 0.34 exposes `HybridView` + `getHostComponent`, which is what the gradient view rides on.
 - The native package that already ships a Nitro pipeline (nitro.json + podspec + nitrogen) is `packages/nitrocss`. File/dir names below reference it as it exists today; the project family will be renamed, so treat `Nitrowind`/`nitrowind` tokens as **the engine's module name** and rename them wholesale at implementation time. Design names below avoid the product name and say "the engine" / "the gradient view".
 
 ---
@@ -336,7 +336,7 @@ Follow RN's rule from `shapeLayerToMatchView:` (1a):
 
 ### 2e. The Nitro view spec — `GradientView.nitro.ts`
 
-A HybridView spec (Nitro >= 0.34) declares the props; nitrogen generates the Fabric component + the Swift `HybridGradientViewSpec` base class. Shape (rename-agnostic; mirrors the style of `packages/nitrocss/src/specs/NativePlatform.nitro.ts`):
+A HybridView spec (Nitro >= 0.34) declares the props; nitrogen generates the Fabric component + the Swift `HybridGradientViewSpec` base class. Shape (rename-agnostic; mirrors the style of `packages/nitro-css/src/specs/NativePlatform.nitro.ts`):
 
 ```ts
 import type { HybridView } from "react-native-nitro-modules";
@@ -372,16 +372,16 @@ On the JS side the component is obtained via `getHostComponent("GradientView", (
 
 Anchored to `packages/nitrocss` as it exists today (rename tokens at implementation time). Do NOT commit generated `nitrogen/generated` by hand — run the generator.
 
-1. **Add the view spec.** Create `packages/nitrocss/src/specs/GradientView.nitro.ts` with the `HybridView<GradientProps, GradientMethods, {...}>` shape from 2e. Export it from `packages/nitrocss/src/specs/index.ts` (the barrel that already re-exports the other `.nitro.ts` specs).
+1. **Add the view spec.** Create `packages/nitro-css/src/specs/GradientView.nitro.ts` with the `HybridView<GradientProps, GradientMethods, {...}>` shape from 2e. Export it from `packages/nitro-css/src/specs/index.ts` (the barrel that already re-exports the other `.nitro.ts` specs).
 
-2. **Register autolinking.** Add the `"GradientView": { "swift": "HybridGradientView", "kotlin": "HybridGradientView" }` entry to `packages/nitrocss/nitro.json` `autolinking` (schema/`cxxNamespace`/`iosModuleName` unchanged).
+2. **Register autolinking.** Add the `"GradientView": { "swift": "HybridGradientView", "kotlin": "HybridGradientView" }` entry to `packages/nitro-css/nitro.json` `autolinking` (schema/`cxxNamespace`/`iosModuleName` unchanged).
 
 3. **Run nitrogen.** `yarn nitrogen` in `packages/nitrocss` (the `"nitrogen": "nitrogen"` package.json script). This emits:
    - `nitrogen/generated/ios/**` — the Swift `HybridGradientViewSpec` base class + Fabric component glue, and updates `Nitrowind+autolinking.rb` (consumed by the podspec's `add_nitrogen_files(s)`).
    - `nitrogen/generated/shared/**` — the C++ prop struct.
    The podspec (`Nitrowind.podspec`) already globs `ios/**/*.{swift,h,m,mm}` and calls `load .../Nitrowind+autolinking.rb; add_nitrogen_files(s)`, so **no podspec edit is needed** — the new Swift file and generated files are picked up automatically. (Contrast the deleted nitrolist podspec, which used a plain `s.source_files = 'ios/**/*.{h,m,mm,swift}'` glob with no nitrogen step — the engine's podspec is the more capable pattern to keep.)
 
-4. **Write the Swift view.** Create `packages/nitrocss/ios/HybridGradientView.swift` (2c): subclass the generated `HybridGradientViewSpec`, own a `GradientBackingView` whose `layerClass` is `CAGradientLayer`, implement prop setters (`applyColorsAndType`) and `layoutBacking(in:)` (the angle→points / radial center+radius math), and wire `layoutSubviews`. Add the `UIColor(hex:)` helper (own file or extension) and, if `transparent` support is wanted, the transparent-black substitution from `RCTGradientUtils getColors:`.
+4. **Write the Swift view.** Create `packages/nitro-css/ios/HybridGradientView.swift` (2c): subclass the generated `HybridGradientViewSpec`, own a `GradientBackingView` whose `layerClass` is `CAGradientLayer`, implement prop setters (`applyColorsAndType`) and `layoutBacking(in:)` (the angle→points / radial center+radius math), and wire `layoutSubviews`. Add the `UIColor(hex:)` helper (own file or extension) and, if `transparent` support is wanted, the transparent-black substitution from `RCTGradientUtils getColors:`.
 
 5. **(Optional) port the geometry helpers** `pointsFromAngle` (from `RCTLinearGradient.mm getPointsFromAngle`) and, for fidelity, the diagonal un-squish (`RCTGradientUtils pointsForCAGradientLayerLinearGradient`) and radial radius helpers (`RCTRadialGradient.mm`) into Swift or a small `.mm` reachable via the existing `NitrowindBridge` seam. Keep them in `ios/` so the podspec glob compiles them.
 

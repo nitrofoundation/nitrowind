@@ -391,9 +391,24 @@ void NitroCssCore::link(Tag tag,
     LayoutObserver::shared().remeasure();
   }
 
-  // Native-first first paint: JS only registers the host and className; C++
-  // resolves the actual props and commits them into the ShadowTree.
-  commitResolvedNode(node, runtimeState().toContext());
+  // First-paint styles are already supplied by the React host components
+  // (`View`, `Text`, and the component wrappers) as their regular `style`
+  // props. Committing every new node again here turns a single React mount into
+  // N extra Fabric transactions: a 1,000-card screen used to create roughly
+  // 2,000 ShadowTree commits before the first frame could become idle.
+  //
+  // We still resolve once at link time so native-only paint descriptors
+  // (gradient, clip-path, background image) are registered for their first
+  // layout. From this point on the native registry owns dynamic updates and
+  // batches them through `recompute`. Accents are the exception: they target a
+  // prop outside the host style object (such as TextInput placeholder color),
+  // so their initial value must still be committed natively.
+  const ResolveContext initialContext = runtimeState().toContext();
+  if (node.accents.empty()) {
+    (void)resolveForNode(node, initialContext);
+  } else {
+    commitResolvedNode(node, initialContext);
+  }
 }
 
 void NitroCssCore::unlink(Tag tag) {

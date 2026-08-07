@@ -4,9 +4,9 @@
 > and extended beyond the plan below. **All** native code (C++ engine, iOS, Android), the TS
 > runtime, and the components moved into `nitrocss` — not just the compiler + resolver — and the
 > Tailwind v4 compile pipeline (`@tailwindcss/node` + oxide) was extracted into the wrapper.
-> Packages are scoped under `@nitrofoundation`: **`@nitrofoundation/nitrocss`** is the core
+> Packages are scoped under `@nitrofoundation`: **`nitrocss`** is the core
 > (plain-CSS, no Tailwind deps; `NitroCssProvider`/`withNitroCss`/`useNitroCss`,
-> `withNitroCssMetroConfig`), **`@nitrofoundation/nitrowind`** is the thin Tailwind wrapper
+> `withNitroCssMetroConfig`), **`nitrowind`** is the thin Tailwind wrapper
 > (`withNitrowindMetroConfig`, back-compat re-exports like `NitrowindProvider`). Native
 > identifiers were renamed Nitrowind→NitroCss (Nitro module `NitroCss`, pod `NitroCss`, Android
 > namespace `com.nitrofoundation.nitrocss`, artifact markers `--nitrocss-*`). The original plan
@@ -32,7 +32,7 @@ Split the CSS compiler and native class-name resolver out of `nitrowind` into a 
 
 ## Platform behavior
 
-- **Android/iOS**: Metro compiles the configured stylesheet with `nitrocss/compiler`, registers the artifact through `nitrowind`, and the native target links `nitrocss/cpp/NitroCssEngine.cpp`.
+- **Android/iOS**: Metro compiles the configured stylesheet with `nitro-css/compiler`, registers the artifact through `nitrowind`, and the native target links `nitro-css/cpp/NitroCssEngine.cpp`.
 - **Web**: Metro delegates the stylesheet to the normal upstream CSS worker. Nitrowind components pass `className` through to React Native Web/DOM and skip JS style resolution, pseudo shims, container-query fallback, and grid fallback.
 
 ## Current native support boundaries

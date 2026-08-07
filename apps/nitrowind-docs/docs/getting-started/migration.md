@@ -34,7 +34,7 @@ Most utility classes stay familiar because Tailwind v4 still owns utility genera
 
 ## From Uniwind
 
-The high-level workflow is similar: import Tailwind in CSS, wrap Metro, and use className. Nitrowind exposes both Tailwind and plain-CSS entry points, and the native engine is fully open source through `@nitrofoundation/nitrocss`.
+The high-level workflow is similar: import Tailwind in CSS, wrap Metro, and use className. Nitrowind exposes both Tailwind and plain-CSS entry points, and the native engine is fully open source through `nitrocss`.
 
 ## Historical Nitrowind aliases
 

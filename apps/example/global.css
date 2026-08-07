@@ -20,6 +20,8 @@
   --color-on-surface: #111827;
   --color-muted: #6b7280;
   --color-border: #e5e7eb;
+  --color-gray: #353b48;
+  --color-typography: #111827;
 
   --radius-card: 16px;
 
@@ -153,6 +155,8 @@
   --color-on-surface: #f9fafb;
   --color-muted: #9ca3af;
   --color-border: #1f2937;
+  --color-gray: #353b48;
+  --color-typography: #f9fafb;
 }
 
 [data-theme='ocean'] {

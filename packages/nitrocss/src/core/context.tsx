@@ -6,16 +6,23 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { StyleDependency, type Dimensions, type Insets } from "../specs/types";
+import {
+  StyleDependency,
+  type Dimensions,
+  type Insets,
+  type RuntimeSnapshot,
+} from "../specs/types";
 import { runtime } from "./runtime";
 import type { NitroCssContextValue } from "./types";
 
 interface NitroCssControls {
   setTheme: (name: string) => void;
   setColorScheme: (scheme: "light" | "dark" | "system") => void;
+  /** Keeps React-owned props in sync when a detached screen is reattached. */
+  snapshot: RuntimeSnapshot;
 }
 
-const NitroCssContext = createContext<NitroCssControls | null>(null);
+export const NitroCssContext = createContext<NitroCssControls | null>(null);
 
 const ALL_RUNTIME_DEPENDENCIES = [
   StyleDependency.Theme,
@@ -40,12 +47,19 @@ export interface NitroCssProviderProps {
 export function NitroCssProvider({
   children,
 }: NitroCssProviderProps): React.JSX.Element {
+  // Native commits style changes directly, but react-native-screens can detach
+  // an inactive screen while a theme change happens. Its old JS style props
+  // would otherwise be reapplied when the screen is attached again. Publishing
+  // this snapshot through context makes mounted wrappers reconcile once with
+  // the current theme, including those temporarily detached screens.
+  const snapshot = useRuntimeSnapshot();
   const value = useMemo<NitroCssControls>(
     () => ({
       setTheme: (name) => runtime.setTheme(name),
       setColorScheme: (scheme) => runtime.setColorScheme(scheme),
+      snapshot,
     }),
-    [],
+    [snapshot],
   );
 
   return (

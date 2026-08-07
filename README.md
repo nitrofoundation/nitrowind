@@ -21,8 +21,8 @@ concept, with the whole engine free for everyone. No tiers, no paywall.
 Most RN Tailwind solutions resolve styles in JavaScript on every render. nitrowind
 moves the steady-state work off the JS thread:
 
-1. **Build time** — `@nitrofoundation/nitrowind` runs Tailwind v4 and hands the
-   emitted CSS to `@nitrofoundation/nitrocss`, whose self-contained CSS reader
+1. **Build time** — `nitrowind` runs Tailwind v4 and hands the
+   emitted CSS to `nitrocss`, whose self-contained CSS reader
    turns your classes into compact style tables, each tagged with a _dependency
    bitmask_ (does it depend on theme? color scheme? insets? rem? …).
 2. **First render** — the JS runtime resolves the initial style and _links_ each
@@ -59,7 +59,7 @@ See [plans/](plans/) for the full design notes.
 ## Quick start
 
 ```sh
-bun add @nitrofoundation/nitrowind react-native-nitro-modules
+bun add nitrowind react-native-nitro-modules
 ```
 
 **1. Stylesheet** (`global.css`):
@@ -124,19 +124,19 @@ iOS: `pod install`. Android: nothing extra — the engine is autolinked.
 
 ## How the native layer is wired
 
-The whole native layer lives in `@nitrofoundation/nitrocss` (pod `NitroCss`,
+The whole native layer lives in `nitrocss` (pod `NitroCss`,
 Gradle project `:nitrocss`):
 
 - **Nitro modules** generate the C++/Swift/Kotlin bindings from the `*.nitro.ts`
-  specs in [`src/specs`](packages/nitrocss/src/specs).
-- [`packages/nitrocss/cpp`](packages/nitrocss/cpp) owns the `NitroCssEngine`
+  specs in [`src/specs`](packages/nitro-css/src/specs).
+- [`packages/nitro-css/cpp`](packages/nitro-css/cpp) owns the `NitroCssEngine`
   class-name resolver, the `DependencyIndex` of linked nodes, and a
   `ShadowTreeMutator` that commits via `ShadowNode::cloneTree` +
   `ComponentDescriptor::cloneProps`.
-- **iOS** ([`ios/`](packages/nitrocss/ios)) — a Swift `NativePlatform`
+- **iOS** ([`ios/`](packages/nitro-css/ios)) — a Swift `NativePlatform`
   HybridObject reads UIKit appearance/dimensions and pushes them to C++; an
   Obj-C++ installer module hands the engine the `RuntimeExecutor` + `ContextContainer`.
-- **Android** ([`android/`](packages/nitrocss/android)) — a Kotlin
+- **Android** ([`android/`](packages/nitro-css/android)) — a Kotlin
   `NativePlatform` HybridObject reads the system configuration; a JNI adapter
   builds a `RuntimeExecutor` from the JS `CallInvoker` and installs the engine.
 

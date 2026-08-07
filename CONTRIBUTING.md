@@ -74,4 +74,4 @@ Do not commit generated build output, local Android or iOS build directories, cr
 
 ## Releases
 
-Maintainers release the public packages together through the `Release packages` GitHub Actions workflow. It versions, builds, tags, and publishes `@nitrofoundation/nitrocss`, `@nitrofoundation/nitrowind`, and `@nitrofoundation/nitrowind-skills`; apps are private and are not published.
+Maintainers release the public packages together through the `Release packages` GitHub Actions workflow. It versions, builds, tags, and publishes `nitrocss`, `nitrowind`, and `@nitrofoundation/nitrowind-skills`; apps are private and are not published.

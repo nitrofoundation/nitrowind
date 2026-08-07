@@ -10,6 +10,8 @@ import { NitrowindProvider } from '@nitrofoundation/nitrowind';
 import AnimationsScreen from './app/animations';
 import BackgroundImageScreen from './app/background-image';
 import BackgroundsScreen from './app/backgrounds';
+import BenchmarkScreen from './app/benchmark';
+import StyleSheetBenchmarkScreen from './app/benchmark-stylesheet';
 import BordersScreen from './app/borders';
 import ContainersScreen from './app/containers';
 import EffectsScreen from './app/effects';
@@ -29,6 +31,8 @@ type RootStackParamList = {
   Animations: undefined;
   Borders: undefined;
   Backgrounds: undefined;
+  Benchmark: undefined;
+  StyleSheetBenchmark: undefined;
   Transforms: undefined;
   Containers: undefined;
   Typography: undefined;
@@ -93,6 +97,16 @@ export default function App() {
               name="Backgrounds"
               component={BackgroundsScreen}
               options={{ title: 'Backgrounds' }}
+            />
+            <Stack.Screen
+              name="Benchmark"
+              component={BenchmarkScreen}
+              options={{ title: 'Rendering Benchmark' }}
+            />
+            <Stack.Screen
+              name="StyleSheetBenchmark"
+              component={StyleSheetBenchmarkScreen}
+              options={{ title: 'StyleSheet Benchmark' }}
             />
             <Stack.Screen
               name="Transforms"

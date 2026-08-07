@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type Ref } from "react";
+import { useCallback, useContext, useEffect, useRef, type Ref } from "react";
 import { Platform, StyleSheet } from "react-native";
 import type { RNStyle } from "../compiler/types";
 import type { Accent } from "../specs/ShadowRegistry.nitro";
@@ -7,6 +7,7 @@ import { type ComponentState, type RuntimeSnapshot } from "../specs/types";
 import { getEngine, hasNativeEngine } from "../core/native";
 import { runtime } from "../core/runtime";
 import type { GetStylesResult } from "../core/types";
+import { NitroCssContext } from "../core/context";
 
 /** Assign a value to either a callback ref or a mutable ref object. */
 export function assignRef<T>(ref: Ref<T> | undefined, value: T | null): void {
@@ -35,6 +36,47 @@ export interface NativeAccentDescriptor {
 export interface LinkedNodeRegistration {
   handle: ShadowNodeHandle;
   cleanup: () => void;
+}
+
+/**
+ * Most host styles are already owned by React: every wrapper passes the
+ * resolved object as its normal `style` prop, and a NitroCssProvider publishes
+ * a new runtime snapshot for environmental changes. Linking those nodes to
+ * Fabric as well only duplicates work. Keep native registration for the
+ * features whose output cannot travel through an ordinary React style prop.
+ */
+function requiresNativeRegistration(
+  className: string,
+  resolved: GetStylesResult,
+  nativeAccents: NativeAccentDescriptor[],
+  gridConfig: Record<string, unknown> | undefined,
+): boolean {
+  if (
+    nativeAccents.length > 0 ||
+    gridConfig !== undefined ||
+    resolved.container !== undefined ||
+    resolved.containerQueries?.length ||
+    resolved.isAnimated
+  ) {
+    return true;
+  }
+
+  const style = resolved.styles as Record<string, unknown>;
+  if (
+    "--nitrocss-gradient" in style ||
+    "--nitrocss-clip-path" in style ||
+    "--nitrocss-background-image" in style ||
+    "--nitrocss-backdrop-filter" in style ||
+    "--nitrocss-gradient-angle" in style
+  ) {
+    return true;
+  }
+
+  // These selectors depend on native component/layout state rather than a
+  // runtime snapshot, so React cannot keep them current by itself.
+  return /(?:^|\s)(?:group(?:-|\/|\s|$)|(?:hover|active|focus(?:-visible|-within)?|disabled|enabled|first|last):)/.test(
+    className,
+  );
 }
 
 function normalizeComponentState(
@@ -220,12 +262,18 @@ export function setNativeComponentStateForNode(
  * `useColorScheme`, etc.) are the only JS opt-in reactivity path.
  */
 export function useReactiveSnapshot(): RuntimeSnapshot {
-  const initialSnapshot = useRef<RuntimeSnapshot | undefined>(undefined);
-  if (!initialSnapshot.current) initialSnapshot.current = runtime.current;
+  // Native theme changes update linked Fabric nodes directly, without causing
+  // this component to re-render. When React does render for another reason
+  // (navigation transitions, FlatList virtualization, etc.), however, its
+  // style prop must be resolved from the *current* runtime state. Keeping the
+  // very first snapshot here could re-apply light styles after the native
+  // platform had already moved the engine to dark mode.
+  const providerSnapshot = useContext(NitroCssContext)?.snapshot;
+  const snapshot = providerSnapshot ?? runtime.current;
   useEffect(() => {
     if (Platform.OS !== "web") runtime.start();
   }, []);
-  return initialSnapshot.current;
+  return snapshot;
 }
 
 /**
@@ -243,14 +291,18 @@ export function useLinkedRef<T>(
   onLinked?: (handle: ShadowNodeHandle | undefined) => void,
   inlineStyle?: unknown,
   gridConfig?: Record<string, unknown>,
-): (node: T | null) => void {
+): Ref<T> | undefined {
   const cleanup = useRef<(() => void) | undefined>(undefined);
+  const provider = useContext(NitroCssContext);
+  const shouldLinkNatively =
+    provider === null ||
+    requiresNativeRegistration(className, resolved, nativeAccents, gridConfig);
 
-  return useCallback(
+  const nativeRef = useCallback(
     (node: T | null) => {
       cleanup.current?.();
       cleanup.current = undefined;
-      if (node) {
+      if (node && shouldLinkNatively) {
         const registration = linkNode(
           node,
           className,
@@ -280,8 +332,14 @@ export function useLinkedRef<T>(
       onLinked,
       inlineStyle,
       gridConfig,
+      shouldLinkNatively,
     ],
   );
+
+  // Avoid installing a no-op callback ref on ordinary provider-managed nodes.
+  // Fabric invokes ref callbacks for every mount and unmount, so retaining one
+  // for thousands of static cards adds measurable work to the render path.
+  return shouldLinkNatively ? nativeRef : forwardedRef;
 }
 
 export type { RNStyle };

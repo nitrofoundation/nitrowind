@@ -38,7 +38,7 @@ const config: Config = {
         docs: {
           routeBasePath: "/",
           sidebarPath: "./sidebars.ts",
-          editUrl: "https://github.com/AshwithJoylan/nitrowind/tree/main/apps/nitrowind-docs/",
+          editUrl: "https://github.com/AshwithJoylan//nitrowind/tree/main/apps/nitrowind-docs/",
         } satisfies DocsOptions,
         blog: false,
         theme: {

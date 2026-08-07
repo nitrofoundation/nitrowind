@@ -12,7 +12,7 @@ import type {
  *
  * Fed by the `--nitrocss-backdrop-filter` marker the compiler emits for
  * `backdrop-filter` / `-webkit-backdrop-filter` declarations (see
- * `nitrocss/src/compiler/parsers/filter.ts`). The JS side extracts the blur
+ * `nitro-css/src/compiler/parsers/filter.ts`). The JS side extracts the blur
  * radius from the marker's parsed filter array (`backdropBlurRadius`).
  *
  * v1 scope: blur only.

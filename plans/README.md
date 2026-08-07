@@ -52,18 +52,18 @@ See [01-architecture.md](./01-architecture.md) for the full breakdown. Short ver
 ## Repo layout (target)
 
 > **2026-07:** this layout predates the package restructure — the engine/runtime/native code now
-> lives in `packages/nitrocss` (`@nitrofoundation/nitrocss`) with `packages/nitrowind` as the
+> lives in `packages/nitrocss` (`nitrocss`) with `packages/nitrowind` as the
 > Tailwind wrapper; see the note at the top of [11-nitrocss-engine-package.md](./11-nitrocss-engine-package.md).
 
 ```
 nitrowind/
 ├── plans/                    # this folder
 ├── packages/
-│   ├── nitrocss/             # CSS compiler + C++ class resolver
+│   ├── nitro-css/             # CSS compiler + C++ class resolver
 │   └── nitrowind/            # RN runtime/native integration
 │       ├── src/
 │       │   ├── specs/        # Nitro .nitro.ts specs (the C++ contract)
-│       │   ├── compiler/     # compatibility shims to nitrocss/compiler
+│       │   ├── compiler/     # compatibility shims to nitro-css/compiler
 │       │   ├── core/         # store, listener, context (runtime)
 │       │   ├── hoc/          # withNitrowind
 │       │   ├── components/   # View, Text, …

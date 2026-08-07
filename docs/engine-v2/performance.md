@@ -24,7 +24,7 @@ Already native / already matching the Lynx shape:
   `ShadowTreeMutator` commits absolute boxes — converges in one frame, no
   `onLayout` JS round-trip on native (JS fallback remains for web only).
 - **Numeric gradient descriptor.** The compiler fold emits a compact numeric
-  `GradientDescriptor` (`packages/nitrocss/src/compiler/parsers/gradient.ts`,
+  `GradientDescriptor` (`packages/nitro-css/src/compiler/parsers/gradient.ts`,
   `target === "descriptor"`); the native gradient view paints with **zero CSS
   string parsing at paint time**. This is exactly Lynx's `lepus::CArray`
   gradient IR (their cleanest idea) — independently validated.

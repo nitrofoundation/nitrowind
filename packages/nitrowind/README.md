@@ -1,7 +1,7 @@
-# @nitrofoundation/nitrowind
+# nitrowind
 
 The fastest Tailwind bindings for React Native — a thin **Tailwind CSS wrapper** around
-[`@nitrofoundation/nitrocss`](../nitrocss), the fully open-source native C++ ShadowTree
+[`nitrocss`](../nitrocss), the fully open-source native C++ ShadowTree
 styling engine.
 
 nitrocss is stylesheet-agnostic: it compiles flattened CSS into native style tables and
@@ -22,7 +22,7 @@ Targets **React Native 0.86** (Fabric / bridgeless). MIT licensed, free for ever
 ## Install
 
 ```sh
-yarn add @nitrofoundation/nitrowind @nitrofoundation/nitrocss tailwindcss react-native-nitro-modules
+yarn add nitrowind nitrocss tailwindcss react-native-nitro-modules
 ```
 
 `react-native-svg` and `react-native-reanimated` are optional peers (SVG styling and
@@ -77,12 +77,12 @@ resulting style tables with the native engine — no Babel plugin, no runtime CS
 
 | Import | Contents |
 | --- | --- |
-| `@nitrofoundation/nitrowind` | Runtime: components, `NitrowindProvider`, hooks, HOCs (re-export of nitrocss + `Nitrowind*` aliases) |
-| `@nitrofoundation/nitrowind/components` | className-aware React Native components |
-| `@nitrofoundation/nitrowind/svg` | className-aware `react-native-svg` bindings |
-| `@nitrofoundation/nitrowind/compiler` | Node-only: `compile`, `compileCss`, `scanCandidates`, plus the nitrocss compiler surface |
-| `@nitrofoundation/nitrowind/metro` | `withNitrowindMetroConfig` |
-| `@nitrofoundation/nitrowind/metro/pipeline` | The Tailwind `scan`/`buildCss` pipeline handed to the nitrocss transformer |
+| `nitrowind` | Runtime: components, `NitrowindProvider`, hooks, HOCs (re-export of nitrocss + `Nitrowind*` aliases) |
+| `/nitrowind/components` | className-aware React Native components |
+| `/nitrowind/svg` | className-aware `react-native-svg` bindings |
+| `/nitrowind/compiler` | Node-only: `compile`, `compileCss`, `scanCandidates`, plus the nitrocss compiler surface |
+| `/nitrowind/metro` | `withNitrowindMetroConfig` |
+| `/nitrowind/metro/pipeline` | The Tailwind `scan`/`buildCss` pipeline handed to the nitrocss transformer |
 
 ## Options
 
