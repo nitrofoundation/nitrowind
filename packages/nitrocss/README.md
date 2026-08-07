@@ -7,7 +7,7 @@ No Tailwind required. If you want Tailwind class names on top of this engine, us
 ## Quick start
 
 ```bash
-npm install nitrocss react-native-nitro-modules
+npm install @nitrofoundation/nitrocss react-native-nitro-modules
 ```
 
 ```js

@@ -208,14 +208,22 @@ function isStylesheet(projectRoot: string, filename: string): boolean {
   return path.resolve(abs) === inputAbs;
 }
 
-function shouldRewriteReactNativeImports(filename: string): boolean {
+/**
+ * Only transform application modules. Metro may pass a filename relative to
+ * the project root (for example `node_modules/foo/index.ts`) or an absolute
+ * filename, so checking solely for `/node_modules/` misses the former.
+ *
+ * Rewriting a dependency is unsafe: NitroCSS components import the public
+ * package entry themselves, and injecting the stylesheet bootstrap into those
+ * modules creates a circular import during application startup.
+ */
+export function shouldRewriteReactNativeImports(filename: string): boolean {
   if (process.env.NITROCSS_REWRITE_REACT_NATIVE_IMPORTS === "0") return false;
   if (!filename) return false;
-  const normalized = filename.split(path.sep).join("/");
+  const normalized = filename.replace(/\\/g, "/");
   return !(
-    normalized.includes("/node_modules/") ||
-    normalized.includes("/packages/nitrocss/") ||
-    normalized.includes("/packages/nitrowind/")
+    /(?:^|\/)node_modules(?:\/|$)/.test(normalized) ||
+    /(?:^|\/)packages\/(?:nitrocss|nitrowind)(?:\/|$)/.test(normalized)
   );
 }
 

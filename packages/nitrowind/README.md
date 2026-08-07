@@ -22,7 +22,7 @@ Targets **React Native 0.86** (Fabric / bridgeless). MIT licensed, free for ever
 ## Install
 
 ```sh
-yarn add nitrowind nitrocss tailwindcss react-native-nitro-modules
+yarn add @nitrofoundation/nitrowind @nitrofoundation/nitrocss tailwindcss react-native-nitro-modules
 ```
 
 `react-native-svg` and `react-native-reanimated` are optional peers (SVG styling and

@@ -8,7 +8,7 @@ description: Use the core native CSS engine without Tailwind.
 `nitrocss` is the engine under Nitrowind. Use it directly when you want native className styling with plain CSS instead of Tailwind.
 
 ```bash
-yarn add nitrocss react-native-nitro-modules
+yarn add @nitrofoundation/nitrocss react-native-nitro-modules
 ```
 
 ```js title="metro.config.js"
