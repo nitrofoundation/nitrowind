@@ -10,7 +10,7 @@ Use this skill to implement supported Nitrowind behavior. Read the linked canoni
 ## Workflow
 
 1. Trace a styling problem from CSS compilation through the runtime dependency that should update it.
-1. Prefer native resolver behavior for supported capabilities and clearly preserve the JS fallback boundary.
+1. Prefer native resolver behavior for supported capabilities; safe-area utilities resolve from native window insets and do not use a JavaScript `useSafeAreaInsets` fallback.
 1. Validate against the target platform and new-architecture requirements before diagnosing engine behavior.
 
 ## Canonical docs

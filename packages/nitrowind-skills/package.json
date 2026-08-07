@@ -1,6 +1,6 @@
 {
   "name": "@nitrofoundation/nitrowind-skills",
-  "version": "0.1.0",
+  "version": "0.2.0-beta.2",
   "description": "Curated agent skills and an interactive generator for Nitrowind projects.",
   "license": "MIT",
   "repository": "https://github.com/nitrofoundation/nitrowind",

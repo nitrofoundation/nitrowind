@@ -9,9 +9,21 @@ Use this skill to implement supported Nitrowind behavior. Read the linked canoni
 
 ## Workflow
 
-1. Use the safe-area utility family for edges that are part of the visual layout.
+1. Apply the safe-area utility family to a non-grid screen parent, not to the grid container itself.
+1. Place the grid in a child View, then apply `grid`, `grid-cols-*`, and `gap-*` only on that child so the grid arranges content within the already-safe region.
 1. Combine safe-area values with spacing utilities when an edge needs both a device inset and design spacing.
-1. Confirm the app provides safe-area information before debugging native inset values.
+1. Use a native development client or production build to validate insets; safe-area utilities read native insets and do not require a `useSafeAreaInsets` fallback.
+
+## Recommended pattern
+
+```tsx
+<View className="flex-1 pt-safe pb-safe">
+  <View className="flex-1 grid grid-cols-2 gap-4">
+    <View className="bg-violet-400" />
+    <View className="bg-violet-500" />
+  </View>
+</View>
+```
 
 ## Canonical docs
 

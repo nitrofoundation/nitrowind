@@ -4,6 +4,7 @@ export type SkillDefinition = {
   summary: string;
   triggers: string[];
   workflow: string[];
+  example?: string;
   docs: Array<{ label: string; path: string }>;
 };
 
@@ -16,6 +17,7 @@ export const skillCatalog: SkillDefinition[] = [
     workflow: [
       "Inspect the existing React Native or Expo setup before changing dependencies.",
       "Configure the Metro wrapper and CSS entry file together, then import the CSS once from the app entry point.",
+      "Add `@reference \"@nitrofoundation/nitrocss\";` to the Tailwind CSS entry file so Nitrocss utilities, including safe-area utilities, are discoverable.",
       "Keep the setup minimal and verify it with one styled native primitive.",
     ],
     docs: [
@@ -111,6 +113,7 @@ export const skillCatalog: SkillDefinition[] = [
     triggers: ["responsive layout", "orientation styles", "platform variant", "font scale"],
     workflow: [
       "Use responsive utilities for screen-level changes and keep structural layout simple.",
+      "Put safe-area spacing on the screen parent; keep a grid as a child layout so its columns only arrange content inside the safe region.",
       "Use platform variants for native platform differences instead of runtime conditionals where possible.",
       "Use container queries when the parent size, not the screen, defines the layout.",
     ],
@@ -142,10 +145,17 @@ export const skillCatalog: SkillDefinition[] = [
     summary: "Apply safe-area-aware spacing and screen layouts without manually threading inset values through every component.",
     triggers: ["safe area", "notch padding", "screen safe", "inset utilities"],
     workflow: [
-      "Use the safe-area utility family for edges that are part of the visual layout.",
+      "Apply the safe-area utility family to a non-grid screen parent, not to the grid container itself.",
+      "Place the grid in a child View, then apply `grid`, `grid-cols-*`, and `gap-*` only on that child so the grid arranges content within the already-safe region.",
       "Combine safe-area values with spacing utilities when an edge needs both a device inset and design spacing.",
-      "Confirm the app provides safe-area information before debugging native inset values.",
+      "Use a native development client or production build to validate insets; safe-area utilities read native insets and do not require a `useSafeAreaInsets` fallback.",
     ],
+    example: `<View className="flex-1 pt-safe pb-safe">
+  <View className="flex-1 grid grid-cols-2 gap-4">
+    <View className="bg-violet-400" />
+    <View className="bg-violet-500" />
+  </View>
+</View>`,
     docs: [
       { label: "Safe Area", path: "/features/safe-area" },
       { label: "Runtime State", path: "/core-concepts/runtime-state" },
@@ -239,7 +249,7 @@ export const skillCatalog: SkillDefinition[] = [
     triggers: ["Nitrowind engine", "ShadowTree", "native style update", "runtime fallback"],
     workflow: [
       "Trace a styling problem from CSS compilation through the runtime dependency that should update it.",
-      "Prefer native resolver behavior for supported capabilities and clearly preserve the JS fallback boundary.",
+      "Prefer native resolver behavior for supported capabilities; safe-area utilities resolve from native window insets and do not use a JavaScript `useSafeAreaInsets` fallback.",
       "Validate against the target platform and new-architecture requirements before diagnosing engine behavior.",
     ],
     docs: [
@@ -281,6 +291,9 @@ export const renderSkill = (
   const docs = definition.docs
     .map((doc) => `- [${doc.label}](${doc.path})`)
     .join("\n");
+  const example = definition.example
+    ? `\n\n## Recommended pattern\n\n\`\`\`tsx\n${definition.example}\n\`\`\``
+    : "";
 
   const frontmatterDescription = `${description} Use this skill whenever the user mentions ${definition.triggers.map((trigger) => `"${trigger}"`).join(", ")} in a Nitrowind or Nitrocss React Native project.`;
 
@@ -295,7 +308,7 @@ Use this skill to implement supported Nitrowind behavior. Read the linked canoni
 
 ## Workflow
 
-${workflow}
+${workflow}${example}
 
 ## Canonical docs
 

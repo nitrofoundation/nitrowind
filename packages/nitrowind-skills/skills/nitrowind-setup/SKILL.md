@@ -11,6 +11,7 @@ Use this skill to implement supported Nitrowind behavior. Read the linked canoni
 
 1. Inspect the existing React Native or Expo setup before changing dependencies.
 1. Configure the Metro wrapper and CSS entry file together, then import the CSS once from the app entry point.
+1. Add `@reference "@nitrofoundation/nitrocss";` to the Tailwind CSS entry file so Nitrocss utilities, including safe-area utilities, are discoverable.
 1. Keep the setup minimal and verify it with one styled native primitive.
 
 ## Canonical docs

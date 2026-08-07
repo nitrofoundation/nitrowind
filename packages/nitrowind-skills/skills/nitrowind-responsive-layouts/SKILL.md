@@ -10,6 +10,7 @@ Use this skill to implement supported Nitrowind behavior. Read the linked canoni
 ## Workflow
 
 1. Use responsive utilities for screen-level changes and keep structural layout simple.
+1. Put safe-area spacing on the screen parent; keep a grid as a child layout so its columns only arrange content inside the safe region.
 1. Use platform variants for native platform differences instead of runtime conditionals where possible.
 1. Use container queries when the parent size, not the screen, defines the layout.
 
