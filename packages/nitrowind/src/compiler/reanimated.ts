@@ -12,7 +12,7 @@
  * no JS driver at all.
  *
  * The preset name lists (`ENTERING_EXITING_PRESETS` / `LAYOUT_PRESETS`) live in
- * `@nitrofoundation/nitrocss` because the runtime needs them to map the
+ * `nitrocss` because the runtime needs them to map the
  * `--reanimated-*` values back to builders; this module only turns them into
  * Tailwind `@utility` CSS.
  */

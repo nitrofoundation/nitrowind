@@ -167,7 +167,7 @@ export interface NativePlatform extends HybridObject<{
 "codegenConfig": { "name": "TurboNitrowind", "type": "modules", "jsSrcsDir": "./src/specs" }
 ```
 
-`nitro.json` sets `cxxNamespace: ["nitrowind"]`, ios/android module names.
+`nitro.json` sets `cxxNamespace: ["@nitrofoundation/nitrowind"]`, ios/android module names.
 
 ## Run
 

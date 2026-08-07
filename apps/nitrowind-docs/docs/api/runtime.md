@@ -5,7 +5,7 @@ description: Providers, hooks, runtime helpers, and style registration exports.
 
 # Runtime API
 
-Import from `@nitrofoundation/nitrowind` for the Tailwind wrapper, or `@nitrofoundation/nitrocss` for the core package.
+Import from `nitrowind` for the Tailwind wrapper, or `nitrocss` for the core package.
 
 ## Providers
 

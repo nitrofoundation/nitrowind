@@ -291,7 +291,7 @@ Current NitroCSS engine status in this repo:
 - Web already keeps real CSS `backgroundImage` strings and lets the browser paint them.
 
 This is documented directly in:
-- [packages/nitrocss/README.md](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/README.md)
+- [packages/nitro-css/README.md](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/README.md)
 
 Key finding from the current implementation:
 - NitroCSS already supports native gradient descriptors end to end.
@@ -301,14 +301,14 @@ Key finding from the current implementation:
 - `View` strips the gradient marker before styles reach React Native props.
 
 Relevant implementation files:
-- [parseStyles.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/compiler/parseStyles.ts)
-- [gradient.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/compiler/parsers/gradient.ts)
-- [normalize.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/core/normalize.ts)
-- [View.tsx](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/components/View.tsx)
-- [NitroCssEngine.cpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/NitroCssEngine.cpp)
-- [GradientTargets.hpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/gradient/GradientTargets.hpp)
-- [NitroCssGradientApplier.mm](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/ios/NitroCssGradientApplier.mm)
-- [GradientApplierJNI.cpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/android/src/main/cpp/GradientApplierJNI.cpp)
+- [parseStyles.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/compiler/parseStyles.ts)
+- [gradient.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/compiler/parsers/gradient.ts)
+- [normalize.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/core/normalize.ts)
+- [View.tsx](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/components/View.tsx)
+- [NitroCssEngine.cpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/NitroCssEngine.cpp)
+- [GradientTargets.hpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/gradient/GradientTargets.hpp)
+- [NitroCssGradientApplier.mm](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/ios/NitroCssGradientApplier.mm)
+- [GradientApplierJNI.cpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/android/src/main/cpp/GradientApplierJNI.cpp)
 
 ### What this means
 
@@ -417,9 +417,9 @@ Compiler work:
 - emit a NitroCSS background-image marker or descriptor
 
 Likely files:
-- [parseStyles.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/compiler/parseStyles.ts)
-- [toRNValue.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/compiler/toRNValue.ts)
-- add a new parser near [gradient.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/compiler/parsers/gradient.ts)
+- [parseStyles.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/compiler/parseStyles.ts)
+- [toRNValue.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/compiler/toRNValue.ts)
+- add a new parser near [gradient.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/compiler/parsers/gradient.ts)
 
 ### Phase 3 — Add runtime/native descriptor folding
 
@@ -428,16 +428,16 @@ JS/runtime work:
 - keep outputting normal CSS `backgroundImage` on web
 
 Likely files:
-- [normalize.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/core/normalize.ts)
-- [View.tsx](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/src/components/View.tsx)
+- [normalize.ts](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/core/normalize.ts)
+- [View.tsx](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/src/components/View.tsx)
 
 C++ work:
 - mirror the same fold in the native engine
 - register the image descriptor similarly to the gradient descriptor
 
 Likely files:
-- [NitroCssEngine.cpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/NitroCssEngine.cpp)
-- add a sibling registry to [GradientTargets.hpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitrocss/cpp/gradient/GradientTargets.hpp) or generalize it into a broader background-paint registry
+- [NitroCssEngine.cpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/NitroCssEngine.cpp)
+- add a sibling registry to [GradientTargets.hpp](/Users/ashwithsaldanha/MyWork/nitrowind/packages/nitro-css/cpp/gradient/GradientTargets.hpp) or generalize it into a broader background-paint registry
 
 ### Phase 4 — Add platform painters
 

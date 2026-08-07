@@ -23,8 +23,8 @@ declare module "react-native" {
 	}
 }
 
-// Augment the core package (@nitrofoundation/nitrocss) directly: the
-// NitroCss*Props interfaces are declared there, and @nitrofoundation/nitrowind
+// Augment the core package (nitrocss) directly: the
+// NitroCss*Props interfaces are declared there, and nitrowind
 // only re-exports/aliases them — augmenting the wrapper would not merge.
 declare module "@nitrofoundation/nitrocss" {
 	interface NitroCssViewProps {

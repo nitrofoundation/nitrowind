@@ -5,7 +5,7 @@ description: Native C++ ShadowTree engine architecture.
 
 # Architecture
 
-The native engine lives in `@nitrofoundation/nitrocss`.
+The native engine lives in `nitrocss`.
 
 Core pieces:
 

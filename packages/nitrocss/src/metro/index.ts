@@ -42,7 +42,7 @@ const FALLBACK_UPSTREAM = "metro-transform-worker";
  * @example
  * // metro.config.js
  * const { getDefaultConfig } = require('expo/metro-config')
- * const { withNitroCssMetroConfig } = require('@nitrofoundation/nitrocss/metro')
+ * const { withNitroCssMetroConfig } = require("@nitrofoundation/nitrocss/metro')
  * module.exports = withNitroCssMetroConfig(getDefaultConfig(__dirname), {
  *   input: './global.css',
  * })

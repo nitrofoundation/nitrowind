@@ -2,12 +2,12 @@
 // (the library the JS compiler uses to pre-lower colors in toRNValue.ts). NOT
 // part of the pod/gradle build (cpptests/ is outside the cpp/** and ios/**
 // globs). Run manually:
-//   clang++ -std=c++20 -I ../../nitrocss/cpp/css css_color_test.cpp \
-//     ../../nitrocss/cpp/css/CssColor.cpp -o /tmp/css_color_test && /tmp/css_color_test
+//   clang++ -std=c++20 -I ../../nitro-css/cpp/css css_color_test.cpp \
+//     ../../nitro-css/cpp/css/CssColor.cpp -o /tmp/css_color_test && /tmp/css_color_test
 //
 // Every expected value below was produced by running node against the repo's
 // own node_modules/culori (src/index.js) with the exact serialization rule
-// from packages/nitrocss/src/compiler/toRNValue.ts:
+// from packages/nitro-css/src/compiler/toRNValue.ts:
 //   alpha !== undefined && alpha < 1 ? formatHex8(parsed) : formatHex(parsed)
 // (generator: parse(css) -> formatHex/formatHex8; "FAIL" = culori returned
 // undefined). Cases marked [scope] are intentionally unsupported by our

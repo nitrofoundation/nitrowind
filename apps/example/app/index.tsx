@@ -13,6 +13,8 @@ import { ThemeToggle } from '../components/ui';
 type RootStackParamList = {
   Home: undefined;
   Animations: undefined;
+  Benchmark: undefined;
+  StyleSheetBenchmark: undefined;
   Borders: undefined;
   Backgrounds: undefined;
   Transforms: undefined;
@@ -38,6 +40,20 @@ type Page = {
 };
 
 const PAGES: Page[] = [
+  {
+    route: 'Benchmark',
+    title: 'Rendering Benchmark',
+    subtitle: '1,000 Tailwind-styled cards across 10 re-renders',
+    icon: '#',
+    tile: 'bg-slate-700',
+  },
+  {
+    route: 'StyleSheetBenchmark',
+    title: 'StyleSheet Control',
+    subtitle: 'Same 1,000-card workload without Nitrowind',
+    icon: '=',
+    tile: 'bg-emerald-700',
+  },
   {
     route: 'Animations',
     title: 'Animations',

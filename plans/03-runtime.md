@@ -97,8 +97,8 @@ Setters (`setTheme`, `onDimensionsChange`, …) call `listener.notify(flag)`.
 ## Public API (mirrors uniwind)
 
 ```ts
-import { View, Text } from 'nitrowind/components'
-import { useNitrowind, NitrowindProvider } from 'nitrowind'
+import { View, Text } from "@nitrofoundation/nitrowind/components'
+import { useNitrowind, NitrowindProvider } from '@nitrofoundation/nitrowind'
 
 <View className="flex-1 bg-background p-4">
   <Text className="text-lg text-foreground dark:text-white">Hi</Text>

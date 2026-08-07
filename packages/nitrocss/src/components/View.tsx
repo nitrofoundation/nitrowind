@@ -33,7 +33,7 @@ import {
 import { GRADIENT_DESCRIPTOR_PROP } from "../compiler/parsers/gradient";
 import { ContainerProvider, useContainer } from "./containerContext";
 import { serializeGridConfig, useGridFallback } from "./grid";
-import { useLinkedRef, useReactiveSnapshot } from "./internal";
+import { assignRef, useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
 
 export interface NitroCssViewProps extends ViewProps, PseudoStateProp {
@@ -96,13 +96,6 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   // can resolve its Fabric tag via findNodeHandle. `ref` (from useLinkedRef) is
   // itself a callback ref, so compose: store the node, then delegate to it.
   const nodeRef = useRef<RNViewType | null>(null);
-  const composedRef = useCallback(
-    (node: RNViewType | null) => {
-      nodeRef.current = node;
-      ref(node);
-    },
-    [ref],
-  );
 
   // Gradient: the fold emits the compact numeric descriptor under
   // `--nitrocss-gradient`. It is NOT a real RN style key and it is NOT a
@@ -128,6 +121,15 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
     : ((resolved.styles as Record<string, unknown>)[GRADIENT_ANGLE_PROP] as
         | GradientAngleTrack
         | undefined);
+  const composedRef = useMemo(() => {
+    // A plain provider-managed View has no native registration and no caller
+    // ref, so passing a ref callback would be pure mount/unmount overhead.
+    if (!ref && gradientAngleTrack === undefined) return undefined;
+    return (node: RNViewType | null) => {
+      nodeRef.current = node;
+      assignRef(ref, node);
+    };
+  }, [ref, gradientAngleTrack]);
   // These extra visual-effect markers (clip-path/background-image) are already
   // routed by normalize (→ real CSS on web, deleted on native). Belt-and-braces:
   // strip the MARKER names here too so RN never warns on an unknown prop. On web

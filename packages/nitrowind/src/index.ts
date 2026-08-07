@@ -1,6 +1,6 @@
 /**
- * @nitrofoundation/nitrowind — the Tailwind bindings for React Native, as a
- * thin wrapper around `@nitrofoundation/nitrocss` (the CSS-to-native-style
+ * nitrowind — the Tailwind bindings for React Native, as a
+ * thin wrapper around `nitrocss` (the CSS-to-native-style
  * compiler + C++ ShadowTree engine).
  *
  * Re-exports the entire nitrocss runtime surface and keeps the historical

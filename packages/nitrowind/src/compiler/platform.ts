@@ -7,7 +7,7 @@
  * matching the current device.
  *
  * The marker value and the platform list are owned by
- * `@nitrofoundation/nitrocss` — this module only synthesizes the Tailwind
+ * `nitrocss` — this module only synthesizes the Tailwind
  * `@custom-variant` stylesheet from them.
  */
 import { PLATFORMS, PLATFORM_MARKER } from "@nitrofoundation/nitrocss/compiler";

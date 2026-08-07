@@ -55,7 +55,7 @@ function resolvePipeline(): string {
  * @example
  * // metro.config.js
  * const { getDefaultConfig } = require('expo/metro-config')
- * const { withNitrowindMetroConfig } = require('@nitrofoundation/nitrowind/metro')
+ * const { withNitrowindMetroConfig } = require("@nitrofoundation/nitrowind/metro')
  * module.exports = withNitrowindMetroConfig(getDefaultConfig(__dirname), {
  *   input: './global.css',
  * })

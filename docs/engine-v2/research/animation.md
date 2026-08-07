@@ -26,7 +26,7 @@ RN version in tree: `react-native@0.86.0`
 ### 1a. Compile: `animate-*` and `entering-*` → style props / custom props
 
 Two distinct mechanisms share one file,
-`packages/nitrocss/src/compiler/parsers/animations.ts` (header comment lines
+`packages/nitro-css/src/compiler/parsers/animations.ts` (header comment lines
 1–16):
 
 1. **CSS `@keyframes` animations** (`animate-wiggle`, `animate-gradient-shift`,
@@ -74,7 +74,7 @@ So `animationName` ends up as a **keyframes object**, not a string — Reanimate
 CSS-animation engine reads that object directly.
 
 **Reanimated presets are generated, not hand-written**
-(`packages/nitrocss/src/compiler/reanimated.ts`):
+(`packages/nitro-css/src/compiler/reanimated.ts`):
 
 - `ENTERING_EXITING_PRESETS` (lines 23–102) — every Reanimated entering/exiting
   builder (`FadeIn`, `FadeInDown`, `BounceIn`, `ZoomInRotate`, …). Each yields an
@@ -96,7 +96,7 @@ variants (`dark:`, `md:`, `ios:`) for free.
 
 ### 1b. Runtime resolve: `--reanimated-*` → animation objects; `isAnimated` flag
 
-`packages/nitrocss/src/core/store.ts`, `resolveStylesUncached` (lines 233–367):
+`packages/nitro-css/src/core/store.ts`, `resolveStylesUncached` (lines 233–367):
 
 - A per-node `reanimatedVars: Record<string,string>` accumulator collects the
   `--reanimated-*` props out of the RN style object (they aren't valid style
@@ -115,7 +115,7 @@ const layout   = hasReanimatedVars(reanimatedVars) ? buildLayoutAnimation(reanim
 
 `GetStylesResult` carries `{ styles, isAnimated, entering?, exiting?, layout? }`.
 
-**The builders** (`packages/nitrocss/src/core/reanimated.ts`):
+**The builders** (`packages/nitro-css/src/core/reanimated.ts`):
 
 - `react-native-reanimated` is an **optional peer dep**; `loadReanimated()`
   `require`s it in a `try/catch` and caches `null` on failure — so every entry
@@ -135,7 +135,7 @@ const layout   = hasReanimatedVars(reanimatedVars) ? buildLayoutAnimation(reanim
 
 ### 1c. Component swap: `View.tsx` → Reanimated `Animated.View`
 
-`packages/nitrocss/src/components/animated.ts` — lazy, cached accessors:
+`packages/nitro-css/src/components/animated.ts` — lazy, cached accessors:
 
 - `getAnimatedView()` → `require("react-native-reanimated").default.View` or
   `null`.
@@ -143,7 +143,7 @@ const layout   = hasReanimatedVars(reanimatedVars) ? buildLayoutAnimation(reanim
   per-input in a `WeakMap` (line 42). The comment (41) is load-bearing:
   recreating the wrapper on every render "breaks Reanimated + remounts the tree."
 
-`packages/nitrocss/src/components/View.tsx` (lines 67–88):
+`packages/nitro-css/src/components/View.tsx` (lines 67–88):
 
 ```tsx
 const Animated = resolved.isAnimated ? getAnimatedView() : null;
@@ -184,7 +184,7 @@ experimental_backgroundRepeat:   false, // TODO
 ```
 
 Our gradients compile to RN's native `experimental_backgroundImage` (see
-`packages/nitrocss/src/compiler/parsers/gradient.ts` / `foldGradient`), and none
+`packages/nitro-css/src/compiler/parsers/gradient.ts` / `foldGradient`), and none
 of `experimental_background*` is animatable in Reanimated. **This is exactly why
 the gradient sweep is faked with a translate**, not by animating
 `background-position` — see §2.
@@ -228,7 +228,7 @@ it to `Animated.View` via the `isAnimated` path in §1c.
 
 The gradient itself (`bg-linear-[144deg] from-primary … to-danger`) is folded to
 one native `experimental_backgroundImage` at resolve time via `foldGradient`
-(`packages/nitrocss/src/core/normalize.ts` re-exports it; `store.ts` calls it in
+(`packages/nitro-css/src/core/normalize.ts` re-exports it; `store.ts` calls it in
 the fold pass, lines 335–337). Theme tokens (`from-primary`, `to-danger`) mean
 the gradient re-resolves on theme change.
 
@@ -280,7 +280,7 @@ level):
 
 ### 2d. KNOWN BUG to fix — `%` dropped in `parseTransformString`
 
-`packages/nitrocss/src/compiler/parsers/animations.ts`:
+`packages/nitro-css/src/compiler/parsers/animations.ts`:
 
 `parseTransformString` (lines 173–201) sends `translateX` / `translateY` args
 through `lengthToNumber` (lines 53–59):
@@ -458,7 +458,7 @@ those set `isAnimated` and go through Reanimated's transition support). **FUTURE
 
 ### 4a. Ordered steps — the "Reanimated now" path (implement against this)
 
-1. **Compile.** `REANIMATED_CSS` (`packages/nitrocss/src/compiler/reanimated.ts`)
+1. **Compile.** `REANIMATED_CSS` (`packages/nitro-css/src/compiler/reanimated.ts`)
    is appended before Tailwind compiles: emits `entering-*`/`exiting-*`/`layout-*`
    → `--reanimated-*` custom props, config utilities, and `@keyframes` +
    `animate-*` CSS animations.

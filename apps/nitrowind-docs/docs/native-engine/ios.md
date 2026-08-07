@@ -7,7 +7,7 @@ description: iOS native engine integration.
 
 iOS integration is packaged as the `NitroCss` pod.
 
-Important native files live under `packages/nitrocss/ios`:
+Important native files live under `packages/nitro-css/ios`:
 
 - `HybridNativePlatform.swift` reads UIKit appearance and platform state.
 - `NitroCssInstallerModule.mm` installs the engine.

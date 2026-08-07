@@ -10,8 +10,8 @@ Environment facts confirmed in this repo:
 - `react-native` = **0.86.0**
 - `react-native-nitro-modules` = **0.35.10** (ships Nitro **HybridView** support on both platforms)
 - `nitrogen` = **0.35.9**
-- Our Nitro package lives at `packages/nitrocss` with `packages/nitrocss/nitro.json`
-  (`cxxNamespace: ["nitrowind"]`, `androidNamespace: ["nitrowind"]`,
+- Our Nitro package lives at `packages/nitrocss` with `packages/nitro-css/nitro.json`
+  (`cxxNamespace: ["@nitrofoundation/nitrowind"]`, `androidNamespace: ["@nitrofoundation/nitrowind"]`,
   `androidCxxLibName: "Nitrowind"`, iOS module `Nitrowind`).
 
 Throughout, "the engine" = our Nitro package (`packages/nitrocss`), "the gradient
@@ -233,7 +233,7 @@ no new native module plumbing.
 ### 2.2 The descriptor (JS spec → native props)
 
 Add a Nitro **view** spec alongside the existing specs in
-`packages/nitrocss/src/specs/` (e.g. `GradientView.nitro.ts`). It declares the
+`packages/nitro-css/src/specs/` (e.g. `GradientView.nitro.ts`). It declares the
 descriptor the compiler emits. Illustrative shape (rename-agnostic):
 
 ```ts
@@ -262,14 +262,14 @@ Notes:
   in Kotlin (as the old nitrolist view imported `android.graphics.Color`).
 - `locations` should be pre-normalized `0..1` by our compiler (the JS side already owns
   color-stop resolution), letting Android skip `ColorStopUtils`.
-- Register the view in `packages/nitrocss/nitro.json` `autolinking` with a
+- Register the view in `packages/nitro-css/nitro.json` `autolinking` with a
   `kotlin`/`swift` entry (view HybridObjects are declared the same way modules are).
 
 ### 2.3 The Android view: `HybridGradientView.kt`
 
-Create `packages/nitrocss/android/src/main/java/com/nitrofoundation/nitrocss/HybridGradientView.kt`
+Create `packages/nitro-css/android/src/main/java/com/nitrofoundation/nitro-css/HybridGradientView.kt`
 (nitrogen will generate an abstract spec `HybridGradientViewSpec` in
-`packages/nitrocss/nitrogen/generated/android/...` that this class extends). It holds a
+`packages/nitro-css/nitrogen/generated/android/...` that this class extends). It holds a
 custom `android.view.View` and paints a shader in `onDraw`.
 
 Skeleton (implementation-ready; maps descriptor → `Shader`, mirrors RN's math from §1):
@@ -355,7 +355,7 @@ when the descriptor carries non-uniform corner radii.
 
 ### 2.4 The HybridView wrapper
 
-`packages/nitrocss/android/src/main/java/com/nitrofoundation/nitrocss/HybridGradientView.kt` (the
+`packages/nitro-css/android/src/main/java/com/nitrofoundation/nitro-css/HybridGradientView.kt` (the
 Nitro class) extends the nitrogen-generated `HybridGradientViewSpec`, owns a
 `GradientDrawView`, and forwards props to it, rebuilding the shader in `afterUpdate()`
 so a whole prop batch triggers a single `invalidate()`:
@@ -391,30 +391,30 @@ Any callbacks (e.g. `onLayout`-style) must be wrapped with `callback(...)` per N
 
 ## 3. Ordered build steps
 
-1. **Spec.** Add `packages/nitrocss/src/specs/GradientView.nitro.ts` declaring
+1. **Spec.** Add `packages/nitro-css/src/specs/GradientView.nitro.ts` declaring
    `GradientView = HybridView<GradientViewProps>` (§2.2). Export it from
-   `packages/nitrocss/src/specs/index.ts`.
-2. **Register autolinking.** Add an entry to `packages/nitrocss/nitro.json` under
+   `packages/nitro-css/src/specs/index.ts`.
+2. **Register autolinking.** Add an entry to `packages/nitro-css/nitro.json` under
    `autolinking` for the gradient view with `{ "kotlin": "HybridGradientView",
    "swift": "HybridGradientView" }` (mirroring the existing `NativePlatform` entry).
 3. **Codegen.** Run nitrogen (the package's existing `nitrogen`/build script) to
-   regenerate `packages/nitrocss/nitrogen/generated/**` — this produces
+   regenerate `packages/nitro-css/nitrogen/generated/**` — this produces
    `HybridGradientViewSpec` (Kotlin + Swift), updates
    `Nitrowind+autolinking.cmake` and `nitrowind+autolinking.gradle`, and the JS glue.
    **No manual edits to generated files.**
 4. **Android view.** Add `GradientDrawView` + `HybridGradientView.kt` under
-   `packages/nitrocss/android/src/main/java/com/nitrofoundation/nitrocss/` (§2.3–2.4). Reuse RN's
+   `packages/nitro-css/android/src/main/java/com/nitrofoundation/nitro-css/` (§2.3–2.4). Reuse RN's
    `endPointsFromAngle` (LinearGradient.kt lines 184–223) and the ellipse
    `setLocalMatrix` trick (RadialGradient.kt lines 261–265) for parity.
 5. **Build wiring — already in place, verify only.**
-   - `packages/nitrocss/android/build.gradle` already applies
+   - `packages/nitro-css/android/build.gradle` already applies
      `../nitrogen/generated/android/nitrowind+autolinking.gradle` when present and
      depends on `project(":react-native-nitro-modules")`. Pure-Kotlin view needs no
      CMake change; if the shader math moves to C++ later, the existing
      `android/CMakeLists.txt` `GLOB_RECURSE` over `../cpp` and `src/main/cpp` and the
      `include(.../Nitrowind+autolinking.cmake)` already cover it.
    - No new Gradle deps required (no RecyclerView, unlike the old nitrolist view).
-6. **iOS view.** Add `HybridGradientView.swift` under `packages/nitrocss/ios/`;
+6. **iOS view.** Add `HybridGradientView.swift` under `packages/nitro-css/ios/`;
    `Nitrowind.podspec` already globs `ios/**/*.{h,m,mm,swift}` so no podspec edit.
 7. **JS host component + compiler emit.** Create the host component with
    `getHostComponent` and switch the compiler/runtime path that currently emits

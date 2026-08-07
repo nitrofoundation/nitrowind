@@ -9,7 +9,7 @@ Nitrowind targets React Native `0.86`, Fabric, bridgeless, and the new architect
 
 ## Native engine
 
-The native engine is built through `@nitrofoundation/nitrocss`:
+The native engine is built through `nitrocss`:
 
 - iOS uses the `NitroCss` pod.
 - Android uses the `:nitrocss` Gradle project.

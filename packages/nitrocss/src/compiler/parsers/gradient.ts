@@ -17,7 +17,7 @@ interface Decl {
  * own `--nw-gradient-*` custom props and fold them at resolve time into the
  * compact numeric {@link GradientDescriptor} consumed by the engine's own
  * native `GradientView` (see the runtime `foldGradient` in
- * `nitrocss/src/core/normalize.ts`, which delegates to {@link foldGradient};
+ * `nitro-css/src/core/normalize.ts`, which delegates to {@link foldGradient};
  * web folds to a real CSS `backgroundImage` string instead).
  */
 export const GRADIENT_TYPE_PROP = "--nw-gradient-type";
@@ -139,7 +139,7 @@ const stop = (color: string, position: string | undefined): string =>
  * The single resolved-style key carrying the folded gradient on native. The
  * value is a compact NUMERIC descriptor (no CSS-string parsing at paint time):
  * the engine's own Nitro `GradientView` consumes it verbatim, and the C++
- * mirror fold in `nitrocss/cpp/NitroCssEngine.cpp` emits the identical object
+ * mirror fold in `nitro-css/cpp/NitroCssEngine.cpp` emits the identical object
  * so native theme-swap commits match JS-resolved styles exactly.
  */
 export const GRADIENT_DESCRIPTOR_PROP = "--nitrocss-gradient";

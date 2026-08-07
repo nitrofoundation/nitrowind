@@ -28,6 +28,7 @@
     "test": "turbo run test",
     "test:packages": "turbo run test --filter=@nitrofoundation/nitrocss --filter=@nitrofoundation/nitrowind",
     "lint": "turbo run lint",
+    "dev": "turbo run dev",
     "build:packages": "turbo run build --filter=@nitrofoundation/nitrocss --filter=@nitrofoundation/nitrowind --filter=@nitrofoundation/nitrowind-skills",
     "nitrogen": "turbo run nitrogen",
     "clean": "turbo run clean && rm -rf node_modules"

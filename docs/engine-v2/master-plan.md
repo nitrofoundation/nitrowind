@@ -1,9 +1,9 @@
 # nitrocss engine v2 — own the native styling stack (research-first master plan)
 
 > **2026-07 note:** the package restructure landed on this branch — the engine now ships as
-> **`@nitrofoundation/nitrocss`** (`packages/nitrocss`: native engine + runtime + components +
-> plain-CSS compiler) with **`@nitrofoundation/nitrowind`** as the Tailwind wrapper. Historical
-> `packages/nitrowind/...` paths below map to `packages/nitrocss/...`. Plan text otherwise
+> **`nitrocss`** (`packages/nitrocss`: native engine + runtime + components +
+> plain-CSS compiler) with **`nitrowind`** as the Tailwind wrapper. Historical
+> `packages/nitrowind/...` paths below map to `packages/nitro-css/...`. Plan text otherwise
 > preserved as written.
 
 ## Context & intent (corrected)
@@ -38,7 +38,7 @@ Fixed constraints from the user:
 
 ### Step 0 — Repo setup (git)
 1. Ensure `.gitignore` covers build artifacts (`lib/`, `nitrogen/generated/`, vendored
-   `packages/nitrowind/cpp/nitrocss/`, `*.d.ts`/`.js` build output, DerivedData, Pods) — already
+   `packages/nitrowind/cpp/nitro-css/`, `*.d.ts`/`.js` build output, DerivedData, Pods) — already
    restored this session; verify.
 2. Commit + push current work on the current branch.
 3. Create and switch to **`feat/nitrocss-engine-v2`**; all v2 work happens here.
@@ -66,7 +66,7 @@ Segment by concern; each worker deeply reads RN's implementation and writes a st
 ### Step 3 — Implement per docs (later, after research review)
 Build order (each its own engine, shadow-node-integrated, rename-agnostic):
 1. **Native grid engine** — wire the existing C++ `GridLayoutEngine`
-   (`packages/nitrocss/cpp/grid/`) via `LayoutObserver` (reads `LayoutMetrics`) → engine →
+   (`packages/nitro-css/cpp/grid/`) via `LayoutObserver` (reads `LayoutMetrics`) → engine →
    `ShadowTreeMutator::commit` per-item `{left,top,width,height}`; remove the `onLayout` JS
    fallback on native (keep for web). Kills the reflow/flicker.
 2. **Own gradient engine** — a Nitro HybridView gradient component (iOS CAGradientLayer / Android

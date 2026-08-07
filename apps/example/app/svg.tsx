@@ -1,5 +1,5 @@
 /**
- * SVG — className-styled `react-native-svg` via the `nitrowind/svg` preset.
+ * SVG — className-styled `react-native-svg` via the `/nitrowind/svg` preset.
  *
  * Every element below is a pre-wrapped react-native-svg primitive: `className`
  * resolves through the nitrowind engine and the svg paint values are hoisted
@@ -10,7 +10,7 @@
  */
 import type { ReactNode } from 'react';
 import { Text, View } from '@nitrofoundation/nitrowind';
-import { Circle, Line, Path, Polygon, Rect, Svg } from '@nitrofoundation/nitrowind/svg';
+import { Circle, Line, Path, Polygon, Rect, Svg } from "@nitrofoundation/nitrowind/svg';
 
 import { Caption, Screen, Section, ThemeToggle } from '../components/ui';
 

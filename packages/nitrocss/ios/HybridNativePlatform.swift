@@ -17,25 +17,29 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
   private var extraThemes: [String] = []
   private var currentThemeName: String = "light"
   private var overrideColorScheme: Int? = nil
+  // React Native publishes the new trait collection before UIKit has
+  // necessarily updated the key window. Keep that notification value so a
+  // screen mounted during a navigation transition cannot read the old scheme.
+  private var observedSystemColorScheme: Int? = nil
   private var adaptiveThemeFollowsColorScheme: Bool = true
   private var lastSnapshot: RuntimeSnapshot? = nil
 
   override init() {
     super.init()
     NotificationCenter.default.addObserver(
-      self, selector: #selector(onEnvironmentChange),
+      self, selector: #selector(onEnvironmentChange(_:)),
       name: UIDevice.orientationDidChangeNotification, object: nil)
     NotificationCenter.default.addObserver(
-      self, selector: #selector(onEnvironmentChange),
+      self, selector: #selector(onEnvironmentChange(_:)),
       name: UIApplication.didBecomeActiveNotification, object: nil)
     NotificationCenter.default.addObserver(
-      self, selector: #selector(onEnvironmentChange),
+      self, selector: #selector(onEnvironmentChange(_:)),
       name: UIContentSizeCategory.didChangeNotification, object: nil)
     // Dark/light appearance changes. React Native posts this both when the
     // system appearance flips *and* when JS calls `Appearance.setColorScheme`
     // (the theme toggle), because both mutate the window's trait collection.
     NotificationCenter.default.addObserver(
-      self, selector: #selector(onEnvironmentChange),
+      self, selector: #selector(onEnvironmentChange(_:)),
       name: NSNotification.Name("RCTUserInterfaceStyleDidChangeNotification"), object: nil)
   }
 
@@ -51,14 +55,18 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
       .first
   }
 
-  private func colorSchemeRaw() -> Int {
-    if let overrideColorScheme { return overrideColorScheme }
+  private func windowColorSchemeRaw() -> Int {
     // Read from the key window so we observe `Appearance.setColorScheme`
     // overrides too — `UITraitCollection.current` only reflects the system
     // value outside of a view's layout pass.
     let style = keyWindow()?.traitCollection.userInterfaceStyle
       ?? UITraitCollection.current.userInterfaceStyle
     return style == .dark ? 1 : 0
+  }
+
+  private func colorSchemeRaw() -> Int {
+    if let overrideColorScheme { return overrideColorScheme }
+    return observedSystemColorScheme ?? windowColorSchemeRaw()
   }
 
   private func syncAdaptiveThemeName() {
@@ -145,7 +153,19 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
     return deps
   }
 
-  @objc private func onEnvironmentChange() {
+  @objc private func onEnvironmentChange(_ notification: Notification) {
+    if overrideColorScheme == nil {
+      let traitCollection = notification.userInfo?[
+        "traitCollection"
+      ] as? UITraitCollection
+      if let traitCollection,
+         traitCollection.userInterfaceStyle != .unspecified {
+        observedSystemColorScheme =
+          traitCollection.userInterfaceStyle == .dark ? 1 : 0
+      } else {
+        observedSystemColorScheme = windowColorSchemeRaw()
+      }
+    }
     let previous = lastSnapshot
     pushToEngine()
     remeasureContainersSoon()
@@ -193,6 +213,7 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
     adaptiveThemeFollowsColorScheme = true
     if scheme == .system {
       overrideColorScheme = nil
+      observedSystemColorScheme = windowColorSchemeRaw()
     } else if scheme == .dark {
       overrideColorScheme = 1
     } else {

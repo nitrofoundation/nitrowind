@@ -1,7 +1,7 @@
 # Engine v2 Research: Our own C++ CSS value parser
 
 **Goal.** Move CSS value parsing (colors, lengths, angles, transforms, gradients,
-filters) into the Nitrowind C++ engine (`packages/nitrocss/cpp/`), modeled on
+filters) into the Nitrowind C++ engine (`packages/nitro-css/cpp/`), modeled on
 React Native's `react/renderer/css/`. This lets the JS compiler emit **raw CSS
 values** instead of pre-lowering them (culori `formatHex/formatHex8` in
 `toRNValue.ts`), and removes any dependency on RN's native parser reaching modern
@@ -124,7 +124,7 @@ Helpers we can reuse verbatim: `clamp255Component`, `normalizeHue`,
 
 ## 2. What our JS side pre-lowers today, and why
 
-### 2a. `toRNValue.ts` — `packages/nitrocss/src/compiler/toRNValue.ts`
+### 2a. `toRNValue.ts` — `packages/nitro-css/src/compiler/toRNValue.ts`
 
 `toRNValue(rnProperty, rawValue, ctx)` (line 129) coerces one CSS value string to
 the RN representation. Color handling (lines 143–150):
@@ -167,7 +167,7 @@ Used by `themes.ts` (`normalizeThemeValue`, lines 9–15): **every theme `var`
 value is pre-lowered to hex at compile time** so that when the C++ engine
 substitutes `var(--color-…)` verbatim (§2c) the result is already native-safe.
 
-### 2c. C++ engine today — `packages/nitrocss/cpp/NitroCssEngine.cpp`
+### 2c. C++ engine today — `packages/nitro-css/cpp/NitroCssEngine.cpp`
 
 `resolve()` (line 471) **passes values through**; it does **not** parse colors:
 
@@ -222,7 +222,7 @@ Three options for the parser core:
    the parts RN can't do anyway (oklch/oklab/lab/lch/color).
 
 **Chosen approach:** a self-contained module `nitrocss::css` under
-`packages/nitrocss/cpp/css/` (rename-agnostic), no RN dependency. Reuse RN's
+`packages/nitro-css/cpp/css/` (rename-agnostic), no RN dependency. Reuse RN's
 *algorithms* (copy the small color-math helpers, mirror the layer split and the
 `parseCSSProperty<T>` entry-point shape) but own the code so it compiles
 identically under the existing `nitrocss` CMake (C++20, `-fexceptions -frtti`) on
@@ -230,10 +230,10 @@ iOS and Android, and so we can add the modern-color path. Fall back to keeping t
 same numeric algorithms culori uses so JS first-paint and C++ commit stay
 byte-identical (§4).
 
-### 3b. Module shape (`packages/nitrocss/cpp/css/`)
+### 3b. Module shape (`packages/nitro-css/cpp/css/`)
 
 ```
-packages/nitrocss/cpp/css/
+packages/nitro-css/cpp/css/
   CssTokenizer.hpp        // port of CSSTokenizer.h (no fast_float dep → strtof/from_chars)
   CssSyntaxParser.hpp     // component-value layer (function/block/token + delimiters)
   CssValueParser.hpp      // parseCssProperty<...>() entry points
@@ -348,8 +348,8 @@ resolves correctly on the native commit.
 
 ### Build steps (each independently landable)
 
-1. **Scaffold module.** Create `packages/nitrocss/cpp/css/` and add its sources to
-   `packages/nitrocss/cpp/CMakeLists.txt` (`add_library(nitrocss …)` currently
+1. **Scaffold module.** Create `packages/nitro-css/cpp/css/` and add its sources to
+   `packages/nitro-css/cpp/CMakeLists.txt` (`add_library(nitrocss …)` currently
    lists only `NitroCssEngine.cpp`). Keep C++20, `-fexceptions -frtti`.
 2. **Tokenizer + syntax layer.** Port `CSSTokenizer.h` + `CSSSyntaxParser.h`
    trimmed (drop `fast_float`; use `std::from_chars`/`strtof`). Unit-test against

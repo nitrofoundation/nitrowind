@@ -224,7 +224,7 @@ RN `filter` prop for blur on iOS.
 
 ## 2. What `nitrocss` emits today
 
-`packages/nitrocss/src/compiler/parsers/filter.ts`
+`packages/nitro-css/src/compiler/parsers/filter.ts`
 
 `extractFilter(declarations, resolveVar)` picks up `filter`, `backdrop-filter`,
 and `-webkit-backdrop-filter` declarations, resolves `var(--tw-*)` (Tailwind
@@ -240,7 +240,7 @@ case "drop-shadow": out.push({ dropShadow: { offsetX, offsetY,
                               standardDeviation, color } });
 ```
 Return shape: `{ filter: [ {blur:4}, {brightness:0.5}, ... ] }` assigned onto the
-`RNStyle` in `packages/nitrocss/src/compiler/parseStyles.ts` (line ~382). The
+`RNStyle` in `packages/nitro-css/src/compiler/parseStyles.ts` (line ~382). The
 camelCase keys (`hueRotate`, `dropShadow`) already match RN's
 `filterTypeFromString` / `FilterHelper` keys — good.
 
@@ -270,14 +270,14 @@ round-tripping through RN's `filter` prop for the effects that RN gates behind
 flags (iOS blur family) or can't express (backdrop-filter). This mirrors what we
 already do for gradients: `nitrocss` gradient utilities compile to `--nw-gradient-*`
 marker props and fold into a native representation
-(`packages/nitrocss/src/compiler/parsers/gradient.ts`,
+(`packages/nitro-css/src/compiler/parsers/gradient.ts`,
 `experimental_backgroundImage`) rather than a stock RN style. Filters should get
 the same treatment via a dedicated engine-owned filter layer/host view.
 
 ### 3.1 Descriptor model (shared, C++-first)
 
 Define our own `FilterFunction`-equivalent descriptor list in the C++ engine
-(`packages/nitrocss/cpp/NitroCssEngine.{hpp,cpp}` currently exposes
+(`packages/nitro-css/cpp/NitroCssEngine.{hpp,cpp}` currently exposes
 `resolve(className) -> folly::dynamic`). Two build options:
 - **Reuse RN's grammar**: call `parseCSSProperty<CSSFilterList>` (from
   `react/renderer/css/CSSFilter.h`) and convert with the same `fromCSSFilter`

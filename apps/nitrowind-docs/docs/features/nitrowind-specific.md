@@ -25,7 +25,7 @@ Useful public reference points:
 | Feature | What NitroWind adds |
 | --- | --- |
 | Native ShadowTree updates | Theme, color-scheme, safe-area, dimension, RTL, font-scale, group-state, and container-size changes can update linked nodes without React re-rendering the tree. |
-| Plain CSS engine | `@nitrofoundation/nitrocss` works without Tailwind. |
+| Plain CSS engine | `nitrocss` works without Tailwind. |
 | Native background images | `background-image: url(...)` descriptors support cover, contain, stretch, repeat, repeat-x, repeat-y, and focal position. |
 | Container queries | Width, height, named containers, and custom `[cq-*]` query tokens. |
 | Native gradients | Linear/radial gradients and themed stops fold into native descriptors. |

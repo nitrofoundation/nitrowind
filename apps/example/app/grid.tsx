@@ -2,7 +2,7 @@ import { Text, View } from '@nitrofoundation/nitrowind';
 
 import { Card, Caption, Screen, Section } from '../components/ui';
 
-type SupportSource = 'rn' | 'nitrocss' | 'bridge' | 'unsupported';
+type SupportSource = 'rn' | 'nitro-css' | 'bridge' | 'unsupported';
 
 const RN_LAYOUT_SUPPORT = [
   { name: 'flex-wrap', status: 'RN native', source: 'rn' },
@@ -12,20 +12,20 @@ const RN_LAYOUT_SUPPORT = [
 ] satisfies Array<{ name: string; status: string; source: SupportSource }>;
 
 const NITROWIND_GRID_SUPPORT = [
-  { name: 'equal fr columns', status: 'internal', source: 'nitrocss' },
-  { name: 'fixed px columns', status: 'internal', source: 'nitrocss' },
+  { name: 'equal fr columns', status: 'internal', source: 'nitro-css' },
+  { name: 'fixed px columns', status: 'internal', source: 'nitro-css' },
   {
     name: 'grid-template-columns',
     status: 'internal',
-    source: 'nitrocss',
+    source: 'nitro-css',
   },
-  { name: 'grid-template-rows', status: 'internal', source: 'nitrocss' },
-  { name: 'grid-template shorthand', status: 'internal', source: 'nitrocss' },
-  { name: 'auto rows', status: 'internal', source: 'nitrocss' },
-  { name: 'row + column gaps', status: 'internal', source: 'nitrocss' },
-  { name: 'col-start / row-start', status: 'internal', source: 'nitrocss' },
-  { name: 'col-span / row-span', status: 'internal', source: 'nitrocss' },
-  { name: 'sparse auto placement', status: 'internal', source: 'nitrocss' },
+  { name: 'grid-template-rows', status: 'internal', source: 'nitro-css' },
+  { name: 'grid-template shorthand', status: 'internal', source: 'nitro-css' },
+  { name: 'auto rows', status: 'internal', source: 'nitro-css' },
+  { name: 'row + column gaps', status: 'internal', source: 'nitro-css' },
+  { name: 'col-start / row-start', status: 'internal', source: 'nitro-css' },
+  { name: 'col-span / row-span', status: 'internal', source: 'nitro-css' },
+  { name: 'sparse auto placement', status: 'internal', source: 'nitro-css' },
 ] satisfies Array<{ name: string; status: string; source: SupportSource }>;
 
 const GRID_BRIDGE_WORK = [
@@ -161,7 +161,7 @@ function badgeClass(source: SupportSource): string {
   switch (source) {
     case 'rn':
       return 'bg-emerald-500';
-    case 'nitrocss':
+    case 'nitro-css':
       return 'bg-sky-500';
     case 'bridge':
       return 'bg-amber-500';

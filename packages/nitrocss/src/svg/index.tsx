@@ -1,5 +1,5 @@
 /**
- * `@nitrofoundation/nitrocss/svg` — className-styled `react-native-svg` primitives.
+ * `/nitrocss/svg` — className-styled `react-native-svg` primitives.
  *
  * Pre-wraps the common svg elements with {@link cssInterop} so the utility compiler's svg
  * utilities drive them directly:
@@ -79,7 +79,7 @@ let svgModule: SvgModule | null | undefined;
 function loadSvgModule(): SvgModule {
   if (svgModule === undefined) {
     try {
-      // Lazy so apps that never import `@nitrofoundation/nitrocss/svg` components at runtime
+      // Lazy so apps that never import `/nitrocss/svg` components at runtime
       // don't need react-native-svg installed.
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       svgModule = require("react-native-svg") as SvgModule;
@@ -106,7 +106,7 @@ function baseComponent(exportName: string): ComponentType<SvgHostProps> {
       : undefined);
   if (!base) {
     throw new Error(
-      `@nitrofoundation/nitrocss/svg: the installed react-native-svg does not export "${exportName}".`,
+      `/nitrocss/svg: the installed react-native-svg does not export "${exportName}".`,
     );
   }
   return base;

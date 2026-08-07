@@ -1,13 +1,13 @@
-# @nitrofoundation/nitrocss
+# nitrocss
 
 The core native CSS engine for React Native. `nitrocss` compiles **plain CSS** into a compact style artifact and resolves `className` strings through a fully native C++ ShadowTree engine — themes, color scheme, safe-area insets, `rem`, pseudo state, group state, and container queries all update without React re-renders.
 
-No Tailwind required. If you want Tailwind class names on top of this engine, use the wrapper package [`@nitrofoundation/nitrowind`](https://www.npmjs.com/package/@nitrofoundation/nitrowind), which plugs a Tailwind build pipeline into the same Metro transformer.
+No Tailwind required. If you want Tailwind class names on top of this engine, use the wrapper package [`nitrowind`](https://www.npmjs.com/package/nitrowind), which plugs a Tailwind build pipeline into the same Metro transformer.
 
 ## Quick start
 
 ```bash
-npm install @nitrofoundation/nitrocss react-native-nitro-modules
+npm install nitrocss react-native-nitro-modules
 ```
 
 ```js
@@ -55,12 +55,12 @@ export default function App() {
 
 ## Entry points
 
-- `@nitrofoundation/nitrocss` — runtime API: `NitroCssProvider`, styled components (`View`, `Text`, …), `useNitroCss`, `withNitroCss`, `cssInterop`, `registerSerializedStyles`.
-- `@nitrofoundation/nitrocss/components` — styled component wrappers.
-- `@nitrofoundation/nitrocss/svg` — className-styled `react-native-svg` primitives (optional peer).
-- `@nitrofoundation/nitrocss/compiler` — build-time compiler API (node-only): `compileFromCss`, `flattenCss`, `scanCustomContainerCandidates`, `serializeArtifact`.
-- `@nitrofoundation/nitrocss/metro` — `withNitroCssMetroConfig` Metro plugin.
-- `@nitrofoundation/nitrocss/metro/pipeline` — the default plain-CSS pipeline; wrapper packages provide their own via the `pipeline` option.
+- `nitrocss` — runtime API: `NitroCssProvider`, styled components (`View`, `Text`, …), `useNitroCss`, `withNitroCss`, `cssInterop`, `registerSerializedStyles`.
+- `/nitrocss/components` — styled component wrappers.
+- `/nitrocss/svg` — className-styled `react-native-svg` primitives (optional peer).
+- `/nitrocss/compiler` — build-time compiler API (node-only): `compileFromCss`, `flattenCss`, `scanCustomContainerCandidates`, `serializeArtifact`.
+- `/nitrocss/metro` — `withNitroCssMetroConfig` Metro plugin.
+- `/nitrocss/metro/pipeline` — the default plain-CSS pipeline; wrapper packages provide their own via the `pipeline` option.
 - `cpp/NitroCssEngine.hpp` — the C++ runtime resolver linked into the Android and iOS targets.
 
 The compiler intentionally skips features that do not map cleanly to React Native yet, such as CSS `background-image` URLs. On web builds the stylesheet is passed through untouched so the browser handles it directly.

@@ -7,7 +7,7 @@ description: Android native engine integration.
 
 Android integration is autolinked as the `:nitrocss` Gradle project.
 
-Important native files live under `packages/nitrocss/android`:
+Important native files live under `packages/nitro-css/android`:
 
 - `build.gradle` configures the Android package.
 - `src/main/cpp` contains JNI adapters and native appliers.
