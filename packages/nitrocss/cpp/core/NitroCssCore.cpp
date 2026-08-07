@@ -224,6 +224,12 @@ grid::GridConfig parseGridConfig(const folly::dynamic& value) {
   if (auto* padding = value.get_ptr("paddingHorizontal"); padding != nullptr) {
     config.paddingHorizontal = numberOr(*padding, 0.0);
   }
+  if (auto* padding = value.get_ptr("paddingTop"); padding != nullptr) {
+    config.paddingTop = numberOr(*padding, 0.0);
+  }
+  if (auto* padding = value.get_ptr("paddingBottom"); padding != nullptr) {
+    config.paddingBottom = numberOr(*padding, 0.0);
+  }
   if (auto* items = value.get_ptr("items"); items != nullptr && items->isArray()) {
     config.items.reserve(items->size());
     for (const auto& item : *items) {
@@ -634,7 +640,7 @@ void NitroCssCore::syncGrids(const std::vector<GridMeasurement>& measurements,
       folly::dynamic props = folly::dynamic::object();
       props["position"] = "absolute";
       props["left"] = item.x;
-      props["top"] = item.y;
+      props["top"] = config.paddingTop + item.y;
       props["width"] = item.width;
       props["height"] = item.height;
       batch.push_back({m.childFamilies[i], m.surfaceId, std::move(props)});
@@ -644,7 +650,8 @@ void NitroCssCore::syncGrids(const std::vector<GridMeasurement>& measurements,
     // commit the engine's computed height onto the container itself.
     if (m.family != nullptr) {
       folly::dynamic containerProps = folly::dynamic::object();
-      containerProps["height"] = output.height;
+      containerProps["height"] =
+          config.paddingTop + output.height + config.paddingBottom;
       batch.push_back({m.family, m.surfaceId, std::move(containerProps)});
     }
   }

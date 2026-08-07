@@ -1,6 +1,6 @@
 {
   "name": "@nitrofoundation/nitrocss",
-  "version": "0.2.0-beta.1",
+  "version": "0.2.0-beta.2",
   "description": "Core native CSS engine for React Native — compiles plain CSS to native styles and commits them through a C++ ShadowTree engine.",
   "license": "MIT",
   "author": "NitroFoundation contributors",
@@ -17,16 +17,12 @@
   ],
   "exports": {
     ".": {
+      "types": "./lib/typescript/commonjs/index.d.ts",
+      "style": "./safe-area.css",
       "source": "./src/index.ts",
       "react-native": "./src/index.ts",
-      "import": {
-        "types": "./lib/typescript/module/index.d.ts",
-        "default": "./lib/module/index.js"
-      },
-      "require": {
-        "types": "./lib/typescript/commonjs/index.d.ts",
-        "default": "./lib/commonjs/index.js"
-      }
+      "import": "./lib/module/index.js",
+      "require": "./lib/commonjs/index.js"
     },
     "./components": {
       "source": "./src/components/index.ts",
@@ -118,6 +114,7 @@
   "files": [
     "src",
     "lib",
+    "safe-area.css",
     "cpp",
     "ios",
     "android",

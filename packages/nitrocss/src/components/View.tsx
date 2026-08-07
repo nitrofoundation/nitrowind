@@ -76,8 +76,11 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   // from the measured container width (no `onLayout` reflow). `undefined` on web,
   // non-grids, or grids the native engine can't handle (JS fallback owns those).
   const gridConfig = useMemo(
-    () => (isWeb ? undefined : serializeGridConfig(className, children, style)),
-    [isWeb, className, children, style],
+    () =>
+      isWeb
+        ? undefined
+        : serializeGridConfig(className, children, [resolved.styles, style]),
+    [isWeb, className, children, resolved.styles, style],
   );
   const ref = useLinkedRef<RNViewType>(
     className,

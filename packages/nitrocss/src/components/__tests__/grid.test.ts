@@ -335,6 +335,16 @@ describe("serializeGridConfig (native grid payload)", () => {
     expect(config?.paddingHorizontal).toBe(16); // px-2 => 8 left + 8 right
   });
 
+  it("serializes resolved vertical padding for native item placement", () => {
+    const config = serializeGridConfig(
+      "grid grid-cols-2",
+      [cell(""), cell("")],
+      { paddingTop: 62, paddingBottom: 34 },
+    );
+    expect(config?.paddingTop).toBe(62);
+    expect(config?.paddingBottom).toBe(34);
+  });
+
   it("converts named grid-template areas to 1-based placements", () => {
     const config = serializeGridConfig(
       'grid grid-template-["header_header"_60px_"nav_main"_280px_/_160px_1fr]',

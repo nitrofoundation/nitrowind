@@ -7,7 +7,6 @@ import {
 } from "@nitrofoundation/nitrocss/compiler";
 import { compile as tailwindCompile } from "@tailwindcss/node";
 import { Scanner } from "@tailwindcss/oxide";
-import { INSETS_CSS } from "./insets";
 import { PLATFORM_CSS } from "./platform";
 import { REANIMATED_CSS } from "./reanimated";
 
@@ -39,13 +38,13 @@ export async function compileCss(
   const base = dirname(inputPath);
 
   // The entry stylesheet is pulled in through Tailwind's own `@import`
-  // resolver (relative to `base`), and the platform variants (`ios:`,
-  // `android:`, …), the safe-area `@utility` family, and the Reanimated /
-  // CSS-animation utilities are appended so `p-safe`, `ios:bg-…`,
+  // resolver (relative to `base`). NitroCSS supplies the native safe-area
+  // `@utility` family; platform variants (`ios:`, `android:`, …) and the
+  // Reanimated / CSS-animation utilities are appended so `p-safe`, `ios:bg-…`,
   // `entering-fade-in`, `animate-wiggle`, etc. are all available without any
   // extra plugin or import.
   const compiler = await tailwindCompile(
-    `@import "./${basename(inputPath)}";\n${PLATFORM_CSS}\n${INSETS_CSS}\n${REANIMATED_CSS}`,
+    `@import "./${basename(inputPath)}";\n@import "@nitrofoundation/nitrocss";\n${PLATFORM_CSS}\n${REANIMATED_CSS}`,
     {
       base,
       onDependency: () => {},

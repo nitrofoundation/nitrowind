@@ -32,6 +32,15 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
     NotificationCenter.default.addObserver(
       self, selector: #selector(onEnvironmentChange(_:)),
       name: UIApplication.didBecomeActiveNotification, object: nil)
+    // A development client can install NitroCSS before its React window has
+    // completed the first layout. Refresh when that window becomes usable so
+    // the initial safe-area snapshot is not permanently recorded as zero.
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(onEnvironmentChange(_:)),
+      name: UIWindow.didBecomeKeyNotification, object: nil)
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(onEnvironmentChange(_:)),
+      name: UIWindow.didBecomeVisibleNotification, object: nil)
     NotificationCenter.default.addObserver(
       self, selector: #selector(onEnvironmentChange(_:)),
       name: UIContentSizeCategory.didChangeNotification, object: nil)
@@ -41,6 +50,9 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
     NotificationCenter.default.addObserver(
       self, selector: #selector(onEnvironmentChange(_:)),
       name: NSNotification.Name("RCTUserInterfaceStyleDidChangeNotification"), object: nil)
+    DispatchQueue.main.async { [weak self] in
+      self?.onEnvironmentChange(Notification(name: UIWindow.didBecomeVisibleNotification))
+    }
   }
 
   deinit {
@@ -50,9 +62,13 @@ final class HybridNativePlatform: HybridNativePlatformSpec {
   // MARK: - Reads
 
   private func keyWindow() -> UIWindow? {
-    return UIApplication.shared.connectedScenes
-      .compactMap { ($0 as? UIWindowScene)?.keyWindow }
-      .first
+    let scenes = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .filter { $0.activationState == .foregroundActive }
+    let windows = scenes.flatMap(\.windows)
+    return windows.first(where: \.isKeyWindow)
+      ?? windows.first(where: { !$0.isHidden && $0.alpha > 0 && $0.windowLevel == .normal })
+      ?? windows.first
   }
 
   private func windowColorSchemeRaw() -> Int {

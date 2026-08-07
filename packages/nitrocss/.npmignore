@@ -1,0 +1,3 @@
+# `files` in package.json is the publish allowlist. Keeping a package-local
+# npmignore prevents the repository's generated-code ignore rule from removing
+# NitroCSS's required Nitrogen bridge files from the npm tarball.

@@ -88,6 +88,8 @@ export type SerializedGridConfig = {
   columnGap: number;
   rowGap: number;
   paddingHorizontal: number;
+  paddingTop: number;
+  paddingBottom: number;
   items: SerializedGridPlacement[];
 };
 
@@ -567,6 +569,25 @@ function horizontalPadding(style: StyleProp<ViewStyle>): number {
   return left + right;
 }
 
+function verticalPadding(style: StyleProp<ViewStyle>): {
+  top: number;
+  bottom: number;
+} {
+  const flattened =
+    typeof StyleSheet.flatten === "function"
+      ? (StyleSheet.flatten(style) as ViewStyle | undefined)
+      : Array.isArray(style)
+        ? Object.assign({}, ...style.filter(Boolean))
+        : (style as ViewStyle | undefined);
+  if (!flattened) return { top: 0, bottom: 0 };
+  const padding = numberStyle(flattened.padding);
+  const paddingVertical = numberStyle(flattened.paddingVertical);
+  return {
+    top: numberStyle(flattened.paddingTop) || paddingVertical || padding,
+    bottom: numberStyle(flattened.paddingBottom) || paddingVertical || padding,
+  };
+}
+
 function spacingPaddingValue(token: string, re: RegExp): number | undefined {
   const match = re.exec(token);
   return match ? Number(match[1]) * SPACING_UNIT : undefined;
@@ -816,6 +837,7 @@ export function serializeGridConfig(
     horizontalPadding(parentStyle),
     horizontalPaddingClassName(parentClassName),
   );
+  const paddingVertical = verticalPadding(parentStyle);
 
   return {
     columns,
@@ -824,6 +846,8 @@ export function serializeGridConfig(
     columnGap: gap,
     rowGap: gap,
     paddingHorizontal,
+    paddingTop: paddingVertical.top,
+    paddingBottom: paddingVertical.bottom,
     items: serializeGridItems(children, parentClassName),
   };
 }

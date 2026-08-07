@@ -55,6 +55,8 @@ struct GridConfig {
   double columnGap = 0.0;
   double rowGap = 0.0;
   double paddingHorizontal = 0.0;
+  double paddingTop = 0.0;
+  double paddingBottom = 0.0;
   std::vector<Placement> items;
 };
 

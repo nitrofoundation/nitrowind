@@ -385,11 +385,14 @@ export function withNitroCss<P extends { style?: StyleProp<unknown> }>(
           : serializeGridConfig(
               className,
               children,
-              typeof style === "function"
-                ? undefined
-                : (style as StyleProp<ViewStyle>),
+              [
+                resolved.styles,
+                typeof style === "function"
+                  ? undefined
+                  : (style as StyleProp<ViewStyle>),
+              ],
             ),
-      [isWeb, className, children, style],
+      [isWeb, className, children, resolved.styles, style],
     );
     const ref = useLinkedRef<unknown>(
       className,

@@ -45,11 +45,16 @@ module.exports = withNitrowindMetroConfig(getDefaultConfig(__dirname), {
 
 ```css
 @import "tailwindcss";
+@reference "@nitrofoundation/nitrocss";
 
 @theme {
   --color-brand: oklch(0.72 0.11 178);
 }
 ```
+
+The `@reference` line enables Tailwind CSS IntelliSense for NitroWind's native
+safe-area utilities (`pt-safe`, `pb-safe`, `pt-safe-offset-4`, `pb-safe-or-6`,
+and all margin/inset equivalents) without adding duplicate CSS to the app.
 
 **3. Import it once and use `className`**:
 
