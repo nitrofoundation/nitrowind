@@ -18,7 +18,7 @@ export interface NitrowindMetroOptions {
   /** Path to the entry stylesheet (`@import "tailwindcss"; @theme { … }`). */
   input: string;
   /** Globs to scan for `className` usage. Defaults to common app/src paths. */
-  content?: string[];
+  content?: string | string[];
   /** Root rem in px. Defaults to 16. */
   rem?: number;
   /** Project root. Defaults to `process.cwd()`. */
@@ -64,9 +64,14 @@ export function withNitrowindMetroConfig(
   config: MetroConfigLike,
   options: NitrowindMetroOptions,
 ): MetroConfigLike {
+  const content = options.content
+    ? Array.isArray(options.content)
+      ? options.content
+      : [options.content]
+    : DEFAULT_CONTENT;
   return withNitroCssMetroConfig(config, {
     ...options,
-    content: options.content ?? DEFAULT_CONTENT,
+    content,
     pipeline: resolvePipeline(),
   });
 }
