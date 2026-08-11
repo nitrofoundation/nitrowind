@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HybridNitroCssDiagnosticsSpec.hpp"
+#include "core/NitroCssCore.hpp"
 
 #include <functional>
 #include <string>
@@ -26,6 +27,25 @@ public:
   void onShadowTreeUpdate(
       const std::function<void(const std::vector<DiagnosticUpdate>&)>& listener) override {
     update_ = listener;
+  }
+
+  NativeDiagnosticsSnapshot getSnapshot() override {
+    const auto snapshot = ::nitrocss::NitroCssCore::shared().diagnosticsSnapshot();
+    return NativeDiagnosticsSnapshot(
+        /* nativeAvailable */ true,
+        static_cast<double>(snapshot.linkedNodes),
+        static_cast<double>(snapshot.affectedNodes),
+        static_cast<double>(snapshot.resolvedNodes),
+        static_cast<double>(snapshot.skippedMutations),
+        static_cast<double>(snapshot.committedMutations),
+        snapshot.lastResolveDurationMs,
+        snapshot.lastCommitDurationMs,
+        snapshot.totalResolveDurationMs,
+        snapshot.totalCommitDurationMs);
+  }
+
+  void reset() override {
+    ::nitrocss::NitroCssCore::shared().resetDiagnostics();
   }
 
   // --- Engine-facing emitters ----------------------------------------------

@@ -37,6 +37,22 @@ describe("extractClipPath", () => {
     });
   });
 
+  it("parses the documented trapezoid polygon", () => {
+    expect(
+      descriptorOf(
+        extract("polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)"),
+      ),
+    ).toEqual({
+      type: "polygon",
+      points: [
+        [{ v: 20, u: "pct" }, { v: 0, u: "pct" }],
+        [{ v: 80, u: "pct" }, { v: 0, u: "pct" }],
+        [{ v: 100, u: "pct" }, { v: 100, u: "pct" }],
+        [{ v: 0, u: "pct" }, { v: 100, u: "pct" }],
+      ],
+    });
+  });
+
   it("rejects a polygon with fewer than 3 points", () => {
     expect(extract("polygon(0 0, 100% 0)")).toBeUndefined();
   });

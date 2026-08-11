@@ -36,6 +36,7 @@ import {
   withChildPseudoState,
   withComponentPseudoState,
 } from "../components/pseudo";
+import { useAccessibilityClassName } from "../accessibility/native";
 
 export interface WithNitroCssProps {
   className?: string;
@@ -340,11 +341,19 @@ export function withNitroCss<P extends { style?: StyleProp<unknown> }>(
     };
 
   const Wrapped = forwardRef<unknown, WrappedProps>(function NitroCssComponent(
-    { className = "", style, __nitrocssPseudoState, children, ...rest },
+    {
+      className: requestedClassName = "",
+      style,
+      __nitrocssPseudoState,
+      children,
+      ...rest
+    },
     forwardedRef,
   ) {
     const snapshot = useReactiveSnapshot();
     const isWeb = Platform.OS === "web";
+    const accessibilityClassName = useAccessibilityClassName(requestedClassName);
+    const className = isWeb ? requestedClassName : accessibilityClassName;
     const native = !isWeb && hasNativeEngine();
     const nativeHandleRef = useRef<ShadowNodeHandle | undefined>(undefined);
     const resolved = useMemo(

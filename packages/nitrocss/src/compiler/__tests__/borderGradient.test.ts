@@ -44,6 +44,22 @@ describe("extractBorderGradient", () => {
     expect(descriptor.locations).toEqual([0.2, 0.8]);
   });
 
+  it("preserves a theme variable used as the padding-box fill", () => {
+    const out = extractBorderGradient([
+      {
+        prop: "background",
+        value:
+          "linear-gradient(var(--color-surface), var(--color-surface)) padding-box, linear-gradient(to right, #00008b, #9932cc) border-box",
+      },
+      { prop: "border", value: "2px solid transparent" },
+    ]);
+    const descriptor = out![GRADIENT_DESCRIPTOR_PROP] as Record<
+      string,
+      unknown
+    >;
+    expect(descriptor.inner).toBe("var(--color-surface)");
+  });
+
   it("ignores rules without the two-layer box pattern", () => {
     expect(
       extractBorderGradient([

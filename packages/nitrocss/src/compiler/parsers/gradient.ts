@@ -54,12 +54,13 @@ export const isGradientProp = (prop: string): boolean =>
   prop === "--tw-gradient-stops" ||
   prop === "--tw-gradient-via-stops";
 
-/** `linear-gradient(...)` / `radial-gradient(...)` → the RN gradient type. */
-const gradientTypeFromImage = (value: string): "linear" | "radial" | undefined => {
+/** Supported CSS image functions → the native gradient type. */
+const gradientTypeFromImage = (
+  value: string,
+): "linear" | "radial" | "conic" | undefined => {
   if (/\blinear-gradient\(/i.test(value)) return "linear";
   if (/\bradial-gradient\(/i.test(value)) return "radial";
-  // `conic-gradient` is intentionally unsupported: RN's native backgroundImage
-  // parser only implements linear + radial.
+  if (/\bconic-gradient\(/i.test(value)) return "conic";
   return undefined;
 };
 
@@ -145,7 +146,7 @@ const stop = (color: string, position: string | undefined): string =>
 export const GRADIENT_DESCRIPTOR_PROP = "--nitrocss-gradient";
 
 export interface GradientDescriptor {
-  gradientType: "linear" | "radial";
+  gradientType: "linear" | "radial" | "conic";
   /**
    * Linear sweep angle in CSS degrees (`0` = to top, `90` = to right,
    * `180` = to bottom — the default when the utility compiler gave no direction).
@@ -258,6 +259,36 @@ export function radialCenterFromPosition(position: string | undefined): {
   return { x, y };
 }
 
+/** Resolve a conic gradient's optional `from <angle> at <position>` prelude. */
+export function conicGeometryFromPosition(position: string | undefined): {
+  angle: number;
+  x: number;
+  y: number;
+} {
+  if (!position) return { angle: 0, x: 0.5, y: 0.5 };
+  const normalized = position.trim().replace(/\s+/g, " ").toLowerCase();
+  const from = /(?:^|\s)from\s+(-?\d*\.?\d+)(deg|turn|rad|grad)?\b/.exec(
+    normalized,
+  );
+  let angle = 0;
+  if (from) {
+    const value = Number.parseFloat(from[1]!);
+    const unit = from[2] ?? "deg";
+    angle =
+      unit === "turn"
+        ? value * 360
+        : unit === "rad"
+          ? (value * 180) / Math.PI
+          : unit === "grad"
+            ? value * 0.9
+            : value;
+    angle %= 360;
+    if (angle < 0) angle += 360;
+  }
+  const center = radialCenterFromPosition(normalized);
+  return { angle, x: center.x, y: center.y };
+}
+
 /**
  * Assemble the merged `--nw-gradient-*` marker props and delete the markers.
  * Mutates `style` in place.
@@ -290,7 +321,7 @@ export function foldGradient(
 
   for (const prop of GRADIENT_STYLE_PROPS) delete style[prop];
 
-  if (type !== "linear" && type !== "radial") return;
+  if (type !== "linear" && type !== "radial" && type !== "conic") return;
 
   if (target === "css") {
     const stops = [stop(from ?? "transparent", fromPosition ?? "0%")];
@@ -314,13 +345,17 @@ export function foldGradient(
   push(to ?? "transparent", parseStopLocation(toPosition, 1));
 
   const isRadial = type === "radial";
+  const isConic = type === "conic";
+  const conic = isConic
+    ? conicGeometryFromPosition(position)
+    : { angle: 0, x: 0.5, y: 0.5 };
   const center = isRadial
     ? radialCenterFromPosition(position)
-    : { x: 0.5, y: 0.5 };
+    : { x: conic.x, y: conic.y };
 
   const descriptor: GradientDescriptor = {
     gradientType: type,
-    angle: isRadial ? 0 : angleFromPosition(position),
+    angle: isRadial ? 0 : isConic ? conic.angle : angleFromPosition(position),
     positionX: center.x,
     positionY: center.y,
     colors,

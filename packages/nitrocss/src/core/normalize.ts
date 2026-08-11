@@ -85,17 +85,21 @@ function clipPathToCss(desc: ClipPathDescriptor): string | undefined {
 
 /**
  * Route the `--nitrocss-clip-path` marker. WEB: convert the descriptor back into
- * a real CSS `clipPath` string the browser paints; DELETE the marker. NATIVE:
- * just DELETE the marker so it never reaches an RN prop — the C++ engine reads
- * the descriptor from its OWN resolve pipeline (by tag), so JS deletion here does
- * not remove it from the engine. Called next to {@link foldGradient}.
+ * a real CSS `clipPath` string and delete the marker. Native keeps the marker
+ * until the host opts into C++ registration, then strips it before passing the
+ * style to React Native. Called next to {@link foldGradient}.
  */
 export function foldClipPath(style: RNStyle): void {
   const marker = style[CLIP_PATH_PROP] as unknown as
     | ClipPathDescriptor
     | undefined;
+  // Native must keep the marker until the host component has decided whether
+  // to link this otherwise-static node to the C++ paint registry. `View`
+  // strips it immediately before passing the style to React Native. Deleting
+  // it here made static clip paths skip native registration altogether.
+  if (Platform.OS !== "web") return;
   delete style[CLIP_PATH_PROP];
-  if (Platform.OS !== "web" || marker == null || typeof marker !== "object") {
+  if (marker == null || typeof marker !== "object") {
     return;
   }
   const css = clipPathToCss(marker);
@@ -105,16 +109,23 @@ export function foldClipPath(style: RNStyle): void {
 /**
  * Route the `--nitrocss-background-image` marker. WEB: set the real CSS
  * `backgroundImage: url("…")` plus companion `backgroundSize` /
- * `backgroundRepeat` / `backgroundPosition` from the descriptor; DELETE the
- * marker. NATIVE: just DELETE the marker (the C++ engine paints from its own
- * resolve pipeline by tag). Called next to {@link foldGradient}.
+ * `backgroundRepeat` / `backgroundPosition` from the descriptor and delete the
+ * marker. Native keeps the marker until the host component uses it to opt into
+ * C++ registration, then strips it before passing styles to React Native.
+ * Called next to {@link foldGradient}.
  */
 export function foldBackgroundImage(style: RNStyle): void {
   const marker = style[BACKGROUND_IMAGE_PROP] as unknown as
     | BackgroundImageDescriptor
     | undefined;
+  // Keep the descriptor visible to `requiresNativeRegistration` on native.
+  // The View host removes it from the actual RN style after registering the
+  // Fabric node, while the C++ resolver routes its own copy to the painter.
+  // Removing it at normalization time meant no static background-image view
+  // was linked, so the native loader never even received a URL.
+  if (Platform.OS !== "web") return;
   delete style[BACKGROUND_IMAGE_PROP];
-  if (Platform.OS !== "web" || marker == null || typeof marker !== "object") {
+  if (marker == null || typeof marker !== "object") {
     return;
   }
   const s = style as Record<string, unknown>;

@@ -37,6 +37,41 @@ public:
             const std::optional<std::unordered_map<
                 std::string, std::variant<bool, std::string>>>& /*dataAttributes*/,
             const ComponentContext& context) override {
+    linkImpl(shadowNode,
+             className,
+             componentName,
+             dependencies,
+             accents,
+             inlineStyle,
+             state,
+             context,
+             true);
+  }
+
+  void linkMany(const std::vector<ShadowRegistration>& registrations) override {
+    for (const auto& registration : registrations) {
+      linkImpl(registration.shadowNode,
+               registration.className,
+               registration.componentName,
+               registration.dependencies,
+               registration.accents,
+               registration.inlineStyle,
+               registration.state,
+               registration.context,
+               registration.initialNativeResolve);
+    }
+  }
+
+private:
+  void linkImpl(const std::shared_ptr<HybridShadowNodeHandleSpec>& shadowNode,
+                const std::string& className,
+                const std::string& componentName,
+                const std::vector<StyleDependency>& dependencies,
+                const std::vector<Accent>& accents,
+                const std::shared_ptr<HybridFollyStyleSpec>& inlineStyle,
+                const std::optional<ComponentState>& state,
+                const ComponentContext& context,
+                bool initialNativeResolve) {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr || handle->node() == nullptr) return;
 
@@ -88,7 +123,9 @@ public:
               ::nitrocss::maskFromDeps(dependencies),
               ctx,
               inline_,
-              std::move(linkedAccents));
+              std::move(linkedAccents),
+              0,
+              initialNativeResolve);
 
     if (diagnostics_ != nullptr) {
       diagnostics_->emitRegistered(static_cast<double>(handle->nativeTag()),
@@ -96,11 +133,13 @@ public:
     }
   }
 
+public:
   void unlink(const std::shared_ptr<HybridShadowNodeHandleSpec>& shadowNode) override {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return;
-    ::nitrocss::NitroCssCore::shared().unlink(handle->nativeTag());
-    if (diagnostics_ != nullptr) {
+    const bool removed = ::nitrocss::NitroCssCore::shared().unlink(
+        handle->nativeTag(), handle->family());
+    if (removed && diagnostics_ != nullptr) {
       diagnostics_->emitUnregistered(static_cast<double>(handle->nativeTag()), 0.0);
     }
   }
@@ -108,7 +147,10 @@ public:
   void suspend(const std::shared_ptr<HybridShadowNodeHandleSpec>& shadowNode) override {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return;
-    ::nitrocss::NitroCssCore::shared().suspend(handle->nativeTag());
+    auto& core = ::nitrocss::NitroCssCore::shared();
+    if (core.isCurrentFamily(handle->nativeTag(), handle->family())) {
+      core.suspend(handle->nativeTag());
+    }
   }
 
   bool updateShadowTree(
@@ -141,6 +183,9 @@ public:
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return false;
     auto& core = ::nitrocss::NitroCssCore::shared();
+    if (!core.isCurrentFamily(handle->nativeTag(), handle->family())) {
+      return false;
+    }
     const auto containers = core.containerTags();
     auto it = containers.find(handle->nativeTag());
     if (it == containers.end()) return false;
@@ -154,6 +199,9 @@ public:
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return false;
     auto& core = ::nitrocss::NitroCssCore::shared();
+    if (!core.isCurrentFamily(handle->nativeTag(), handle->family())) {
+      return false;
+    }
     const auto groups = core.groupTags();
     if (groups.find(handle->nativeTag()) == groups.end()) return false;
     core.setGroupState(handle->nativeTag(), {state.isActive,
@@ -168,6 +216,10 @@ public:
       const ComponentState& state) override {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return false;
+    auto& core = ::nitrocss::NitroCssCore::shared();
+    if (!core.isCurrentFamily(handle->nativeTag(), handle->family())) {
+      return false;
+    }
     ::nitrocss::ResolveContext ctx;
     ctx.isFocused = state.isFocused;
     ctx.isActive = state.isActive;
@@ -175,7 +227,7 @@ public:
     ctx.isHovered = state.isHovered;
     ctx.isFirstChild = state.isFirstChild;
     ctx.isLastChild = state.isLastChild;
-    ::nitrocss::NitroCssCore::shared().setComponentState(handle->nativeTag(), ctx);
+    core.setComponentState(handle->nativeTag(), ctx);
     return true;
   }
 

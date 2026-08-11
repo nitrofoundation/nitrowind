@@ -5,6 +5,7 @@
 #include "../grid/GridTypes.hpp"
 #include "../registry/DependencyIndex.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <mutex>
@@ -48,6 +49,19 @@ public:
     bool last = false;
   };
 
+  /** Cumulative native runtime counters, intended for development tooling. */
+  struct DiagnosticsSnapshot {
+    std::size_t linkedNodes = 0;
+    uint64_t affectedNodes = 0;
+    uint64_t resolvedNodes = 0;
+    uint64_t skippedMutations = 0;
+    uint64_t committedMutations = 0;
+    double lastResolveDurationMs = 0.0;
+    double lastCommitDurationMs = 0.0;
+    double totalResolveDurationMs = 0.0;
+    double totalCommitDurationMs = 0.0;
+  };
+
   /**
    * One grid container's post-layout snapshot, reported by the layout observer:
    * its measured width plus the ordered families of its grid-item children (and
@@ -59,6 +73,8 @@ public:
     facebook::react::SurfaceId surfaceId = 0;
     double width = 0.0;
     std::vector<facebook::react::ShadowNodeFamily::Shared> childFamilies;
+    std::vector<double> childWidths;
+    std::vector<double> childHeights;
   };
 
   static NitroCssCore& shared();
@@ -82,8 +98,14 @@ public:
             ResolveContext context,
             SharedFolly inlineStyle,
             std::vector<LinkedAccent> accents = {},
-            facebook::react::Tag containerTag = 0);
-  void unlink(facebook::react::Tag tag);
+            facebook::react::Tag containerTag = 0,
+            bool initialNativeResolve = true);
+  bool unlink(
+      facebook::react::Tag tag,
+      facebook::react::ShadowNodeFamily::Shared expectedFamily = nullptr);
+  bool isCurrentFamily(
+      facebook::react::Tag tag,
+      const facebook::react::ShadowNodeFamily::Shared& family) const;
   void suspend(facebook::react::Tag tag);
 
   /** Explicit JS-driven commit: `tag -> style`. Returns true if committed. */
@@ -177,12 +199,29 @@ public:
   void removeDependencyListener(int id);
   void setResolveListener(ResolveListener listener);
 
+  /** Snapshot/reset native counters without enabling event listeners. */
+  DiagnosticsSnapshot diagnosticsSnapshot() const;
+  void resetDiagnostics();
+
 private:
   NitroCssCore() = default;
   void notifyDependencyListeners(uint32_t changedMask);
   folly::dynamic resolveForNode(const LinkedNode& node, const ResolveContext& ctx);
   folly::dynamic resolveAccent(const LinkedAccent& accent, const ResolveContext& ctx);
   void commitResolvedNode(const LinkedNode& node, const ResolveContext& ctx);
+  bool resolvedPropsUnchanged(const LinkedNode& node,
+                              const folly::dynamic& props,
+                              std::size_t propsHash) const;
+  void rememberResolvedProps(const LinkedNode& node,
+                             const folly::dynamic& props,
+                             std::size_t propsHash);
+  void forgetResolvedProps(facebook::react::Tag tag);
+  void recordDiagnostics(std::size_t affected,
+                         std::size_t resolved,
+                         std::size_t skipped,
+                         std::size_t committed,
+                         double resolveDurationMs,
+                         double commitDurationMs);
   /** Inject the node's container sizes into a copy of `ctx` before resolving. */
   void applyContainerSizes(ResolveContext& ctx, const LinkedNode& node) const;
   /** Inject the node's nearest group root state before resolving group variants. */
@@ -215,11 +254,23 @@ private:
   mutable std::mutex gridMutex_;
   std::unordered_map<facebook::react::Tag, grid::GridConfig> gridConfigs_;
   std::unordered_map<facebook::react::Tag, double> gridLastWidth_;
+  std::unordered_map<facebook::react::Tag, std::size_t> gridLastMeasurementSignature_;
 
   std::mutex listenerMutex_;
   std::unordered_map<int, DependencyListener> dependencyListeners_;
   ResolveListener resolveListener_;
   int nextListenerId_ = 1;
+
+  struct ResolvedPropsEntry {
+    facebook::react::ShadowNodeFamily::Shared family;
+    folly::dynamic props = folly::dynamic::object();
+    std::size_t propsHash = 0;
+  };
+  mutable std::mutex resolvedPropsMutex_;
+  std::unordered_map<facebook::react::Tag, ResolvedPropsEntry> resolvedProps_;
+
+  mutable std::mutex diagnosticsMutex_;
+  DiagnosticsSnapshot diagnostics_;
 };
 
 } // namespace nitrocss

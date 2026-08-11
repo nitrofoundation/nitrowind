@@ -4,18 +4,22 @@
 
 namespace nitrocss::grid {
 
-enum class TrackType { Fr, Px, Auto };
+enum class TrackType { Fr, Px, Percent, Auto };
 
 struct Track {
   TrackType type = TrackType::Fr;
   double value = 1.0;
 };
 
+enum class Alignment { Stretch, Start, Center, End };
+
 struct Placement {
   int columnStart = 0; // 1-based, 0 = auto
   int columnSpan = 1;
   int rowStart = 0; // 1-based, 0 = auto
   int rowSpan = 1;
+  Alignment justifySelf = Alignment::Stretch;
+  Alignment alignSelf = Alignment::Stretch;
 };
 
 struct ItemLayout {
@@ -32,7 +36,13 @@ struct GridInput {
   Track autoRow{TrackType::Px, 64.0};
   double columnGap = 0.0;
   double rowGap = 0.0;
+  bool dense = false;
+  Alignment justifyItems = Alignment::Stretch;
+  Alignment alignItems = Alignment::Stretch;
   std::vector<Placement> items;
+  /** Pre-grid Yoga measurements used to size intrinsic `auto` tracks. */
+  std::vector<double> intrinsicWidths;
+  std::vector<double> intrinsicHeights;
 };
 
 struct GridOutput {
@@ -54,6 +64,9 @@ struct GridConfig {
   Track autoRow{TrackType::Px, 64.0};
   double columnGap = 0.0;
   double rowGap = 0.0;
+  bool dense = false;
+  Alignment justifyItems = Alignment::Stretch;
+  Alignment alignItems = Alignment::Stretch;
   double paddingHorizontal = 0.0;
   double paddingTop = 0.0;
   double paddingBottom = 0.0;

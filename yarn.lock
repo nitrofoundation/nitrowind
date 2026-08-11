@@ -3859,7 +3859,7 @@ __metadata:
     "@types/node": "npm:^22.12.0"
     typescript: "npm:5.9.2"
   bin:
-    nitrowind-skills: ./dist/cli.js
+    nitrowind-skills: dist/cli.js
   languageName: unknown
   linkType: soft
 
@@ -3891,6 +3891,8 @@ __metadata:
       optional: true
     react-native-svg:
       optional: true
+  bin:
+    nitrowind: ./bin/nitrowind.mjs
   languageName: unknown
   linkType: soft
 
@@ -13535,7 +13537,7 @@ __metadata:
     react-native: "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch"
     react-native-gesture-handler: "npm:^3.0.2"
     react-native-linear-gradient: "npm:^2.8.3"
-    react-native-nitro-modules: "npm:^0.35.9"
+    react-native-nitro-modules: "npm:0.35.9"
     react-native-performance: "npm:^6.0.0"
     react-native-reanimated: "npm:^4.5.0"
     react-native-safe-area-context: "npm:^5.8.0"

@@ -5,6 +5,7 @@
 #include "../core/NitroCssCore.hpp"
 #include "../gradient/GradientAngleOverrides.hpp"
 #include "../gradient/GradientTargets.hpp"
+#include "../effects/EffectTargets.hpp"
 
 #include <react/renderer/core/LayoutableShadowNode.h>
 #include <react/renderer/core/ShadowNode.h>
@@ -110,10 +111,15 @@ void walk(const ShadowNode& node,
           static_cast<double>(layoutable->getLayoutMetrics().frame.size.width);
       for (const auto& child : node.getChildren()) {
         if (child == nullptr) continue;
-        if (dynamic_cast<const LayoutableShadowNode*>(child.get()) == nullptr) {
+        auto* childLayoutable =
+            dynamic_cast<const LayoutableShadowNode*>(child.get());
+        if (childLayoutable == nullptr) {
           continue;
         }
         measurement.childFamilies.push_back(child->getFamilyShared());
+        const auto childSize = childLayoutable->getLayoutMetrics().frame.size;
+        measurement.childWidths.push_back(static_cast<double>(childSize.width));
+        measurement.childHeights.push_back(static_cast<double>(childSize.height));
       }
       gridMeasurements.push_back(std::move(measurement));
     }
@@ -209,6 +215,7 @@ void LayoutObserver::shadowTreeDidMount(
     ClipPathTargets::shared().onMountTransaction();
     BackgroundImageTargets::shared().onMountTransaction();
     GradientAngleOverrides::shared().onMountTransaction();
+    EffectTargets::shared().onMountTransaction();
 
     measureAndSync(*rootShadowNode, false);
   } catch (...) {

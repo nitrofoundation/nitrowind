@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <folly/dynamic.h>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -52,6 +53,9 @@ struct ResolveContext {
   int colorScheme = 0; // ColorScheme: Light=0, Dark=1
   bool rtl = false;
   double rem = 16.0;
+  double screenWidth = 0.0;
+  double screenHeight = 0.0;
+  double fontScale = 1.0;
   // Live safe-area insets, used to resolve `*-safe` dynamic values natively.
   double insetTop = 0.0;
   double insetRight = 0.0;
@@ -130,6 +134,29 @@ public:
                          uint32_t& outMask) const;
 
 private:
+  /**
+   * Immutable, platform-filtered composition of a complete className string.
+   * Building this once avoids repeating tokenization and class-table lookups
+   * for every runtime update of every node using the same class composition.
+   */
+  struct PreparedResolution {
+    std::vector<CompiledBucket> buckets;
+    uint32_t dependencyMask = 0;
+    bool isContainerMarker = false;
+    std::string containerName;
+    bool isGroupMarker = false;
+    std::string groupName;
+  };
+
+  struct FinalResolution {
+    folly::dynamic style = folly::dynamic::object();
+    uint32_t dependencyMask = 0;
+  };
+
+  std::shared_ptr<const PreparedResolution> prepareResolutionLocked(
+      const std::string& className) const;
+  std::shared_ptr<const folly::dynamic> prepareEffectiveVarsLocked(
+      const ResolveContext& ctx) const;
   folly::dynamic effectiveVars(const ResolveContext& ctx) const;
   static bool variantApplies(const std::string& variant, const ResolveContext& ctx);
   /** Whether a bucket's platform variant applies on this build's OS. */
@@ -144,6 +171,15 @@ private:
   std::vector<std::string> themeNames_;
   std::string currentTheme_;
   double rem_ = 16.0;
+  mutable std::unordered_map<std::string,
+                             std::shared_ptr<const PreparedResolution>>
+      resolutionCache_;
+  mutable std::unordered_map<std::string,
+                             std::shared_ptr<const folly::dynamic>>
+      effectiveVarsCache_;
+  mutable std::unordered_map<std::string,
+                             std::shared_ptr<const FinalResolution>>
+      finalResolutionCache_;
 };
 
 } // namespace nitrocss

@@ -19,6 +19,7 @@
 
 using nitrocss::css::parseColor;
 using nitrocss::css::parseColorToHex;
+using nitrocss::css::parseColorMixToHex;
 using nitrocss::css::toHexString;
 
 static int failures = 0;
@@ -118,9 +119,22 @@ int main() {
   // --- rejects ------------------------------------------------------------------
   check("oklch(0.5 0.1)", nullptr);                 // culori FAIL (2 coords)
   check("notacolor", nullptr);                      // culori FAIL
-  check("color-mix(in oklab, red, blue)", nullptr); // culori FAIL
+  check("color-mix(in oklab, red, blue)", nullptr); // separate Color 5 parser
   check("color(rec2020 1 0 0)", nullptr);           // [scope] unsupported space
   check("currentColor", nullptr);                   // [scope] keyword passthrough
+
+  // --- color-mix() -------------------------------------------------------------
+  {
+    total++;
+    auto mixed = parseColorMixToHex("color-mix(in srgb, #ff0000 25%, #0000ff)");
+    if (!mixed || *mixed != "#4000bf") { failures++; std::printf("FAIL color-mix srgb\n"); }
+    total++;
+    mixed = parseColorMixToHex("color-mix(in oklab, #2b7fff 15%, transparent)");
+    if (!mixed || *mixed != "#2b7fff26") { failures++; std::printf("FAIL color-mix alpha\n"); }
+    total++;
+    mixed = parseColorMixToHex("color-mix(in srgb-linear, rgb(255 0 0), rgb(0 0 255))");
+    if (!mixed || *mixed != "#bc00bc") { failures++; std::printf("FAIL color-mix nested\n"); }
+  }
 
   // --- Rgba / toHexString shape -------------------------------------------------
   {

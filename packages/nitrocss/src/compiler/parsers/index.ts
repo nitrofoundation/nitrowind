@@ -36,6 +36,7 @@ export {
 } from "./borderGradient";
 export {
   angleFromPosition,
+  conicGeometryFromPosition,
   extractGradient,
   foldGradient,
   isGradientProp,
@@ -47,6 +48,71 @@ export {
   type GradientDescriptor,
   type GradientFoldTarget,
 } from "./gradient";
+export { resolveColorMix } from "./colorMix";
+export {
+  extractNativeEffects,
+  isNativeEffectsProp,
+  NATIVE_EFFECTS_PROP,
+  parseEffectFilters,
+  parseEffectShadow,
+  parseEffectShadows,
+  type EffectBlendMode,
+  type EffectFilter,
+  type EffectOutline,
+  type EffectShadow,
+  type NativeEffectsDescriptor,
+} from "./effectsNative";
+export {
+  evaluateCssMath,
+  parseCssMath,
+  type CssMathDependency,
+  type CssMathDescriptor,
+  type CssMathNode,
+  type CssMathRuntime,
+  type CssMathUnit,
+} from "./cssMath";
+export {
+  cssMathEntries,
+  lowerCssMathStyle,
+  lowerCssMathValue,
+  type CssMathLoweringContext,
+  type CssMathRuntimeSnapshot,
+} from "./cssMathRuntime";
+export {
+  isSemanticColorDescriptor,
+  parseSemanticColor,
+  platformSemanticColor,
+  resolveSemanticColor,
+  semanticColorToken,
+  serializeSemanticColor,
+  SEMANTIC_COLOR_TOKENS,
+  type DynamicSemanticColor,
+  type PlatformSemanticColor,
+  type SemanticColorDescriptor,
+  type SemanticColorRuntime,
+  type SemanticColorToken,
+  type SemanticColorValue,
+} from "./semanticColors";
+export {
+  isWideGamutColorDescriptor,
+  lowerNativeColor,
+  lowerNativeColorStyle,
+  wideGamutToSrgb,
+  type ColorLoweringContext,
+  type DynamicColorOptions,
+  type NativeColorAdapter,
+} from "./semanticColorsRuntime";
+export {
+  parseTailwindV4Candidate,
+  parseTailwindV4Transform,
+  parseTailwindV4Variant,
+  parseWideGamutColor,
+  serializeWideGamutColor,
+  type TailwindV4Candidate,
+  type TailwindV4TransformPrimitive,
+  type TailwindV4Variant,
+  type WideGamutColorDescriptor,
+} from "./tailwindV4";
 export {
   extractTextShadow,
   isTextShadowProp,

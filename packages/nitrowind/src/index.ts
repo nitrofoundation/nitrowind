@@ -27,3 +27,13 @@ export type {
   WithNitroCssProps as WithNitrowindProps,
   NitroCssContextValue as NitrowindContextValue,
 } from "@nitrofoundation/nitrocss";
+
+export {
+  interopPresets,
+  withInteropPreset,
+} from "./presets";
+export type {
+  NitroWindInteropPreset,
+  NitroWindInteropPresetName,
+  NitroWindPresetClassNameProps,
+} from "./presets";

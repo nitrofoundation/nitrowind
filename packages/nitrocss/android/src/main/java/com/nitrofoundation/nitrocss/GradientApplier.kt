@@ -9,6 +9,7 @@ import android.graphics.PixelFormat
 import android.graphics.RadialGradient
 import android.graphics.Rect
 import android.graphics.Shader
+import android.graphics.SweepGradient
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
@@ -24,6 +25,7 @@ import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.tan
 import org.json.JSONArray
 import org.json.JSONObject
@@ -276,13 +278,16 @@ object GradientApplier {
         result[item.getInt("tag")] = Entry(
           generation = item.optLong("generation"),
           borderRadius = item.optDouble("borderRadius", 0.0),
-          radial = descriptor.optString("gradientType") == "radial",
+          gradientType = descriptor.optString("gradientType", "linear"),
           angle = descriptor.optDouble("angle", 180.0),
           angleOverride = if (item.has("angleOverride")) item.optDouble("angleOverride") else null,
           positionX = descriptor.optDouble("positionX", 0.5).toFloat(),
           positionY = descriptor.optDouble("positionY", 0.5).toFloat(),
           colors = parseColors(rawColors),
           locations = locations,
+          innerColor = descriptor.optString("inner").takeIf { it.isNotBlank() }
+            ?.let(::parseHexColor),
+          borderWidth = descriptor.optDouble("bw", 0.0),
         )
       }
     } catch (t: Throwable) {
@@ -355,7 +360,7 @@ object GradientApplier {
   private class Entry(
     val generation: Long,
     val borderRadius: Double,
-    val radial: Boolean,
+    val gradientType: String,
     val angle: Double,
     /** Live per-frame animated angle from the JS driver, or null when static. */
     val angleOverride: Double?,
@@ -363,6 +368,9 @@ object GradientApplier {
     val positionY: Float,
     val colors: IntArray,
     val locations: FloatArray?,
+    /** Padding-box fill for the two-layer gradient-border CSS recipe. */
+    val innerColor: Int?,
+    val borderWidth: Double,
   )
 
   /** What was painted onto a view (the applier's `(tag, generation)` record). */
@@ -403,24 +411,30 @@ object GradientApplier {
         invalidateSelf()
       }
 
-    private var radial = false
+    private var gradientType = "linear"
     private var angleDeg = 180.0
     private var centerX = 0.5f
     private var centerY = 0.5f
     private var stopColors = IntArray(0)
     private var stopLocations: FloatArray? = null
     private var cornerRadiusPx = 0f
+    private var innerColor: Int? = null
+    private var borderWidthPx = 0f
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val innerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private var shaderDirty = true
 
     fun update(entry: Entry, view: View) {
-      radial = entry.radial
+      gradientType = entry.gradientType
       angleDeg = entry.angleOverride ?: entry.angle
       centerX = entry.positionX
       centerY = entry.positionY
       stopColors = entry.colors
       stopLocations = entry.locations
+      innerColor = entry.innerColor
+      borderWidthPx =
+        (entry.borderWidth * view.resources.displayMetrics.density).toFloat()
       cornerRadiusPx =
         (entry.borderRadius * view.resources.displayMetrics.density).toFloat()
       shaderDirty = true
@@ -444,10 +458,35 @@ object GradientApplier {
       if (paint.shader == null) return
       val save = canvas.save()
       canvas.translate(b.left.toFloat(), b.top.toFloat())
-      if (cornerRadiusPx > 0f) {
-        canvas.drawRoundRect(0f, 0f, w, h, cornerRadiusPx, cornerRadiusPx, paint)
+      // Tailwind's rounded-full sentinel is near Float.MAX_VALUE. Multiplying
+      // it by density can become infinity, so clamp exactly like CSS/iOS.
+      val outerRadius = if (cornerRadiusPx.isFinite()) {
+        min(cornerRadiusPx, min(w, h) / 2f)
+      } else {
+        min(w, h) / 2f
+      }
+      if (outerRadius > 0f) {
+        canvas.drawRoundRect(0f, 0f, w, h, outerRadius, outerRadius, paint)
       } else {
         canvas.drawRect(0f, 0f, w, h, paint)
+      }
+
+      // `background: <fill> padding-box, <gradient> border-box`: cover the
+      // center with the inner color, leaving only the native gradient ring.
+      val fill = innerColor
+      val bw = borderWidthPx.coerceAtLeast(0f)
+      if (fill != null && bw > 0f && w > bw * 2f && h > bw * 2f) {
+        innerPaint.color = fill
+        val innerRadius = max(0f, outerRadius - bw)
+        canvas.drawRoundRect(
+          bw,
+          bw,
+          w - bw,
+          h - bw,
+          innerRadius,
+          innerRadius,
+          innerPaint,
+        )
       }
       canvas.restoreToCount(save)
     }
@@ -468,7 +507,16 @@ object GradientApplier {
     private fun buildShader(width: Float, height: Float): Shader? {
       if (stopColors.size < 2) return null
       val positions = stopLocations
-      return if (radial) {
+      return if (gradientType == "conic") {
+        val cx = centerX * width
+        val cy = centerY * height
+        SweepGradient(cx, cy, stopColors, positions).also { shader ->
+          // Android's sweep begins at 3 o'clock; CSS 0deg begins at 12 o'clock.
+          val matrix = Matrix()
+          matrix.setRotate((angleDeg - 90.0).toFloat(), cx, cy)
+          shader.setLocalMatrix(matrix)
+        }
+      } else if (gradientType == "radial") {
         // Circular shader at the farthest-corner radius, squashed into an
         // ellipse about the center via a local matrix (RN / Lynx approach).
         val cx = centerX * width

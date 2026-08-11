@@ -43,7 +43,7 @@ using nitrocss::GradientAngleOverrides;
 using nitrocss::GradientTargets;
 
 struct JGradientApplier : facebook::jni::JavaClass<JGradientApplier> {
-  static constexpr auto kJavaDescriptor = "Lcom/nitrofoundation/nitro-css/GradientApplier;";
+  static constexpr auto kJavaDescriptor = "Lcom/nitrofoundation/nitrocss/GradientApplier;";
 
   /** Forward the invalidation ping to Kotlin's `GradientApplier.onNativeInvalidate()`. */
   static void onNativeInvalidate() {

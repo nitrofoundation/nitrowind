@@ -88,6 +88,36 @@ resulting style tables with the native engine — no Babel plugin, no runtime CS
 | `/nitrowind/compiler` | Node-only: `compile`, `compileCss`, `scanCandidates`, plus the nitrocss compiler surface |
 | `/nitrowind/metro` | `withNitrowindMetroConfig` |
 | `/nitrowind/metro/pipeline` | The Tailwind `scan`/`buildCss` pipeline handed to the nitrocss transformer |
+| `/nitrowind/presets` | Dependency-free `cssInterop` recipes for popular component libraries |
+| `/nitrowind/tooling` | Node-only autocomplete generation and migration inspection APIs |
+
+## Developer tools
+
+Generate a manifest of classes that were both discovered and successfully
+compiled, plus a TypeScript union for local design-system APIs:
+
+```sh
+yarn nitrowind autocomplete --input global.css
+```
+
+This writes `.nitrowind/classes.json` and `.nitrowind/classes.d.ts`. Re-run it
+when utility usage or the theme changes. Check an existing setup before moving
+from NativeWind or Uniwind; the migration command is read-only:
+
+```sh
+yarn nitrowind migrate --from nativewind
+yarn nitrowind migrate --from uniwind --json
+```
+
+Third-party libraries can use maintained mappings without making them NitroWind
+dependencies:
+
+```tsx
+import { FlashList } from "@shopify/flash-list";
+import { withInteropPreset } from "@nitrofoundation/nitrowind";
+
+const StyledFlashList = withInteropPreset(FlashList, "shopifyFlashList");
+```
 
 ## Options
 

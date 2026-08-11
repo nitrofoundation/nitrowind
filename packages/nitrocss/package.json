@@ -96,6 +96,30 @@
         "default": "./lib/commonjs/compiler/*.js"
       }
     },
+    "./inspector": {
+      "source": "./src/inspector/index.ts",
+      "react-native": "./src/inspector/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/inspector/index.d.ts",
+        "default": "./lib/module/inspector/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/inspector/index.d.ts",
+        "default": "./lib/commonjs/inspector/index.js"
+      }
+    },
+    "./accessibility": {
+      "source": "./src/accessibility/index.ts",
+      "react-native": "./src/accessibility/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/accessibility/index.d.ts",
+        "default": "./lib/module/accessibility/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/accessibility/index.d.ts",
+        "default": "./lib/commonjs/accessibility/index.js"
+      }
+    },
     "./metro": {
       "source": "./src/metro/index.ts",
       "types": "./lib/typescript/commonjs/metro/index.d.ts",

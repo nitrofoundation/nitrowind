@@ -1070,6 +1070,147 @@ std::optional<std::string> parseColorToHex(std::string_view css) {
   return out;
 }
 
+namespace {
+
+struct MixStop {
+  Rgba color;
+  std::optional<double> weight;
+};
+
+std::string trimCopy(std::string_view value) {
+  const auto first = value.find_first_not_of(" \t\n\r\f\v");
+  if (first == std::string_view::npos) return {};
+  const auto last = value.find_last_not_of(" \t\n\r\f\v");
+  return std::string(value.substr(first, last - first + 1));
+}
+
+std::vector<std::string> splitTopLevelCommas(std::string_view value) {
+  std::vector<std::string> parts;
+  int depth = 0;
+  size_t start = 0;
+  for (size_t i = 0; i < value.size(); ++i) {
+    if (value[i] == '(') ++depth;
+    else if (value[i] == ')') --depth;
+    else if (value[i] == ',' && depth == 0) {
+      parts.push_back(trimCopy(value.substr(start, i - start)));
+      start = i + 1;
+    }
+  }
+  parts.push_back(trimCopy(value.substr(start)));
+  return parts;
+}
+
+std::optional<MixStop> parseMixStop(const std::string& raw) {
+  std::string colorText = trimCopy(raw);
+  std::optional<double> weight;
+  int depth = 0;
+  for (size_t i = colorText.size(); i > 0; --i) {
+    const char ch = colorText[i - 1];
+    if (ch == ')') ++depth;
+    else if (ch == '(') --depth;
+    else if (depth == 0 && std::isspace(static_cast<unsigned char>(ch))) {
+      const std::string suffix = trimCopy(colorText.substr(i));
+      if (!suffix.empty() && suffix.back() == '%') {
+        char* end = nullptr;
+        const double parsed = std::strtod(suffix.c_str(), &end);
+        if (end != suffix.c_str() && *end == '%') {
+          weight = std::max(0.0, parsed / 100.0);
+          colorText = trimCopy(colorText.substr(0, i - 1));
+        }
+      }
+      break;
+    }
+  }
+  auto color = parseColor(colorText);
+  if (!color) return std::nullopt;
+  return MixStop{*color, weight};
+}
+
+struct MixChannels { double x, y, z, a; };
+
+MixChannels channelsFor(const Rgba& color, const std::string& space) {
+  const double r = color.r / 255.0;
+  const double g = color.g / 255.0;
+  const double b = color.b / 255.0;
+  const double a = color.a / 255.0;
+  if (space == "srgb") return {r, g, b, a};
+  const double lr = rgbToLrgbChannel(r);
+  const double lg = rgbToLrgbChannel(g);
+  const double lb = rgbToLrgbChannel(b);
+  if (space == "srgb-linear") return {lr, lg, lb, a};
+  const double l = std::cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+  const double m = std::cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const double s = std::cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+  return {
+      0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+      1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+      0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+      a};
+}
+
+RgbResult rgbForMix(const MixChannels& mixed, const std::string& space) {
+  if (space == "srgb") return {mixed.x, mixed.y, mixed.z, true, mixed.a};
+  if (space == "srgb-linear") {
+    return {lrgbToRgbChannel(mixed.x), lrgbToRgbChannel(mixed.y),
+            lrgbToRgbChannel(mixed.z), true, mixed.a};
+  }
+  Parsed oklab;
+  oklab.mode = Mode::Oklab;
+  oklab.c1 = mixed.x;
+  oklab.c2 = mixed.y;
+  oklab.c3 = mixed.z;
+  oklab.hasAlpha = true;
+  oklab.alpha = mixed.a;
+  return oklabToRgb(oklab);
+}
+
+} // namespace
+
+std::optional<std::string> parseColorMixToHex(std::string_view css) {
+  const std::string value = trimCopy(css);
+  if (value.size() < 12 || value.compare(0, 10, "color-mix(") != 0 ||
+      value.back() != ')') {
+    return std::nullopt;
+  }
+  const auto parts = splitTopLevelCommas(
+      std::string_view(value).substr(10, value.size() - 11));
+  if (parts.size() != 3) return std::nullopt;
+  std::string prelude = parts[0];
+  std::transform(prelude.begin(), prelude.end(), prelude.begin(), [](char ch) {
+    return static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  });
+  if (prelude.rfind("in ", 0) != 0) return std::nullopt;
+  const std::string space = trimCopy(prelude.substr(3));
+  if (space != "oklab" && space != "srgb" && space != "srgb-linear") {
+    return std::nullopt;
+  }
+  auto first = parseMixStop(parts[1]);
+  auto second = parseMixStop(parts[2]);
+  if (!first || !second) return std::nullopt;
+
+  double w1 = first->weight.value_or(
+      second->weight ? std::max(0.0, 1.0 - *second->weight) : 0.5);
+  double w2 = second->weight.value_or(
+      first->weight ? std::max(0.0, 1.0 - *first->weight) : 0.5);
+  const double sum = w1 + w2;
+  if (sum <= 0.0) return std::nullopt;
+  const double alphaMultiplier = std::min(1.0, sum);
+  w1 /= sum;
+  w2 /= sum;
+
+  const MixChannels c1 = channelsFor(first->color, space);
+  const MixChannels c2 = channelsFor(second->color, space);
+  const double alpha = c1.a * w1 + c2.a * w2;
+  const double divisor = alpha > 0.0 ? alpha : 1.0;
+  MixChannels mixed{
+      (c1.x * c1.a * w1 + c2.x * c2.a * w2) / divisor,
+      (c1.y * c1.a * w1 + c2.y * c2.a * w2) / divisor,
+      (c1.z * c1.a * w1 + c2.z * c2.a * w2) / divisor,
+      alpha * alphaMultiplier};
+  const Rgba q = quantize(rgbForMix(mixed, space));
+  return toHexString(q);
+}
+
 bool looksLikeColorFunction(std::string_view value) {
   size_t begin = value.find_first_not_of(" \t\n\r\f\v");
   if (begin == std::string_view::npos) return false;
@@ -1078,6 +1219,7 @@ bool looksLikeColorFunction(std::string_view value) {
   static constexpr std::string_view kPrefixes[] = {
       "rgb(",   "rgba(",  "hsl(", "hsla(", "hwb(",
       "oklch(", "oklab(", "lab(", "lch(",  "color(",
+      "color-mix(",
   };
   for (std::string_view prefix : kPrefixes) {
     if (v.size() < prefix.size()) continue;

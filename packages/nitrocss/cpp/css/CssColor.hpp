@@ -28,8 +28,8 @@
  * (culori formatHex behavior), NOT gamut-mapped by chroma reduction as
  * CSS Color 4 specifies.
  *
- * Not supported (callers must leave such values untouched): color-mix(),
- * currentColor, system colors, relative color syntax, rec2020/a98/prophoto/
+ * Not supported (callers must leave such values untouched): currentColor,
+ * system colors, relative color syntax, rec2020/a98/prophoto/
  * xyz color() spaces.
  */
 namespace nitrocss::css {
@@ -70,6 +70,13 @@ std::string toHexString(const Rgba& color);
  * value that must match the JS pre-lowered bytes exactly.
  */
 std::optional<std::string> parseColorToHex(std::string_view css);
+
+/**
+ * Resolve CSS Color 5 `color-mix()` to sRGB hex. Supports the interpolation
+ * spaces emitted by Tailwind (`oklab`, `srgb`, `srgb-linear`), optional stop
+ * percentages, nested color functions and alpha-premultiplied interpolation.
+ */
+std::optional<std::string> parseColorMixToHex(std::string_view css);
 
 /**
  * True when the trimmed value starts with one of the color function names the

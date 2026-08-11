@@ -15,6 +15,15 @@ const GRID_COLS_TEMPLATE_RE = /(?:^|\s)grid-cols-\[([^\]]+)\](?:\s|$)/;
 const GRID_ROWS_TEMPLATE_RE = /(?:^|\s)grid-rows-\[([^\]]+)\](?:\s|$)/;
 const GRID_TEMPLATE_RE = /(?:^|\s)grid-template-\[([^\]]+)\](?:\s|$)/;
 const COL_SPAN_RE = /(?:^|\s)col-span-(\d+)(?:\s|$)/;
+const ROW_SPAN_RE = /(?:^|\s)row-span-(\d+)(?:\s|$)/;
+const COL_START_RE = /(?:^|\s)col-start-(\d+)(?:\s|$)/;
+const ROW_START_RE = /(?:^|\s)row-start-(\d+)(?:\s|$)/;
+const GRID_DENSE_RE = /(?:^|\s)grid-flow-(?:row-|col-)?dense(?:\s|$)/;
+const PLACE_ITEMS_RE = /(?:^|\s)place-items-(start|end|center|stretch)(?:\s|$)/;
+const JUSTIFY_ITEMS_RE = /(?:^|\s)justify-items-(start|end|center|stretch)(?:\s|$)/;
+const ALIGN_ITEMS_RE = /(?:^|\s)items-(start|end|center|stretch)(?:\s|$)/;
+const JUSTIFY_SELF_RE = /(?:^|\s)justify-self-(start|end|center|stretch)(?:\s|$)/;
+const ALIGN_SELF_RE = /(?:^|\s)self-(start|end|center|stretch)(?:\s|$)/;
 const GRID_AREA_ARBITRARY_RE =
   /(?:^|\s)(?:grid-area|area)-\[([^\]]+)\](?:\s|$)/;
 const GRID_AREA_RE = /(?:^|\s)(?:grid-area|area)-([A-Za-z][\w-]*)(?:\s|$)/;
@@ -56,15 +65,15 @@ type AreaPlacement = {
   rowSpan: number;
 };
 
+type GridAlignment = "start" | "end" | "center" | "stretch";
+
 /**
- * A track serialized down to the native `grid::TrackType` shape (Fr | Px |
- * Auto). The richer JS `Track` (percent, minmax `min`, content `auto`) has no
- * native equivalent, so `%` columns disable the native path (see
- * `serializeGridTrack`) and rows/`auto` degrade — the JS fallback handles the
- * lossy cases.
+ * A track serialized down to the native `grid::TrackType` shape. Percentage,
+ * fractional, fixed, and intrinsic tracks stay native; minmax minimums travel
+ * as the intrinsic track's initial value.
  */
 export type SerializedGridTrack = {
-  type: "fr" | "px" | "auto";
+  type: "fr" | "px" | "percent" | "auto";
   value: number;
 };
 
@@ -74,6 +83,8 @@ export type SerializedGridPlacement = {
   columnSpan: number;
   rowStart: number;
   rowSpan: number;
+  justifySelf?: GridAlignment;
+  alignSelf?: GridAlignment;
 };
 
 /**
@@ -87,6 +98,9 @@ export type SerializedGridConfig = {
   autoRow: SerializedGridTrack;
   columnGap: number;
   rowGap: number;
+  dense: boolean;
+  justifyItems: GridAlignment;
+  alignItems: GridAlignment;
   paddingHorizontal: number;
   paddingTop: number;
   paddingBottom: number;
@@ -106,6 +120,45 @@ function classNameOf(props: unknown): string | undefined {
 function spanFor(className: string): number {
   const match = COL_SPAN_RE.exec(className);
   return match ? Math.max(1, Number(match[1])) : 1;
+}
+
+function rowSpanFor(className: string): number {
+  const match = ROW_SPAN_RE.exec(className);
+  return match ? Math.max(1, Number(match[1])) : 1;
+}
+
+function lineStartFor(className: string, re: RegExp): number {
+  const match = re.exec(className);
+  return match ? Math.max(1, Number(match[1])) : 0;
+}
+
+function alignmentFor(
+  className: string,
+  primary: RegExp,
+  fallback?: RegExp,
+): GridAlignment {
+  return (primary.exec(className)?.[1] ??
+    fallback?.exec(className)?.[1] ??
+    "stretch") as GridAlignment;
+}
+
+function optionalAlignmentFor(
+  className: string,
+  re: RegExp,
+): GridAlignment | undefined {
+  return re.exec(className)?.[1] as GridAlignment | undefined;
+}
+
+function itemAlignmentFor(className: string): Pick<
+  SerializedGridPlacement,
+  "justifySelf" | "alignSelf"
+> {
+  const justifySelf = optionalAlignmentFor(className, JUSTIFY_SELF_RE);
+  const alignSelf = optionalAlignmentFor(className, ALIGN_SELF_RE);
+  return {
+    ...(justifySelf ? { justifySelf } : {}),
+    ...(alignSelf ? { alignSelf } : {}),
+  };
 }
 
 function areaFor(className: string): string | undefined {
@@ -326,7 +379,10 @@ function trackValueFor(
   const spacing = spacingRe.exec(className);
   if (spacing) return `${Number(spacing[1]) * SPACING_UNIT}px`;
   const keyword = keywordRe.exec(className)?.[1];
-  return keyword === "fr" ? "minmax(0,1fr)" : keyword;
+  if (keyword === "fr") return "minmax(0,1fr)";
+  if (keyword === "min") return "min-content";
+  if (keyword === "max") return "max-content";
+  return keyword;
 }
 
 function applyTrackStyle(
@@ -718,7 +774,7 @@ function resolveGridColumns(parentClassName: string): Track[] | undefined {
  */
 function serializeGridTrack(
   track: Track,
-  axis: "column" | "row",
+  _axis: "column" | "row",
 ): SerializedGridTrack | undefined {
   switch (track.kind) {
     case "fixed":
@@ -726,11 +782,11 @@ function serializeGridTrack(
     case "fr":
       return { type: "fr", value: track.value };
     case "auto":
-      return typeof track.min === "number"
-        ? { type: "px", value: track.min }
-        : { type: "auto", value: 0 };
+      // `value` is the intrinsic track's minimum. The C++ measurement pass can
+      // grow it to fit content while preserving minmax(<length>, auto).
+      return { type: "auto", value: track.min ?? 0 };
     case "percent":
-      return axis === "column" ? undefined : { type: "auto", value: 0 };
+      return { type: "percent", value: track.value };
   }
 }
 
@@ -739,11 +795,10 @@ function serializeAutoRow(parentClassName: string): SerializedGridTrack {
   if (!value) return { type: "px", value: DEFAULT_AUTO_ROW };
   const track = parseTrack(value);
   const serialized = track ? serializeGridTrack(track, "row") : undefined;
-  // Implicit rows must be a concrete size — `fr`/content `auto` rows collapse to
-  // 0 natively, so fall back to the engine's default row size. `min-content`/
-  // `max-content` (`auto-rows-min`/`-max`) need item measurement the engine
-  // can't do; they degrade here too. TODO: two-pass measure for content rows.
-  if (!serialized || serialized.type !== "px") {
+  // Fractional implicit rows have no definite block size to resolve against.
+  // Content-sized rows remain `auto`: the native observer supplies child Yoga
+  // measurements for the engine's intrinsic sizing pass.
+  if (!serialized || serialized.type === "fr") {
     return { type: "px", value: DEFAULT_AUTO_ROW };
   }
   return serialized;
@@ -761,6 +816,7 @@ function serializeGridItems(
     if (!isValidElement(child)) return;
     const className = classNameOf(child.props) ?? "";
     const span = spanFor(className);
+    const rowSpan = rowSpanFor(className);
     const explicitArea = areaFor(className);
     const areaName = explicitArea ?? areas.order[autoAreaIndex];
     const placement = areaName ? areas.placements.get(areaName) : undefined;
@@ -772,9 +828,16 @@ function serializeGridItems(
         columnSpan: placement.columnSpan,
         rowStart: placement.rowStart + 1,
         rowSpan: placement.rowSpan,
+        ...itemAlignmentFor(className),
       });
     } else {
-      items.push({ columnStart: 0, columnSpan: span, rowStart: 0, rowSpan: 1 });
+      items.push({
+        columnStart: lineStartFor(className, COL_START_RE),
+        columnSpan: span,
+        rowStart: lineStartFor(className, ROW_START_RE),
+        rowSpan,
+        ...itemAlignmentFor(className),
+      });
     }
   });
   return items;
@@ -782,7 +845,7 @@ function serializeGridItems(
 
 /**
  * True when the native C++ grid engine can lay this container out: it is a
- * `grid` with resolvable columns and no `%` columns. Used to gate the JS
+ * `grid` with resolvable columns. Used to gate the JS
  * `onLayout` fallback off on native-with-engine builds. Does not need the
  * children, so it is cheap to call from the render body.
  */
@@ -800,7 +863,7 @@ export function canNativeGridLayout(parentClassName: string): boolean {
 /**
  * Serialize a grid container's full config (tracks, gaps, padding, per-item
  * placements) into the native `SerializedGridConfig`, or `undefined` when native
- * layout is not possible (web / not a grid / unresolvable or `%` columns). The
+ * layout is not possible (web / not a grid / unresolvable columns). The
  * engine reads this once at link time and lays the grid out from the measured
  * container width, so there is no `onLayout` → `setState` → re-render reflow.
  */
@@ -845,6 +908,13 @@ export function serializeGridConfig(
     autoRow: serializeAutoRow(parentClassName),
     columnGap: gap,
     rowGap: gap,
+    dense: GRID_DENSE_RE.test(parentClassName),
+    justifyItems: alignmentFor(
+      parentClassName,
+      JUSTIFY_ITEMS_RE,
+      PLACE_ITEMS_RE,
+    ),
+    alignItems: alignmentFor(parentClassName, ALIGN_ITEMS_RE, PLACE_ITEMS_RE),
     paddingHorizontal,
     paddingTop: paddingVertical.top,
     paddingBottom: paddingVertical.bottom,

@@ -254,13 +254,21 @@ describe("compileFromCss", () => {
     });
     expect(artifact.classes["backdrop-brightness-125"]?.[0]?.style).toEqual({
       "--nitrocss-backdrop-filter": [{ brightness: 1.25 }],
+      "--nitrocss-native-effects": {
+        backdropFilters: [{ type: "brightness", amount: 1.25 }],
+      },
     });
     expect(resolveStyles("backdrop-blur-sm", makeSnapshot()).styles).toEqual({
       "--nitrocss-backdrop-filter": [{ blur: 8 }],
     });
     expect(
       resolveStyles("backdrop-brightness-125", makeSnapshot()).styles,
-    ).toEqual({ "--nitrocss-backdrop-filter": [{ brightness: 1.25 }] });
+    ).toEqual({
+      "--nitrocss-backdrop-filter": [{ brightness: 1.25 }],
+      "--nitrocss-native-effects": {
+        backdropFilters: [{ type: "brightness", amount: 1.25 }],
+      },
+    });
     // A rule carrying both keeps `filter` intact and routes backdrop-filter to
     // the marker.
     expect(artifact.classes["frosted"]?.[0]?.style).toEqual({

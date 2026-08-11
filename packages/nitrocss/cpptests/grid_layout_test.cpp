@@ -84,6 +84,95 @@ int main() {
     check("c4 col2.x", out.items[2].x, 180);    // 96 + 12 + 60 + 12
   }
 
+  // Case 5: content-sized rows use each row's largest measured child.
+  {
+    GridInput in;
+    in.width = 240;
+    in.columns = {{TrackType::Fr, 1}, {TrackType::Fr, 1}};
+    in.rows = {{TrackType::Auto, 0}};
+    in.autoRow = {TrackType::Auto, 0};
+    in.rowGap = 8;
+    in.items = {{0, 1, 0, 1}, {0, 1, 0, 1}, {0, 1, 0, 1}};
+    in.intrinsicHeights = {32, 48, 72};
+    auto out = GridLayoutEngine::layout(in);
+    check("c5 row0.h", out.items[0].height, 48);
+    check("c5 row1.h", out.items[2].height, 72);
+    check("c5 height", out.height, 128);
+  }
+
+  // Case 6: intrinsic auto columns expand from child measurements.
+  {
+    GridInput in;
+    in.width = 300;
+    in.columns = {{TrackType::Auto, 0}, {TrackType::Fr, 1}};
+    in.rows = {{TrackType::Px, 40}};
+    in.columnGap = 12;
+    in.items = {{0, 1, 0, 1}, {0, 1, 0, 1}};
+    in.intrinsicWidths = {84, 20};
+    auto out = GridLayoutEngine::layout(in);
+    check("c6 auto.w", out.items[0].width, 84);
+    check("c6 fr.x", out.items[1].x, 96);
+  }
+
+  // Case 7: an intrinsic track respects its serialized minmax minimum.
+  {
+    GridInput in;
+    in.width = 220;
+    in.columns = {{TrackType::Auto, 80}, {TrackType::Fr, 1}};
+    in.rows = {{TrackType::Auto, 40}};
+    in.items = {{0, 1, 0, 1}, {0, 1, 0, 1}};
+    in.intrinsicWidths = {32, 20};
+    in.intrinsicHeights = {24, 60};
+    auto out = GridLayoutEngine::layout(in);
+    check("c7 auto minimum", out.items[0].width, 80);
+    check("c7 row growth", out.items[0].height, 60);
+  }
+
+  // Case 8: percentage tracks resolve against the native content width.
+  {
+    GridInput in;
+    in.width = 300;
+    in.columns = {{TrackType::Percent, .4}, {TrackType::Percent, .6}};
+    in.rows = {{TrackType::Px, 40}};
+    in.items = {{0, 1, 0, 1}, {0, 1, 0, 1}};
+    auto out = GridLayoutEngine::layout(in);
+    check("c8 percent first", out.items[0].width, 120);
+    check("c8 percent second", out.items[1].width, 180);
+  }
+
+  // Case 9: normal flow does not backfill holes; dense flow does.
+  {
+    GridInput in;
+    in.width = 300;
+    in.columns = {{TrackType::Fr, 1}, {TrackType::Fr, 1}, {TrackType::Fr, 1}};
+    in.rows = {{TrackType::Px, 40}, {TrackType::Px, 40}};
+    in.items = {{0, 2, 0, 1}, {0, 2, 0, 1}, {0, 1, 0, 1}};
+    auto normal = GridLayoutEngine::layout(in);
+    check("c9 normal row", normal.items[2].y, 40);
+    in.dense = true;
+    auto dense = GridLayoutEngine::layout(in);
+    check("c9 dense hole", dense.items[2].y, 0);
+    check("c9 dense column", dense.items[2].x, 200);
+  }
+
+  // Case 10: native alignment positions intrinsic content inside its grid area.
+  {
+    GridInput in;
+    in.width = 200;
+    in.columns = {{TrackType::Fr, 1}};
+    in.rows = {{TrackType::Px, 100}};
+    in.items = {{0, 1, 0, 1}};
+    in.intrinsicWidths = {80};
+    in.intrinsicHeights = {40};
+    in.justifyItems = Alignment::Center;
+    in.alignItems = Alignment::End;
+    auto out = GridLayoutEngine::layout(in);
+    check("c10 aligned x", out.items[0].x, 60);
+    check("c10 aligned y", out.items[0].y, 60);
+    check("c10 intrinsic width", out.items[0].width, 80);
+    check("c10 intrinsic height", out.items[0].height, 40);
+  }
+
   if (failures == 0) std::printf("\nALL PASS\n");
   else std::printf("\n%d FAILURES\n", failures);
   return failures == 0 ? 0 : 1;

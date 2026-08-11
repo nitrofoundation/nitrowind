@@ -41,25 +41,25 @@ export interface NitroCssProviderProps {
 }
 
 /**
- * Provides reactive access to the runtime snapshot and theme controls. Wrap
- * your app root with this once.
+ * Provides stable theme controls. Runtime hooks subscribe independently to the
+ * dependencies they read; the provider itself deliberately does not broadcast
+ * every runtime change through the entire React tree.
  */
 export function NitroCssProvider({
   children,
 }: NitroCssProviderProps): React.JSX.Element {
-  // Native commits style changes directly, but react-native-screens can detach
-  // an inactive screen while a theme change happens. Its old JS style props
-  // would otherwise be reapplied when the screen is attached again. Publishing
-  // this snapshot through context makes mounted wrappers reconcile once with
-  // the current theme, including those temporarily detached screens.
-  const snapshot = useRuntimeSnapshot();
   const value = useMemo<NitroCssControls>(
     () => ({
       setTheme: (name) => runtime.setTheme(name),
       setColorScheme: (scheme) => runtime.setColorScheme(scheme),
-      snapshot,
+      // A getter keeps incidental React renders (navigation reattachment,
+      // virtualization, parent state) on the latest native snapshot without
+      // turning runtime changes into context broadcasts.
+      get snapshot() {
+        return runtime.current;
+      },
     }),
-    [snapshot],
+    [],
   );
 
   return (

@@ -12,6 +12,7 @@
   "module": "./lib/module/index.js",
   "types": "./lib/typescript/commonjs/index.d.ts",
   "react-native": "./src/index.ts",
+  "bin": "./bin/nitrowind.mjs",
   "sideEffects": [
     "*.css"
   ],
@@ -74,10 +75,46 @@
       "types": "./lib/typescript/commonjs/metro/pipeline.d.ts",
       "default": "./lib/commonjs/metro/pipeline.js"
     },
+    "./presets": {
+      "source": "./src/presets/index.ts",
+      "react-native": "./src/presets/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/presets/index.d.ts",
+        "default": "./lib/module/presets/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/presets/index.d.ts",
+        "default": "./lib/commonjs/presets/index.js"
+      }
+    },
+    "./tooling": {
+      "source": "./src/tooling/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/tooling/index.d.ts",
+        "default": "./lib/module/tooling/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/tooling/index.d.ts",
+        "default": "./lib/commonjs/tooling/index.js"
+      }
+    },
+    "./inspector": {
+      "source": "./src/inspector/index.ts",
+      "react-native": "./src/inspector/index.ts",
+      "import": {
+        "types": "./lib/typescript/module/inspector/index.d.ts",
+        "default": "./lib/module/inspector/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/inspector/index.d.ts",
+        "default": "./lib/commonjs/inspector/index.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [
     "src",
+    "bin",
     "lib",
     "README.md",
     "LICENSE",

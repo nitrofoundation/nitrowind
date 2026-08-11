@@ -1,5 +1,8 @@
 import type { HybridObject } from "react-native-nitro-modules";
-import type { DiagnosticUpdate } from "./types";
+import type {
+  DiagnosticUpdate,
+  NativeDiagnosticsSnapshot,
+} from "./types";
 
 /**
  * Optional debugging hooks. When enabled on the `ShadowRegistry`, emits events
@@ -16,4 +19,6 @@ export interface NitroCssDiagnostics extends HybridObject<{
     listener: (tag: number, count: number) => void,
   ): void;
   onShadowTreeUpdate(listener: (updates: DiagnosticUpdate[]) => void): void;
+  getSnapshot(): NativeDiagnosticsSnapshot;
+  reset(): void;
 }

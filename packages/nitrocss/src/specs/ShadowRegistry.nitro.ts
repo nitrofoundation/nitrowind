@@ -22,6 +22,21 @@ export interface Accent {
   meta: FollyDynamic;
 }
 
+/** One node registration used by the batched mount path. */
+export interface ShadowRegistration {
+  shadowNode: ShadowNodeHandle;
+  className: string;
+  componentName: string;
+  dependencies: StyleDependency[];
+  accents: Accent[];
+  inlineStyle: FollyStyle;
+  state: ComponentState | undefined;
+  dataAttributes: Record<string, string | boolean> | undefined;
+  context: ComponentContext;
+  /** Resolve immediately only for native-only paint descriptors or accents. */
+  initialNativeResolve: boolean;
+}
+
 /**
  * The heart of the engine. Maps Fabric shadow nodes to their className +
  * dependencies, and commits recomputed styles straight into the ShadowTree
@@ -46,6 +61,9 @@ export interface ShadowRegistry extends HybridObject<{
     dataAttributes: Record<string, string | boolean> | undefined,
     context: ComponentContext,
   ): void;
+
+  /** Register all host nodes mounted by one React commit through one JSI call. */
+  linkMany(registrations: ShadowRegistration[]): void;
 
   /** Remove a node from the registry (on unmount). */
   unlink(shadowNode: ShadowNodeHandle): void;

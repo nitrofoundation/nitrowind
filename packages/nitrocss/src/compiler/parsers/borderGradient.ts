@@ -32,9 +32,9 @@ interface Decl {
  *   - the `borderWidth`/`borderColor` RN props from the `border` shorthand,
  *     which both reserve the layout ring (RN) and size the inset (applier).
  *
- * v1 scope: literal colors (no `var()` in the layers), linear border-box
- * gradient, uniform border width. iOS paints natively; web keeps the original
- * CSS untouched through its own pipeline.
+ * v1 scope: literal colors or a theme `var()` for the inner fill, linear
+ * border-box gradient, and uniform border width. Native resolves that inner
+ * variable when the active theme changes; web keeps the original CSS.
  */
 
 /** Split on top-level commas (paren-aware), trimming each part. */
@@ -117,8 +117,16 @@ function stripBoxKeywords(layer: string): {
 
 /** The padding-box layer: `linear-gradient(c, c)` idiom or a plain color. */
 function innerFillColor(value: string): string | undefined {
+  const variableGradient = /^linear-gradient\(\s*(var\([^)]*\))\s*,\s*\1\s*\)$/i.exec(
+    value.trim(),
+  );
+  if (variableGradient) return variableGradient[1];
   const gradient = parseLinearGradientLiteral(value);
   if (gradient) return gradient.colors[0];
+  const variable = value.trim();
+  if (/^var\(\s*--[A-Za-z0-9-_]+(?:\s*,[^)]*)?\s*\)$/.test(variable)) {
+    return variable;
+  }
   return lowerColor(value);
 }
 

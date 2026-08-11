@@ -307,6 +307,7 @@ std::pair<CGPoint, CGPoint> fixedUnitPoints(CGPoint start, CGPoint end, CGSize b
 
 struct ParsedDescriptor {
   bool radial = false;
+  bool conic = false;
   double angle = 180.0;
   double positionX = 0.5;
   double positionY = 0.5;
@@ -328,6 +329,7 @@ ParsedDescriptor parseDescriptor(const folly::dynamic &descriptor) {
   if (auto *type = descriptor.get_ptr("gradientType");
       type != nullptr && type->isString()) {
     out.radial = type->getString() == "radial";
+    out.conic = type->getString() == "conic";
   }
   const auto number = [&](const char *key, double fallback) -> double {
     auto *value = descriptor.get_ptr(key);
@@ -597,7 +599,28 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 
   const CGSize size = bounds.size;
   if (size.width > 0 && size.height > 0) {
-    if (d.radial) {
+    if (d.conic) {
+      if (@available(iOS 12.0, *)) {
+        layer.type = kCAGradientLayerConic;
+        const CGFloat cx = (CGFloat)d.positionX;
+        const CGFloat cy = (CGFloat)d.positionY;
+        // Core Animation measures the conic end vector from the positive x
+        // axis; CSS angles start at the top and increase clockwise.
+        const CGFloat radians = (CGFloat)(effectiveAngle - 90.0) * M_PI / 180.0;
+        layer.startPoint = CGPointMake(cx, cy);
+        layer.endPoint = CGPointMake(cx + std::cos(radians),
+                                     cy + std::sin(radians));
+      } else {
+        // The package targets modern RN/iOS, but preserve a deterministic
+        // linear fallback for an older host instead of dropping the image.
+        layer.type = kCAGradientLayerAxial;
+        const auto points = pointsFromAngle((CGFloat)effectiveAngle, size);
+        layer.startPoint = CGPointMake(points.first.x / size.width,
+                                       points.first.y / size.height);
+        layer.endPoint = CGPointMake(points.second.x / size.width,
+                                     points.second.y / size.height);
+      }
+    } else if (d.radial) {
       layer.type = kCAGradientLayerRadial;
       // `startPoint` = center (unit space), `endPoint` = center + radius
       // vector. v1 approximation: `ellipse farthest-corner` (RN's default).

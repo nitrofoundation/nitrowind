@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   angleFromPosition,
+  conicGeometryFromPosition,
   foldGradient,
   parseStopLocation,
   radialCenterFromPosition,
@@ -123,6 +124,24 @@ describe("foldGradient (descriptor target)", () => {
     expect(descriptorOf(cornered).positionY).toBe(0);
   });
 
+  it("emits a conic descriptor with its start angle and center", () => {
+    const style: RNStyle = {
+      [GRADIENT_TYPE_PROP]: "conic",
+      [GRADIENT_POSITION_PROP]: "from 90deg at 25% 75%",
+      [GRADIENT_FROM_PROP]: "#ff0000",
+      [GRADIENT_TO_PROP]: "#0000ff",
+    };
+    foldGradient(style);
+    expect(descriptorOf(style)).toEqual({
+      gradientType: "conic",
+      angle: 90,
+      positionX: 0.25,
+      positionY: 0.75,
+      colors: ["#ff0000", "#0000ff"],
+      locations: [0, 1],
+    });
+  });
+
   it("substitutes transparent for missing from/to colors", () => {
     const style: RNStyle = {
       [GRADIENT_TYPE_PROP]: "linear",
@@ -206,5 +225,18 @@ describe("gradient fold helpers (mirrored in C++)", () => {
     });
     expect(radialCenterFromPosition("circle")).toEqual({ x: 0.5, y: 0.5 });
     expect(radialCenterFromPosition(undefined)).toEqual({ x: 0.5, y: 0.5 });
+  });
+
+  it("conicGeometryFromPosition handles CSS angle units and centers", () => {
+    expect(conicGeometryFromPosition("from .25turn at right bottom")).toEqual({
+      angle: 90,
+      x: 1,
+      y: 1,
+    });
+    expect(conicGeometryFromPosition("from -100grad")).toEqual({
+      angle: 270,
+      x: 0.5,
+      y: 0.5,
+    });
   });
 });

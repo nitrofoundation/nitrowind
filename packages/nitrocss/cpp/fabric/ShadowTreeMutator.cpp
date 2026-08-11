@@ -11,6 +11,7 @@
 #include <react/renderer/mounting/ShadowTreeRegistry.h>
 
 #include <unordered_map>
+#include <unordered_set>
 
 namespace nitrocss {
 
@@ -23,16 +24,11 @@ bool ShadowTreeMutator::commit(const std::vector<NodeMutation>& mutations) {
   auto uiManager = installer.uiManager();
   if (uiManager == nullptr) return false;
 
-  // The ContextContainer is only used to look up feature flags / loggers while
-  // parsing props. iOS hands us the host's container; on Android (where it is
-  // not publicly reachable) we fall back to an empty one, which is sufficient
-  // for cloning core view props.
   auto contextContainer = installer.contextContainer();
   static const ContextContainer kFallbackContextContainer{};
   const ContextContainer& contextContainerRef =
       contextContainer != nullptr ? *contextContainer : kFallbackContextContainer;
 
-  // Group mutations by surface so each surface gets a single commit.
   std::unordered_map<SurfaceId, std::vector<const NodeMutation*>> bySurface;
   for (const auto& mutation : mutations) {
     if (mutation.family != nullptr) {
@@ -46,29 +42,40 @@ bool ShadowTreeMutator::commit(const std::vector<NodeMutation>& mutations) {
   for (const auto& [surfaceId, group] : bySurface) {
     registry.visit(surfaceId, [&](const ShadowTree& shadowTree) {
       PropsParserContext propsParserContext{surfaceId, contextContainerRef};
-
       auto status = shadowTree.commit(
           [&](const RootShadowNode& oldRootShadowNode) -> RootShadowNode::Unshared {
-            std::shared_ptr<const ShadowNode> root =
-                std::static_pointer_cast<const ShadowNode>(
-                    oldRootShadowNode.ShadowNode::clone(ShadowNodeFragment{}));
-
+            std::unordered_set<std::shared_ptr<const ShadowNodeFamily>> families;
+            std::unordered_map<const ShadowNodeFamily*, const NodeMutation*>
+                mutationByFamily;
+            families.reserve(group.size());
+            mutationByFamily.reserve(group.size());
             for (const NodeMutation* mutation : group) {
-              root = root->cloneTree(
-                  *mutation->family,
-                  [&](const ShadowNode& node) -> std::shared_ptr<ShadowNode> {
-                    const ComponentDescriptor& descriptor =
-                        node.getComponentDescriptor();
-                    Props::Shared newProps = descriptor.cloneProps(
-                        propsParserContext,
-                        node.getProps(),
-                        RawProps(mutation->props));
-                    return node.clone({/* .props = */ newProps});
-                  });
+              families.insert(mutation->family);
+              mutationByFamily[mutation->family.get()] = mutation;
             }
 
-            return std::static_pointer_cast<RootShadowNode>(
-                std::const_pointer_cast<ShadowNode>(root));
+            auto root = oldRootShadowNode.cloneMultiple(
+                families,
+                [&](const ShadowNode& node,
+                    const ShadowNodeFragment& fragment)
+                    -> std::shared_ptr<ShadowNode> {
+                  Props::Shared newProps = ShadowNodeFragment::propsPlaceholder();
+                  const auto mutation = mutationByFamily.find(&node.getFamily());
+                  if (mutation != mutationByFamily.end()) {
+                    const ComponentDescriptor& descriptor =
+                        node.getComponentDescriptor();
+                    newProps = descriptor.cloneProps(
+                        propsParserContext,
+                        node.getProps(),
+                        RawProps(mutation->second->props));
+                  }
+                  return node.clone({
+                      /* .props = */ newProps,
+                      /* .children = */ fragment.children,
+                      /* .state = */ node.getState(),
+                  });
+                });
+            return std::static_pointer_cast<RootShadowNode>(root);
           },
           {/* .enableStateReconciliation = */ false});
 

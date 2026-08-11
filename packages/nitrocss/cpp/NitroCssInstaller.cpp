@@ -5,6 +5,7 @@
 #include "fabric/LayoutObserver.hpp"
 #include "gradient/GradientAngleOverrides.hpp"
 #include "gradient/GradientTargets.hpp"
+#include "effects/EffectTargets.hpp"
 
 #include <react/renderer/uimanager/UIManagerBinding.h>
 
@@ -142,6 +143,7 @@ void NitroCssInstaller::captureFromRuntime(jsi::Runtime& runtime) {
     ClipPathTargets::shared().resetForNewInstance();
     BackgroundImageTargets::shared().resetForNewInstance();
     GradientAngleOverrides::shared().resetForNewInstance();
+    EffectTargets::shared().resetForNewInstance();
   }
 
   // Register the Fabric layout observer that drives native container queries

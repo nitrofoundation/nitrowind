@@ -5,7 +5,7 @@ import {
   flag,
   union,
 } from "./dependencies";
-import { parseInsetValue, type VarResolver } from "./insetValue";
+import { lengthToPx, parseInsetValue, type VarResolver } from "./insetValue";
 import {
   CONTAINER_DECL_PROPS,
   containerMarkerFromDeclarations,
@@ -22,9 +22,11 @@ import {
   extractGradient,
   extractGradientAngleTrack,
   extractKeyframes,
+  extractNativeEffects,
   extractReanimatedVars,
   extractTextShadow,
   extractTransform,
+  evaluateCssMath,
   foldAnimation,
   foldTransition,
   isAnimationProp,
@@ -35,9 +37,15 @@ import {
   isFilterProp,
   isFontVariantProp,
   isGradientProp,
+  isNativeEffectsProp,
   isTextShadowProp,
   isTransitionProp,
   isTransformProp,
+  parseCssMath,
+  parseSemanticColor,
+  parseTailwindV4Candidate,
+  parseTailwindV4Transform,
+  parseWideGamutColor,
   GRADIENT_TYPE_PROP,
 } from "./parsers";
 import { platformFromSelector } from "./platform";
@@ -343,6 +351,7 @@ const isParsedProp = (prop: string): boolean =>
   isFontVariantProp(prop) ||
   isAnimationProp(prop) ||
   isTransitionProp(prop) ||
+  isNativeEffectsProp(prop) ||
   CONTAINER_DECL_PROPS.has(prop) ||
   prop === "backdrop-filter" ||
   prop === "-webkit-backdrop-filter";
@@ -387,8 +396,73 @@ export function parseStyles(
     // RN's `transform` array at resolve time so multi-class composition merges
     // correctly per axis. Shadows / font-variant become final RN props here.
     Object.assign(style, extractTransform(rule.declarations, ruleResolve, rem));
+    const v4Utility = parseTailwindV4Candidate(token)?.utility ?? token;
+    const v4Transform = parseTailwindV4Transform(v4Utility);
+    if (v4Transform) {
+      switch (v4Transform.kind) {
+        case "perspective": {
+          const value =
+            typeof v4Transform.value === "number"
+              ? v4Transform.value
+              : lengthToPx(v4Transform.value, ruleResolve, rem);
+          if (value !== undefined) style.perspective = value;
+          break;
+        }
+        case "rotate-x":
+          style.rotateX = v4Transform.value;
+          break;
+        case "rotate-y":
+          style.rotateY = v4Transform.value;
+          break;
+        case "rotate-z":
+          style.rotateZ = v4Transform.value;
+          break;
+        case "transform-origin":
+          style.transformOrigin = [
+            v4Transform.x,
+            v4Transform.y,
+            ...(v4Transform.z === undefined ? [] : [v4Transform.z]),
+          ];
+          break;
+        case "backface-visibility":
+          style.backfaceVisibility = v4Transform.value;
+          break;
+        default:
+          break;
+      }
+    }
     const boxShadow = extractBoxShadow(rule.declarations, ruleResolve);
     if (boxShadow !== undefined) Object.assign(style, boxShadow);
+    const nativeEffects = extractNativeEffects(rule.declarations, ruleResolve);
+    if (nativeEffects !== undefined) {
+      const descriptor = (nativeEffects as Record<string, unknown>)[
+        "--nitrocss-native-effects"
+      ] as
+        | {
+            shadows?: Array<{ inset?: boolean; spreadDistance?: number }>;
+            backdropFilters?: Array<{ type?: string }>;
+            outline?: unknown;
+            mixBlendMode?: unknown;
+            isolation?: unknown;
+            borderCurve?: unknown;
+          }
+        | undefined;
+      const needsNativePack = Boolean(
+        descriptor &&
+          ((descriptor.shadows?.length ?? 0) > 1 ||
+            descriptor.shadows?.some(
+              (shadow) => shadow.inset || shadow.spreadDistance !== 0,
+            ) ||
+            descriptor.backdropFilters?.some(
+              (effect) => effect.type !== "blur",
+            ) ||
+            descriptor.outline ||
+            descriptor.mixBlendMode ||
+            descriptor.isolation ||
+            descriptor.borderCurve),
+      );
+      if (needsNativePack) Object.assign(style, nativeEffects);
+    }
     const filter = extractFilter(rule.declarations, ruleResolve);
     if (filter !== undefined) Object.assign(style, filter);
     // The web gradient-border recipe (`background: <fill> padding-box,
@@ -484,6 +558,10 @@ export function parseStyles(
       if (isParsedProp(decl.prop)) continue;
       // `background`/`border` shorthands consumed by the gradient-border fold.
       if (borderGradient !== undefined && isBorderGradientProp(decl.prop)) {
+        // The inner padding-box layer may retain a live theme variable. Keep
+        // that dependency even though the shorthand itself is not emitted as
+        // an RN prop, so native scheme/theme changes recompute the descriptor.
+        mask = union(mask, dependencyFromValue(decl.value));
         continue;
       }
       const rnProps = rnPropsForSelector(rule.selector, decl.prop);
@@ -495,6 +573,52 @@ export function parseStyles(
         // The descriptor bakes any offset/floor to px at compile time, so its
         // only live dependency is the safe-area insets themselves.
         mask = union(mask, flag(StyleDependency.Insets));
+        continue;
+      }
+      const resolvedValue = resolveVarsInValue(decl.value, ruleResolve);
+      const semanticColor = parseSemanticColor(resolvedValue);
+      const wideGamutColor = parseWideGamutColor(resolvedValue);
+      const cssMath = /(?:^|[\s(])(calc|min|max|clamp|var)\(|\d(?:vw|vh|vmin|vmax|cqw|cqh|cqi|cqb)\b/i.test(
+        resolvedValue,
+      )
+        ? parseCssMath(resolvedValue)
+        : undefined;
+      const hasLiveMathDependency = cssMath?.dependencies.some(
+        (dependency) =>
+          dependency === "viewport" ||
+          dependency === "container" ||
+          dependency === "percent-base" ||
+          dependency === "font-size" ||
+          dependency.startsWith("variable:"),
+      );
+      if (cssMath && !hasLiveMathDependency) {
+        const evaluated = evaluateCssMath(cssMath, { rem, em: rem });
+        if (evaluated !== undefined) {
+          for (const rnProp of rnProps) style[rnProp] = evaluated;
+          continue;
+        }
+      }
+      const descriptor =
+        semanticColor ??
+        wideGamutColor ??
+        (cssMath && hasLiveMathDependency ? cssMath : undefined);
+      if (descriptor) {
+        for (const rnProp of rnProps) style[rnProp] = descriptor;
+        if (cssMath) {
+          for (const dependency of cssMath.dependencies) {
+            if (dependency === "viewport") {
+              mask = union(mask, flag(StyleDependency.Dimensions));
+            } else if (dependency === "container" || dependency === "percent-base") {
+              mask = union(mask, flag(StyleDependency.ContainerSize));
+            } else if (dependency === "root-font-size") {
+              mask = union(mask, flag(StyleDependency.Rem));
+            } else if (dependency === "font-size") {
+              mask = union(mask, flag(StyleDependency.FontScale));
+            } else if (dependency.startsWith("variable:")) {
+              mask = union(mask, flag(StyleDependency.Theme));
+            }
+          }
+        }
         continue;
       }
       const rnValue = toRNValue(rnProps[0] ?? "", decl.value, {

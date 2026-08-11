@@ -309,6 +309,7 @@ describe("serializeGridConfig (native grid payload)", () => {
     ]);
     expect(config?.columnGap).toBe(12);
     expect(config?.rowGap).toBe(12);
+    expect(config?.dense).toBe(false);
     expect(config?.autoRow).toEqual({ type: "px", value: 64 });
     // Auto-flow placements: columnStart 0 = auto, columnSpan from col-span-N.
     expect(config?.items).toEqual([
@@ -345,6 +346,31 @@ describe("serializeGridConfig (native grid payload)", () => {
     expect(config?.paddingBottom).toBe(34);
   });
 
+  it("keeps intrinsic row tracks native for the measurement pass", () => {
+    const config = serializeGridConfig(
+      "grid grid-cols-[auto_1fr] grid-rows-[min-content_max-content] auto-rows-min",
+      [cell(""), cell(""), cell("")],
+    );
+    expect(config?.columns).toEqual([
+      { type: "auto", value: 0 },
+      { type: "fr", value: 1 },
+    ]);
+    expect(config?.rows).toEqual([
+      { type: "auto", value: 0 },
+      { type: "auto", value: 0 },
+    ]);
+    expect(config?.autoRow).toEqual({ type: "auto", value: 0 });
+  });
+
+  it("preserves minmax minimums while keeping the track content-sized", () => {
+    const config = serializeGridConfig(
+      "grid grid-cols-[minmax(80px,auto)_1fr] grid-rows-[minmax(40px,max-content)]",
+      [cell(""), cell("")],
+    );
+    expect(config?.columns[0]).toEqual({ type: "auto", value: 80 });
+    expect(config?.rows[0]).toEqual({ type: "auto", value: 40 });
+  });
+
   it("converts named grid-template areas to 1-based placements", () => {
     const config = serializeGridConfig(
       'grid grid-template-["header_header"_60px_"nav_main"_280px_/_160px_1fr]',
@@ -357,11 +383,36 @@ describe("serializeGridConfig (native grid payload)", () => {
     ]);
   });
 
-  it("disables the native path for percent columns (JS fallback owns it)", () => {
-    expect(canNativeGridLayout("grid grid-cols-[50%_50%] gap-2")).toBe(false);
-    expect(
-      serializeGridConfig("grid grid-cols-[50%_50%] gap-2", [cell("")]),
-    ).toBeUndefined();
+  it("keeps percentage columns and dense explicit placement on the native path", () => {
+    expect(canNativeGridLayout("grid grid-cols-[40%_60%] gap-2")).toBe(true);
+    const config = serializeGridConfig(
+      "grid grid-cols-[40%_60%] grid-flow-row-dense gap-2",
+      [cell("col-start-2 row-start-2 row-span-2"), cell("")],
+    );
+    expect(config?.columns).toEqual([
+      { type: "percent", value: 0.4 },
+      { type: "percent", value: 0.6 },
+    ]);
+    expect(config?.dense).toBe(true);
+    expect(config?.items[0]).toEqual({
+      columnStart: 2,
+      columnSpan: 1,
+      rowStart: 2,
+      rowSpan: 2,
+    });
+  });
+
+  it("serializes container and per-item native grid alignment", () => {
+    const config = serializeGridConfig(
+      "grid grid-cols-2 place-items-center justify-items-end",
+      [cell("self-start justify-self-center"), cell("")],
+    );
+    expect(config?.justifyItems).toBe("end");
+    expect(config?.alignItems).toBe("center");
+    expect(config?.items[0]).toMatchObject({
+      justifySelf: "center",
+      alignSelf: "start",
+    });
   });
 
   it("disables the native path when there is no resolvable column count", () => {

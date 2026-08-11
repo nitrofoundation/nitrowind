@@ -52,20 +52,31 @@ class RuntimeManager {
   private started = false;
   private nativeListenerStarted = false;
   private nativeSnapshotInitialized = false;
+  private nativeReadCachedForTask = false;
   private colorSchemeMode: "light" | "dark" | "system" = "system";
   private fallbackSubscriptions: Array<{ remove?: () => void }> = [];
+  private nativeAppearanceSubscription: { remove?: () => void } | null = null;
 
   /** The live snapshot (prefers the native engine when available). */
   get current(): RuntimeSnapshot {
     if (hasNativeEngine()) {
+      if (this.nativeReadCachedForTask && this.nativeSnapshotInitialized) {
+        return this.snapshot;
+      }
       try {
-        this.snapshot = getEngine()!.Platform.getCurrent();
+        this.snapshot = this.normalizeNativeSnapshot(
+          getEngine()!.Platform.getCurrent(),
+        );
         this.nativeSnapshotInitialized = true;
+        this.cacheNativeReadForCurrentTask();
         return this.snapshot;
       } catch {
         try {
-          this.snapshot = getEngine()!.Runtime.current;
+          this.snapshot = this.normalizeNativeSnapshot(
+            getEngine()!.Runtime.current,
+          );
           this.nativeSnapshotInitialized = true;
+          this.cacheNativeReadForCurrentTask();
           return this.snapshot;
         } catch {
           /* fall through to JS snapshot */
@@ -75,17 +86,46 @@ class RuntimeManager {
     return this.snapshot;
   }
 
+  private cacheNativeReadForCurrentTask(): void {
+    if (this.nativeReadCachedForTask) return;
+    this.nativeReadCachedForTask = true;
+    queueMicrotask(() => {
+      this.nativeReadCachedForTask = false;
+    });
+  }
+
+  private normalizeNativeSnapshot(snapshot: RuntimeSnapshot): RuntimeSnapshot {
+    if (
+      !this.adaptiveThemeFollowsColorScheme ||
+      this.colorSchemeMode === "system"
+    ) {
+      return snapshot;
+    }
+    const colorScheme =
+      this.colorSchemeMode === "dark" ? ColorScheme.Dark : ColorScheme.Light;
+    return {
+      ...snapshot,
+      colorScheme,
+      currentThemeName: this.resolveThemeName(colorScheme),
+    };
+  }
+
   getThemeName(): string {
     return this.current.currentThemeName;
   }
 
   /** Begin observing platform changes. Idempotent. */
   start(): void {
+    if (this.started) return;
     if (hasNativeEngine()) {
       try {
         this.cleanupFallbackSubscriptions();
-        this.snapshot = getEngine()!.Platform.getCurrent();
+        this.ensureNativeAppearanceSubscription();
+        this.snapshot = this.normalizeNativeSnapshot(
+          getEngine()!.Platform.getCurrent(),
+        );
         this.nativeSnapshotInitialized = true;
+        this.cacheNativeReadForCurrentTask();
         this.started = true;
         return;
       } catch {
@@ -109,6 +149,35 @@ class RuntimeManager {
     this.fallbackSubscriptions = [];
   }
 
+  /**
+   * React Native's Appearance module is the reliable cross-platform signal for
+   * a live system light/dark change. Some hosts do not deliver the corresponding
+   * native configuration notification to a library-owned receiver while the
+   * current Fabric screen remains mounted. In that case the engine sees the new
+   * scheme only on the next getCurrent() (for example after navigation).
+   *
+   * Keep this tiny bridge even in native mode: it asks the platform object to
+   * re-read the system scheme, which updates the C++ runtime and mutates the
+   * affected ShadowTree nodes without a React render.
+   */
+  private ensureNativeAppearanceSubscription(): void {
+    if (this.nativeAppearanceSubscription) return;
+    this.nativeAppearanceSubscription = Appearance.addChangeListener(() => {
+      if (this.colorSchemeMode !== "system" || !hasNativeEngine()) return;
+      try {
+        const engine = getEngine()!;
+        engine.Platform.setColorScheme("system");
+        this.snapshot = this.normalizeNativeSnapshot(
+          engine.Platform.getCurrent(),
+        );
+        this.nativeSnapshotInitialized = true;
+        this.cacheNativeReadForCurrentTask();
+      } catch {
+        /* Native appearance notifications remain the fallback. */
+      }
+    });
+  }
+
   /** Subscribe JS to runtime changes. Native styling itself does not need this. */
   subscribe(
     dependencies: StyleDependency[] | undefined,
@@ -128,7 +197,7 @@ class RuntimeManager {
     try {
       getEngine()!.Platform.addRuntimeChangeListener(
         (dependencies, snapshot) => {
-          this.snapshot = snapshot;
+          this.snapshot = this.normalizeNativeSnapshot(snapshot);
           this.nativeSnapshotInitialized = true;
           let mask = 0;
           for (const dep of dependencies) mask |= flag(dep);
@@ -157,10 +226,16 @@ class RuntimeManager {
     if (hasNativeEngine()) {
       try {
         getEngine()!.Platform.setTheme(name);
+        this.snapshot = { ...this.snapshot, currentThemeName: name };
+        this.nativeSnapshotInitialized = true;
+        this.cacheNativeReadForCurrentTask();
         return;
       } catch {
         try {
           getEngine()!.Config.setTheme(name);
+          this.snapshot = { ...this.snapshot, currentThemeName: name };
+          this.nativeSnapshotInitialized = true;
+          this.cacheNativeReadForCurrentTask();
           return;
         } catch {
           /* fall back to JS state */
@@ -177,7 +252,29 @@ class RuntimeManager {
     Appearance.setColorScheme((scheme === "system" ? null : scheme) as never);
     if (hasNativeEngine()) {
       try {
-        getEngine()!.Platform.setColorScheme(scheme);
+        const engine = getEngine()!;
+        engine.Platform.setColorScheme(scheme);
+        // The toggle handler commonly navigates in the same JS task. Refresh
+        // immediately so first-paint resolution on the destination screen does
+        // not reuse the pre-toggle snapshot until the native listener fires.
+        try {
+          this.snapshot = this.normalizeNativeSnapshot(
+            engine.Platform.getCurrent(),
+          );
+        } catch {
+          /* derive the explicit mode below */
+        }
+        // Native propagation is asynchronous on some hosts. Explicit modes
+        // are deterministic, so override a possibly stale getCurrent() result
+        // before same-task navigation resolves the next screen's first paint.
+        const colorScheme = this.resolveColorScheme();
+        this.snapshot = {
+          ...this.snapshot,
+          colorScheme,
+          currentThemeName: this.resolveThemeName(colorScheme),
+        };
+        this.nativeSnapshotInitialized = true;
+        this.cacheNativeReadForCurrentTask();
         return;
       } catch {
         try {
@@ -203,7 +300,9 @@ class RuntimeManager {
     if (hasNativeEngine()) {
       this.cleanupFallbackSubscriptions();
       try {
-        this.snapshot = getEngine()!.Platform.getCurrent();
+        this.snapshot = this.normalizeNativeSnapshot(
+          getEngine()!.Platform.getCurrent(),
+        );
         this.nativeSnapshotInitialized = true;
       } catch {
         /* keep cached snapshot */

@@ -31,7 +31,11 @@ export const createFollyStyle = () =>
   NitroModules.createHybridObject<FollyStyle>("FollyStyle");
 
 export * from "./types";
-export type { Accent, ShadowRegistry } from "./ShadowRegistry.nitro";
+export type {
+  Accent,
+  ShadowRegistration,
+  ShadowRegistry,
+} from "./ShadowRegistry.nitro";
 export type {
   ResolveClassNamesPayload,
   NitroCssRuntime,

@@ -4,6 +4,7 @@ import android.graphics.Canvas
 import android.graphics.ColorFilter
 import android.graphics.Outline
 import android.graphics.Path
+import android.graphics.Matrix
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.RectF
@@ -33,15 +34,11 @@ import org.json.JSONObject
  * view (background + children). Android has no per-view arbitrary-path mask, so
  * this uses two mechanisms:
  *
- *  - **inset / inset-round** → a [ViewOutlineProvider] + `clipToOutline`. An
- *    Outline can clip a View only for rect / round-rect / oval, which covers
- *    inset exactly — and it clips the ENTIRE view (any gradient background AND
- *    children), so the "clip-path on a gradient" tile composes correctly without
- *    fighting [GradientApplier] over the view's background.
- *  - **circle / ellipse / polygon** → a background-clip [Drawable] that clips
- *    the canvas to the exact Path (matching the iOS geometry) and draws the
- *    view's existing background inside it. Centered children draw on top; for
- *    the shape tiles (a centered label in a solid-color shape) this matches iOS.
+ *  - **inset and convex shapes** → a [ViewOutlineProvider] + `clipToOutline`,
+ *    clipping the whole view (background and children). This includes circles,
+ *    ellipses, and common convex polygons such as triangles and trapezoids.
+ *  - **non-convex polygon/path** → an exact background-clip [Drawable] fallback.
+ *    Android's View outline API cannot clip a whole view to a concave path.
  *
  * Signal path, coalescing, prune-before-apply and the replenished first-paint
  * retry budget all mirror [GradientApplier].
@@ -154,9 +151,10 @@ object ClipPathApplier {
     }
 
     val shape = entry.shape
-    if (shape is ClipShape.Inset) {
-      // Representable as an Outline → clip the whole view (bg + children).
-      val provider = InsetOutlineProvider(shape, view.resources.displayMetrics.density)
+    val density = view.resources.displayMetrics.density
+    if (canUseOutline(shape, density)) {
+      // Convex paths are representable as an Outline → clip bg + children.
+      val provider = ShapeOutlineProvider(shape, density)
       val prevProvider = view.outlineProvider
       val prevClip = view.clipToOutline
       view.outlineProvider = provider
@@ -172,7 +170,7 @@ object ClipPathApplier {
     } else {
       // Arbitrary path → clip the view's background to it.
       val original = view.background
-      val wrapper = ClipPathDrawable(original, shape, view.resources.displayMetrics.density)
+      val wrapper = ClipPathDrawable(original, shape, density)
       view.background = wrapper
       painted[view] = PaintedState(
         tag = tag,
@@ -257,7 +255,9 @@ object ClipPathApplier {
         parseValue(d.optJSONObject("left")) ?: ZERO,
         d.optDouble("round", 0.0).toFloat(),
       )
-      // "path" (raw SVG 'd') is not supported on Android v1.
+      "path" -> d.optString("d").takeIf { it.isNotBlank() }?.let {
+        ClipShape.SvgPath(it, d.optString("fr") == "evenodd")
+      }
       else -> null
     }
   }
@@ -287,6 +287,7 @@ object ClipPathApplier {
       val left: ClipValue,
       val roundPx: Float,
     ) : ClipShape()
+    class SvgPath(val d: String, val evenOdd: Boolean) : ClipShape()
   }
 
   private class Entry(val generation: Long, val shape: ClipShape)
@@ -353,27 +354,110 @@ object ClipPathApplier {
           path.addRect(RectF(l, t, r, b), Path.Direction.CW)
         }
       }
+      is ClipShape.SvgPath -> {
+        val parsed = parseSvgPath(shape.d)
+        if (parsed != null) {
+          // CSS px are density-independent layout units, matching iOS points.
+          parsed.transform(Matrix().apply { setScale(density, density) })
+          path.set(parsed)
+        }
+        if (shape.evenOdd) path.fillType = Path.FillType.EVEN_ODD
+      }
     }
     return path
   }
 
-  /** Outline for inset / inset-round → clips the whole view via clipToOutline. */
-  private class InsetOutlineProvider(
-    private val inset: ClipShape.Inset,
+  /**
+   * Whether a descriptor can use Android's whole-view outline clipping. Circle,
+   * ellipse and inset are inherently convex. Polygon/path geometry is checked
+   * against a normalized box; concave paths keep the exact background fallback.
+   */
+  private fun canUseOutline(shape: ClipShape, density: Float): Boolean = when (shape) {
+    is ClipShape.Circle, is ClipShape.Ellipse, is ClipShape.Inset -> true
+    is ClipShape.Polygon -> buildPath(shape, 100f, 100f, density).isConvex
+    is ClipShape.SvgPath -> buildPath(shape, 100f, 100f, density).let {
+      !it.isEmpty && it.isConvex
+    }
+  }
+
+  /** Convex descriptor outline → clips the whole view via clipToOutline. */
+  private class ShapeOutlineProvider(
+    private val shape: ClipShape,
     private val density: Float,
   ) : ViewOutlineProvider() {
     override fun getOutline(view: View, outline: Outline) {
       val w = view.width.toFloat()
       val h = view.height.toFloat()
       if (w <= 0f || h <= 0f) return
-      val l = resolveAxis(inset.left, w, density).toInt()
-      val t = resolveAxis(inset.top, h, density).toInt()
-      val r = (w - resolveAxis(inset.right, w, density)).toInt()
-      val b = (h - resolveAxis(inset.bottom, h, density)).toInt()
-      val round = inset.roundPx * density
-      if (round > 0f) outline.setRoundRect(l, t, r, b, round)
-      else outline.setRect(l, t, r, b)
+      val path = buildPath(shape, w, h, density)
+      if (!path.isEmpty && path.isConvex) outline.setConvexPath(path)
     }
+  }
+
+  /**
+   * Minimal SVG path parser shared in capability with iOS. Coordinates are
+   * native pixels and commands are absolute `M`, `L`, `C`, and `Z`. Returning
+   * null for unsupported syntax avoids applying a corrupt mask.
+   */
+  private fun parseSvgPath(data: String): Path? {
+    var index = 0
+    val path = Path()
+    var hasStart = false
+
+    fun skipSeparators() {
+      while (index < data.length && (data[index].isWhitespace() || data[index] == ',')) index++
+    }
+
+    fun readNumber(): Float? {
+      skipSeparators()
+      val start = index
+      if (index < data.length && (data[index] == '+' || data[index] == '-')) index++
+      var digits = false
+      while (index < data.length && data[index].isDigit()) { index++; digits = true }
+      if (index < data.length && data[index] == '.') {
+        index++
+        while (index < data.length && data[index].isDigit()) { index++; digits = true }
+      }
+      if (!digits) { index = start; return null }
+      if (index < data.length && (data[index] == 'e' || data[index] == 'E')) {
+        val exponentStart = index++
+        if (index < data.length && (data[index] == '+' || data[index] == '-')) index++
+        val digitStart = index
+        while (index < data.length && data[index].isDigit()) index++
+        if (digitStart == index) index = exponentStart
+      }
+      return data.substring(start, index).toFloatOrNull()
+    }
+
+    while (true) {
+      skipSeparators()
+      if (index >= data.length) break
+      when (data[index++]) {
+        'M' -> {
+          val x = readNumber() ?: return null
+          val y = readNumber() ?: return null
+          path.moveTo(x, y)
+          hasStart = true
+        }
+        'L' -> {
+          val x = readNumber() ?: return null
+          val y = readNumber() ?: return null
+          path.lineTo(x, y)
+        }
+        'C' -> {
+          val x1 = readNumber() ?: return null
+          val y1 = readNumber() ?: return null
+          val x2 = readNumber() ?: return null
+          val y2 = readNumber() ?: return null
+          val x = readNumber() ?: return null
+          val y = readNumber() ?: return null
+          path.cubicTo(x1, y1, x2, y2, x, y)
+        }
+        'Z', 'z' -> path.close()
+        else -> return null
+      }
+    }
+    return if (hasStart) path else null
   }
 
   /** Clips the wrapped background drawable to an arbitrary Path. */

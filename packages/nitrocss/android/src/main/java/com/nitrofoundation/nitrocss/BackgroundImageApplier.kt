@@ -7,8 +7,10 @@ import android.graphics.Canvas
 import android.graphics.ColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
@@ -159,7 +161,14 @@ object BackgroundImageApplier {
       painted.remove(view)
     }
 
-    val drawable = ImageDrawable(entry.size, entry.repeat, entry.positionX, entry.positionY)
+    val drawable = ImageDrawable(
+      entry.size,
+      entry.repeat,
+      entry.positionX,
+      entry.positionY,
+      entry.borderRadius,
+      view.resources.displayMetrics.density,
+    )
     cache.get(entry.url)?.let { drawable.setBitmap(it) }
     val original = view.background
     val wrapper = ImageBackgroundWrapper(original, drawable)
@@ -231,6 +240,7 @@ object BackgroundImageApplier {
           repeat = d.optString("repeat", "no-repeat"),
           positionX = d.optDouble("positionX", 0.5).toFloat(),
           positionY = d.optDouble("positionY", 0.5).toFloat(),
+          borderRadius = d.optDouble("br", 0.0),
         )
       }
     } catch (t: Throwable) {
@@ -253,6 +263,7 @@ object BackgroundImageApplier {
     val repeat: String,
     val positionX: Float,
     val positionY: Float,
+    val borderRadius: Double,
   )
 
   private class PaintedState(
@@ -277,10 +288,13 @@ object BackgroundImageApplier {
     private val repeat: String,
     private val positionX: Float,
     private val positionY: Float,
+    borderRadius: Double,
+    density: Float,
   ) : Drawable() {
     var bitmap: Bitmap? = null
       private set
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val cornerRadiusPx = (borderRadius * density).toFloat()
     private var shaderDirty = true
 
     fun setBitmap(bmp: Bitmap) {
@@ -303,18 +317,61 @@ object BackgroundImageApplier {
       val h = b.height().toFloat()
       if (w <= 0f || h <= 0f) return
 
+      val radius = if (cornerRadiusPx.isFinite()) {
+        min(cornerRadiusPx, min(w, h) / 2f)
+      } else {
+        min(w, h) / 2f
+      }
+
       if (repeating()) {
+        val bw = bmp.width.toFloat()
+        val bh = bmp.height.toFloat()
+        if (bw <= 0f || bh <= 0f) return
+        val tileLeft = (w - bw) * positionX
+        val tileTop = (h - bh) * positionY
         if (shaderDirty) {
           val tileX = if (repeat == "repeat" || repeat == "repeat-x")
             Shader.TileMode.REPEAT else Shader.TileMode.CLAMP
           val tileY = if (repeat == "repeat" || repeat == "repeat-y")
             Shader.TileMode.REPEAT else Shader.TileMode.CLAMP
-          paint.shader = BitmapShader(bmp, tileX, tileY)
+          val shader = BitmapShader(bmp, tileX, tileY)
+          // CLAMP extends the bitmap's edge pixels forever. For a single-axis
+          // repeat that creates smeared bands in the area CSS leaves empty.
+          // Align the shader with its positioned strip; drawRect below clips
+          // the non-repeating axis to exactly one source-image dimension.
+          val shaderMatrix = Matrix()
+          when (repeat) {
+            "repeat-x" -> shaderMatrix.setTranslate(0f, tileTop)
+            "repeat-y" -> shaderMatrix.setTranslate(tileLeft, 0f)
+          }
+          shader.setLocalMatrix(shaderMatrix)
+          paint.shader = shader
           shaderDirty = false
         }
         val save = canvas.save()
         canvas.translate(b.left.toFloat(), b.top.toFloat())
-        canvas.drawRect(0f, 0f, w, h, paint)
+        if (radius > 0f) {
+          canvas.clipPath(Path().apply {
+            addRoundRect(RectF(0f, 0f, w, h), radius, radius, Path.Direction.CW)
+          })
+        }
+        when (repeat) {
+          "repeat-x" -> canvas.drawRect(
+            0f,
+            max(0f, tileTop),
+            w,
+            min(h, tileTop + bh),
+            paint,
+          )
+          "repeat-y" -> canvas.drawRect(
+            max(0f, tileLeft),
+            0f,
+            min(w, tileLeft + bw),
+            h,
+            paint,
+          )
+          else -> canvas.drawRect(0f, 0f, w, h, paint)
+        }
         canvas.restoreToCount(save)
         return
       }
@@ -340,7 +397,13 @@ object BackgroundImageApplier {
       }
       val save = canvas.save()
       canvas.translate(b.left.toFloat(), b.top.toFloat())
-      canvas.clipRect(0f, 0f, w, h)
+      if (radius > 0f) {
+        canvas.clipPath(Path().apply {
+          addRoundRect(RectF(0f, 0f, w, h), radius, radius, Path.Direction.CW)
+        })
+      } else {
+        canvas.clipRect(0f, 0f, w, h)
+      }
       canvas.drawBitmap(bmp, matrix, paint)
       canvas.restoreToCount(save)
     }

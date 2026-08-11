@@ -27,6 +27,9 @@ struct RuntimeState {
 
   ResolveContext toContext() const {
     ResolveContext ctx{currentThemeName, colorScheme, rtl, rem};
+    ctx.screenWidth = screenWidth;
+    ctx.screenHeight = screenHeight;
+    ctx.fontScale = fontScale;
     ctx.insetTop = insetTop;
     ctx.insetRight = insetRight;
     ctx.insetBottom = insetBottom;

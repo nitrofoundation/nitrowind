@@ -63,8 +63,17 @@ export { registerSerializedStyles, registerStyles } from "./core/registry";
 export { setNativeProps } from "./core/nativeProps";
 export type { NativeProps } from "./core/nativeProps";
 export { runtime } from "./core/runtime";
+export {
+  getNativeDiagnostics,
+  resetNativeDiagnostics,
+} from "./core/diagnostics";
 export { resolveStyles, resolveStylesForPlatform } from "./core/store";
 
 export type { GetStylesResult, NitroCssContextValue } from "./core/types";
-export type { RuntimeSnapshot, Dimensions, Insets } from "./specs/types";
+export type {
+  RuntimeSnapshot,
+  Dimensions,
+  Insets,
+  NativeDiagnosticsSnapshot,
+} from "./specs/types";
 export { ColorScheme, Orientation, StyleDependency } from "./specs/types";

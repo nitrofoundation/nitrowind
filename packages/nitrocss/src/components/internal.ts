@@ -1,7 +1,11 @@
 import { useCallback, useContext, useEffect, useRef, type Ref } from "react";
 import { Platform, StyleSheet } from "react-native";
 import type { RNStyle } from "../compiler/types";
-import type { Accent } from "../specs/ShadowRegistry.nitro";
+import type {
+  Accent,
+  ShadowRegistration,
+  ShadowRegistry,
+} from "../specs/ShadowRegistry.nitro";
 import type { ShadowNodeHandle } from "../specs/ShadowNodeHandle.nitro";
 import { type ComponentState, type RuntimeSnapshot } from "../specs/types";
 import { getEngine, hasNativeEngine } from "../core/native";
@@ -38,19 +42,77 @@ export interface LinkedNodeRegistration {
   cleanup: () => void;
 }
 
+interface PendingNativeLink {
+  registry: ShadowRegistry;
+  registration: ShadowRegistration;
+  cancelled: boolean;
+  linked: boolean;
+}
+
+let pendingNativeLinks: PendingNativeLink[] = [];
+let nativeLinkFlushScheduled = false;
+
+function flushNativeLinks(): void {
+  nativeLinkFlushScheduled = false;
+  const pending = pendingNativeLinks;
+  pendingNativeLinks = [];
+  const active = pending.filter((entry) => !entry.cancelled);
+  if (active.length === 0) return;
+
+  try {
+    active[0]!.registry.linkMany(
+      active.map((entry) => entry.registration),
+    );
+    for (const entry of active) entry.linked = true;
+  } catch {
+    // Keep development clients built against the previous native schema usable
+    // until they are rebuilt; the optimized path is restored after prebuild.
+    for (const entry of active) {
+      if (entry.cancelled) continue;
+      const registration = entry.registration;
+      try {
+        entry.registry.link(
+          registration.shadowNode,
+          registration.className,
+          registration.componentName,
+          registration.dependencies,
+          registration.accents,
+          registration.inlineStyle,
+          registration.state,
+          registration.dataAttributes,
+          registration.context,
+        );
+        entry.linked = true;
+      } catch {
+        /* native engine disappeared during the commit */
+      }
+    }
+  }
+}
+
+function enqueueNativeLink(entry: PendingNativeLink): void {
+  pendingNativeLinks.push(entry);
+  if (nativeLinkFlushScheduled) return;
+  nativeLinkFlushScheduled = true;
+  queueMicrotask(flushNativeLinks);
+}
+
 /**
- * Most host styles are already owned by React: every wrapper passes the
- * resolved object as its normal `style` prop, and a NitroCssProvider publishes
- * a new runtime snapshot for environmental changes. Linking those nodes to
- * Fabric as well only duplicates work. Keep native registration for the
- * features whose output cannot travel through an ordinary React style prop.
+ * Static host styles are already owned by React through their first-paint
+ * `style` prop. Any style with runtime dependencies must also be linked to the
+ * native registry so theme, scheme, viewport and inset changes can update the
+ * Fabric node without a React render.
  */
-function requiresNativeRegistration(
+export function requiresNativeRegistration(
   className: string,
   resolved: GetStylesResult,
   nativeAccents: NativeAccentDescriptor[],
   gridConfig: Record<string, unknown> | undefined,
 ): boolean {
+  if (resolved.dependencyMask !== 0) {
+    return true;
+  }
+
   if (
     nativeAccents.length > 0 ||
     gridConfig !== undefined ||
@@ -66,6 +128,7 @@ function requiresNativeRegistration(
     "--nitrocss-gradient" in style ||
     "--nitrocss-clip-path" in style ||
     "--nitrocss-background-image" in style ||
+    "--nitrocss-native-effects" in style ||
     "--nitrocss-backdrop-filter" in style ||
     "--nitrocss-gradient-angle" in style
   ) {
@@ -158,7 +221,6 @@ export function linkNode(
     const handle = engine.createShadowNodeHandle();
     handle.fromRef(wrapper);
 
-    const inline = engine.createFollyStyle();
     const inlineObject = flattenInlineStyle(inlineStyle);
     // Native grid: piggyback the serialized grid config on the inline style under
     // a reserved key. `NitroCssCore::link` extracts it into the grid registry
@@ -166,6 +228,7 @@ export function linkNode(
     if (gridConfig) {
       inlineObject.__nitrocssGrid = gridConfig;
     }
+    const inline = engine.createFollyStyle();
     inline.fromJSObject(inlineObject);
 
     const accents: Accent[] = nativeAccents.map((accent) => ({
@@ -178,23 +241,39 @@ export function linkNode(
         : {},
     }));
 
-    engine.Registry.link(
-      handle,
+    const style = resolved.styles as Record<string, unknown>;
+    const registration: ShadowRegistration = {
+      shadowNode: handle,
       className,
       componentName,
-      resolved.dependencies,
+      dependencies: resolved.dependencies,
       accents,
-      inline,
-      normalizeComponentState(componentState),
-      undefined,
-      {
+      inlineStyle: inline,
+      state: normalizeComponentState(componentState),
+      dataAttributes: undefined,
+      context: {
         currentThemeName: snapshot.currentThemeName,
         colorScheme: snapshot.colorScheme,
         rtl: snapshot.rtl,
       },
-    );
+      initialNativeResolve:
+        accents.length > 0 ||
+        "--nitrocss-gradient" in style ||
+        "--nitrocss-clip-path" in style ||
+        "--nitrocss-background-image" in style ||
+        "--nitrocss-native-effects" in style,
+    };
+    const pending: PendingNativeLink = {
+      registry: engine.Registry,
+      registration,
+      cancelled: false,
+      linked: false,
+    };
+    enqueueNativeLink(pending);
 
     const cleanup = () => {
+      pending.cancelled = true;
+      if (!pending.linked) return;
       try {
         engine.Registry.unlink(handle);
       } catch {

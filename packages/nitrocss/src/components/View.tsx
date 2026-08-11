@@ -31,10 +31,12 @@ import {
   backdropBlurRadius,
 } from "./backdrop";
 import { GRADIENT_DESCRIPTOR_PROP } from "../compiler/parsers/gradient";
+import { NATIVE_EFFECTS_PROP } from "../compiler/parsers/effectsNative";
 import { ContainerProvider, useContainer } from "./containerContext";
 import { serializeGridConfig, useGridFallback } from "./grid";
 import { assignRef, useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
+import { useAccessibilityClassName } from "../accessibility/native";
 
 export interface NitroCssViewProps extends ViewProps, PseudoStateProp {
   /** Class names resolved by the nitrocss engine. */
@@ -57,7 +59,7 @@ interface AnimationIdentity {
  */
 export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   {
-    className = "",
+    className: requestedClassName = "",
     style,
     onLayout,
     children,
@@ -67,6 +69,8 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   forwardedRef,
 ) {
   const isWeb = Platform.OS === "web";
+  const accessibilityClassName = useAccessibilityClassName(requestedClassName);
+  const className = isWeb ? requestedClassName : accessibilityClassName;
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
     () => resolveStylesForPlatform(className, snapshot, __nitrocssPseudoState),
@@ -142,7 +146,8 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
     !isWeb &&
     (gradientAngleTrack !== undefined ||
       CLIP_PATH_PROP in (resolved.styles as object) ||
-      BACKGROUND_IMAGE_PROP in (resolved.styles as object));
+      BACKGROUND_IMAGE_PROP in (resolved.styles as object) ||
+      NATIVE_EFFECTS_PROP in (resolved.styles as object));
   const { viewStyles, layerBorderRadius, backdropRadius } = useMemo(() => {
     if (!hasGradient && backdropFilter === undefined && !hasNewEffectMarker) {
       return {
@@ -157,6 +162,7 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
       [GRADIENT_ANGLE_PROP]: _angle,
       [CLIP_PATH_PROP]: _clipPath,
       [BACKGROUND_IMAGE_PROP]: _bgImage,
+      [NATIVE_EFFECTS_PROP]: _nativeEffects,
       ...restStyles
     } = resolved.styles as Record<string, unknown>;
     const stripped = restStyles as RNStyle;
@@ -270,15 +276,16 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   const webProps: Record<string, unknown> =
     isWeb && className ? { className } : {};
 
-  // A gradient/backdrop host must stay in the mounted hierarchy: after the
+  // A native paint host must stay in the mounted hierarchy: after the
   // marker is stripped its committed props can look layout-only, and Fabric's
   // view flattening would then remove the view entirely — leaving the native
-  // gradient applier's `tag → mounted view` lookup with nothing to paint on.
+  // applier's `tag → mounted view` lookup with nothing to paint on.
   const preventFlattening =
     !isWeb &&
     (hasGradient ||
       backdropFilter !== undefined ||
-      gradientAngleTrack !== undefined);
+      gradientAngleTrack !== undefined ||
+      hasNewEffectMarker);
 
   const node = (
     <Base

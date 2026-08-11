@@ -1,5 +1,24 @@
-import { Platform } from "react-native";
+import { DynamicColorIOS, Platform, PlatformColor } from "react-native";
 import { toRNValue } from "../compiler/toRNValue";
+import { resolveColorMix } from "../compiler/parsers/colorMix";
+import {
+  mergeNativeEffectsDescriptors,
+  NATIVE_EFFECTS_PROP,
+  type NativeEffectsDescriptor,
+} from "../compiler/parsers/effectsNative";
+import {
+  evaluateCssMath,
+  type CssMathDescriptor,
+} from "../compiler/parsers/cssMath";
+import {
+  isSemanticColorDescriptor,
+  type SemanticColorDescriptor,
+  type SemanticColorValue,
+} from "../compiler/parsers/semanticColors";
+import {
+  type WideGamutColorDescriptor,
+} from "../compiler/parsers/tailwindV4";
+import { wideGamutToSrgb } from "../compiler/parsers/semanticColorsRuntime";
 import { isInsetValue, type InsetValue, type RNStyle } from "../compiler/types";
 import {
   ColorScheme,
@@ -56,12 +75,17 @@ const NATIVE_COLOR_PROPS = new Set([
   "trackColorTrue",
 ]);
 
-const isUnsupportedNativeColorValue = (prop: string, value: string): boolean =>
-  Platform.OS !== "web" &&
-  NATIVE_COLOR_PROPS.has(prop) &&
-  /^color-mix\(/i.test(value.trim());
+const lowerNativeColorMix = (prop: string, value: string): string | undefined => {
+  if (Platform.OS === "web" || !NATIVE_COLOR_PROPS.has(prop)) return value;
+  if (!/^color-mix\(/i.test(value.trim())) return value;
+  return resolveColorMix(value);
+};
 
 const resolveCache = new Map<string, GetStylesResult>();
+const snapshotKeyCache = new WeakMap<
+  RuntimeSnapshot,
+  { artifactVersion: number; platform: string; key: string }
+>();
 
 export const EMPTY_STYLES_RESULT: GetStylesResult = {
   styles: {},
@@ -98,9 +122,18 @@ function stateKey(state?: ResolveState): string {
 }
 
 function snapshotKey(snapshot: RuntimeSnapshot): string {
-  return [
-    getArtifactVersion(),
-    Platform.OS,
+  const artifactVersion = getArtifactVersion();
+  const platform = Platform.OS;
+  const cached = snapshotKeyCache.get(snapshot);
+  if (
+    cached?.artifactVersion === artifactVersion &&
+    cached.platform === platform
+  ) {
+    return cached.key;
+  }
+  const key = [
+    artifactVersion,
+    platform,
     snapshot.currentThemeName,
     snapshot.colorScheme,
     snapshot.orientation,
@@ -116,6 +149,8 @@ function snapshotKey(snapshot: RuntimeSnapshot): string {
     snapshot.rem,
     snapshot.hairlineWidth,
   ].join("|");
+  snapshotKeyCache.set(snapshot, { artifactVersion, platform, key });
+  return key;
 }
 
 function cacheGet(key: string): GetStylesResult | undefined {
@@ -136,6 +171,40 @@ function cacheSet(key: string, value: GetStylesResult): void {
 /** Evaluate a dynamic safe-area inset value against the live insets. */
 function resolveInset(value: InsetValue, insets: Insets): number {
   return Math.max(insets[value.$inset] + value.add, value.floor);
+}
+
+const isCssMathDescriptor = (value: unknown): value is CssMathDescriptor =>
+  typeof value === "object" && value !== null && "$cssMath" in value;
+
+const isWideGamutColor = (value: unknown): value is WideGamutColorDescriptor =>
+  typeof value === "object" && value !== null && "$wideGamutColor" in value;
+
+function resolveSemanticValue(
+  value: SemanticColorValue,
+  snapshot: RuntimeSnapshot,
+): unknown {
+  return typeof value === "string"
+    ? value
+    : resolveSemanticDescriptor(value, snapshot);
+}
+
+function resolveSemanticDescriptor(
+  descriptor: SemanticColorDescriptor,
+  snapshot: RuntimeSnapshot,
+): unknown {
+  if (descriptor.$semanticColor === "platform") {
+    try {
+      return PlatformColor(descriptor.name);
+    } catch {
+      return descriptor.fallback;
+    }
+  }
+  const light = resolveSemanticValue(descriptor.light, snapshot);
+  const dark = resolveSemanticValue(descriptor.dark, snapshot);
+  if (Platform.OS === "ios" && light != null && dark != null) {
+    return DynamicColorIOS({ light: light as never, dark: dark as never });
+  }
+  return snapshot.colorScheme === ColorScheme.Dark ? dark : light;
 }
 
 /** Build the effective CSS-variable table for the active theme + color scheme. */
@@ -263,6 +332,14 @@ function resolveStylesUncached(
   // Apply one bucket's raw style values (vars/insets resolved) onto `target`.
   const applyBucketStyle = (target: RNStyle, bucketStyle: RNStyle): void => {
     for (const [prop, value] of Object.entries(bucketStyle)) {
+      if (prop === NATIVE_EFFECTS_PROP) {
+        const merged = mergeNativeEffectsDescriptors(
+          target[prop] as unknown as NativeEffectsDescriptor | undefined,
+          value as unknown as NativeEffectsDescriptor,
+        );
+        if (merged) target[prop] = merged as never;
+        continue;
+      }
       // Reanimated entering/exiting/layout config rides on `--reanimated-*`
       // custom props: collect them for the animation builders and keep them out
       // of the RN style object (they aren't valid style keys).
@@ -278,17 +355,40 @@ function resolveStylesUncached(
         target[prop] = resolveInset(value, snapshot.insets);
         continue;
       }
+      if (isCssMathDescriptor(value)) {
+        const evaluated = evaluateCssMath(value, {
+          viewportWidth: snapshot.screen.width,
+          viewportHeight: snapshot.screen.height,
+          rem: snapshot.rem,
+          em: snapshot.rem * snapshot.fontScale,
+          variables: vars,
+        });
+        if (evaluated !== undefined) target[prop] = evaluated;
+        continue;
+      }
+      if (isSemanticColorDescriptor(value)) {
+        const semantic = resolveSemanticDescriptor(value, snapshot);
+        if (semantic !== undefined) target[prop] = semantic as never;
+        continue;
+      }
+      if (isWideGamutColor(value)) {
+        const [red, green, blue, alpha] = wideGamutToSrgb(value);
+        target[prop] = `rgba(${Math.round(red * 255)}, ${Math.round(
+          green * 255,
+        )}, ${Math.round(blue * 255)}, ${Number(alpha.toFixed(4))})`;
+        continue;
+      }
       if (typeof value === "string" && value.includes("var(")) {
         const resolved = resolveVarsInString(value, vars);
-        if (isUnsupportedNativeColorValue(prop, resolved)) continue;
-        target[prop] = toRNValue(prop, resolved, { rem }) ?? resolved;
+        const lowered = lowerNativeColorMix(prop, resolved);
+        if (lowered === undefined) continue;
+        target[prop] = toRNValue(prop, lowered, { rem }) ?? lowered;
       } else {
-        if (
-          typeof value === "string" &&
-          isUnsupportedNativeColorValue(prop, value)
-        )
-          continue;
-        target[prop] = value;
+        if (typeof value === "string") {
+          const lowered = lowerNativeColorMix(prop, value);
+          if (lowered === undefined) continue;
+          target[prop] = lowered;
+        } else target[prop] = value;
       }
     }
   };

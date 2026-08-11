@@ -1,4 +1,7 @@
 import type { ContainerCondition, ContainerMarker } from "./container";
+import type { CssMathDescriptor } from "./parsers/cssMath";
+import type { SemanticColorDescriptor } from "./parsers/semanticColors";
+import type { WideGamutColorDescriptor } from "./parsers/tailwindV4";
 
 /**
  * Which runtime values a compiled style depends on. The numeric values are a
@@ -50,6 +53,9 @@ export type RNStyleValue =
   | number
   | readonly (string | number)[]
   | InsetValue
+  | CssMathDescriptor
+  | SemanticColorDescriptor
+  | WideGamutColorDescriptor
   /** `fontVariant`. */
   | readonly string[]
   /** Transform-axis props folded into `transform` at resolve time. */
@@ -142,4 +148,3 @@ export interface CompileOptions {
   /** Override the default rem (16). */
   rem?: number;
 }
-

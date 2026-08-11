@@ -121,3 +121,17 @@ export interface DiagnosticUpdate {
   className: string;
   durationMs: number;
 }
+
+/** Cumulative native resolver/ShadowTree counters for development tooling. */
+export interface NativeDiagnosticsSnapshot {
+  nativeAvailable: boolean;
+  linkedNodes: number;
+  affectedNodes: number;
+  resolvedNodes: number;
+  skippedMutations: number;
+  committedMutations: number;
+  lastResolveDurationMs: number;
+  lastCommitDurationMs: number;
+  totalResolveDurationMs: number;
+  totalCommitDurationMs: number;
+}

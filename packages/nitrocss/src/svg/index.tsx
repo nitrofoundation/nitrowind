@@ -126,7 +126,7 @@ function styledSvg(
       Styled ??= cssInterop(
         baseComponent(exportName),
         SVG_CSS_INTEROP_MAPPING,
-        displayName,
+        `NitroSvg:${displayName}`,
       );
       const Comp = Styled;
       return <Comp ref={ref} {...props} />;
@@ -158,10 +158,12 @@ export function withSvgClassName<P extends SvgHostProps>(
   Component: ComponentType<P>,
   componentName?: string,
 ): CssInteropComponent<P> {
+  const nativeComponentName =
+    componentName ?? Component.displayName ?? Component.name ?? "Component";
   return cssInterop(
     Component,
     SVG_CSS_INTEROP_MAPPING as WithNitroCssAdvancedOptions<P>,
-    componentName,
+    `NitroSvg:${nativeComponentName}`,
   );
 }
 
