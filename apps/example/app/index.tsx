@@ -42,15 +42,15 @@ type Page = {
 const PAGES: Page[] = [
   {
     route: 'Benchmark',
-    title: 'Rendering Benchmark',
-    subtitle: '1,000 Tailwind-styled cards across 10 re-renders',
+    title: 'Benchmark v2',
+    subtitle: 'Grid remount + native theme-switch measurements',
     icon: '#',
     tile: 'bg-slate-700',
   },
   {
     route: 'StyleSheetBenchmark',
     title: 'StyleSheet Control',
-    subtitle: 'Same 1,000-card workload without Nitrowind',
+    subtitle: 'The exact same v2 workload using StyleSheet',
     icon: '=',
     tile: 'bg-emerald-700',
   },
@@ -195,11 +195,12 @@ export default function Home() {
         <Pressable
           className="flex-row self-stretch items-center gap-4 rounded-2xl border border-border bg-surface-elevated p-4"
           accessibilityRole="button"
+          accessibilityLabel={`Open ${item.title}`}
+          testID={`home-route-${String(item.route).toLowerCase()}`}
           onPress={() => navigation.push(item.route)}
         >
-          {/* `entering-fade-in-up` plays as each row mounts (needs Reanimated). */}
           <View
-            className={`h-12 w-12 items-center justify-center rounded-xl entering-fade-in-up entering-duration-300 ${item.tile}`}
+            className={`h-12 w-12 items-center justify-center rounded-xl ${item.tile}`}
           >
             <Text className="text-xl">{item.icon}</Text>
           </View>

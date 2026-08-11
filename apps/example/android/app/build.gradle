@@ -2,6 +2,10 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+def hermesHostBin = System.getProperty("os.name").toLowerCase().contains("mac")
+    ? "osx-bin"
+    : "linux64-bin"
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -51,9 +55,12 @@ react {
     // hermesFlags = ["-O", "-output-source-map"]
 
     /* Monorepo: react-native and codegen are hoisted to the workspace root. */
-    reactNativeDir = file("../../../node_modules/react-native")
-    codegenDir = file("../../../node_modules/@react-native/codegen")
-    cliFile = file("../../../node_modules/react-native/cli.js")
+    reactNativeDir = file("../../../../node_modules/react-native")
+    codegenDir = file("../../../../node_modules/@react-native/codegen")
+    cliFile = file("../../../../node_modules/react-native/cli.js")
+    // Yarn hoists the standalone Hermes compiler to the workspace root while
+    // RN's default lookup assumes it lives inside react-native/sdks.
+    hermesCommand = file("$rootDir/../../../node_modules/hermes-compiler/hermesc/${hermesHostBin}/hermesc").absolutePath
 
     /* Autolinking */
     autolinkLibrariesWithApp()

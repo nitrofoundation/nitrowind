@@ -17,7 +17,10 @@ export function Screen({ children }: { children: ReactNode }) {
        * against live window insets in the native engine, so rotation / notch
        * changes never cost a React re-render.
        */}
-      <ScrollView contentContainerClassName="gap-7 px-safe-or-4 pb-safe-offset-10 pt-6">
+      <ScrollView
+        contentContainerClassName="gap-7 px-safe-or-4 pb-safe-offset-10 pt-6"
+        showsVerticalScrollIndicator={false}
+      >
         {children}
       </ScrollView>
     </View>
@@ -80,6 +83,8 @@ export function ThemeToggle() {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel="Toggle color scheme"
+      testID="theme-toggle"
       onPress={() => {
         const isDark = runtime.current.colorScheme === ColorScheme.Dark;
         runtime.setColorScheme(isDark ? 'light' : 'dark');

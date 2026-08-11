@@ -1,0 +1,7 @@
+[
+  { "name": "home", "path": "home" },
+  { "name": "borders", "path": "borders" },
+  { "name": "backgrounds", "path": "backgrounds" },
+  { "name": "grid", "path": "grid" },
+  { "name": "svg", "path": "svg" }
+]

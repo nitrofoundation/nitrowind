@@ -5,7 +5,8 @@
  *  - TRUE animated gradient angle: the linear gradient's own angle rotates in
  *    place (native CAGradientLayer start/end points driven per frame), NOT a
  *    translated oversized layer.
- *  - clip-path: polygon / circle / inset masks via CAShapeLayer (no SVG).
+ *  - clip-path: polygon / circle / ellipse / inset / path masks, painted by
+ *    each platform's native path API (no react-native-svg component).
  *  - background-image: url(...) painted as a raster layer on the view's own
  *    backing layer (async fetch + cache), with cover / contain sizing.
  *  - text-shadow: single-layer native shadow.
@@ -79,13 +80,22 @@ export default function Effects() {
 
       <Section
         title="clip-path"
-        subtitle="polygon / circle / inset masks — native CAShapeLayer, no react-native-svg."
+        subtitle="All supported shape functions are compiled once and painted natively — no React rerender or react-native-svg component."
       >
         <View className="flex-row flex-wrap gap-3">
           <Tile cls="bg-violet-500 clip-triangle" label="triangle" />
+          <Tile cls="bg-amber-500 clip-trapezoid" label="trapezoid" />
           <Tile cls="bg-rose-500 clip-hexagon" label="hexagon" />
           <Tile cls="bg-emerald-500 clip-rhombus" label="rhombus" />
           <Tile cls="bg-sky-500 clip-circle" label="circle" />
+          <Tile cls="bg-fuchsia-500 clip-ellipse" label="ellipse" />
+          <Tile cls="bg-cyan-600 clip-notch" label="inset" />
+          <View className="w-[47%] gap-2">
+            <View className="h-28 w-28 items-center justify-center bg-indigo-500 clip-native-path">
+              <Text className="text-sm font-bold text-white">path</Text>
+            </View>
+            <Caption>path</Caption>
+          </View>
         </View>
       </Section>
 
@@ -114,6 +124,20 @@ export default function Effects() {
           <View className="w-[47%] gap-2">
             <View className="h-32 items-center justify-center rounded-2xl overflow-hidden bg-surface-elevated bg-photo-contain" />
             <Caption>size: contain</Caption>
+          </View>
+        </View>
+      </Section>
+
+      <Section
+        title="Native effects pack"
+        subtitle="Multi/inset shadows, filters, outlines, isolation, and continuous corners are compiled into one native descriptor."
+      >
+        <View className="gap-5 px-2 py-3">
+          <View className="h-28 items-center justify-center rounded-3xl bg-primary [box-shadow:inset_0_0_0_4px_#c4b5fd,_0_16px_32px_#00000055]">
+            <Text className="font-extrabold text-white">inset + outer shadow</Text>
+          </View>
+          <View className="h-24 items-center justify-center rounded-3xl bg-amber-400 [border-curve:continuous] [outline:3px_dashed_#06b6d4] [outline-offset:6px] [filter:sepia(35%)_saturate(140%)]">
+            <Text className="font-extrabold text-black">outline + filter</Text>
           </View>
         </View>
       </Section>

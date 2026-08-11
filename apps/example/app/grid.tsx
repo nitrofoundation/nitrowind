@@ -26,30 +26,31 @@ const NITROWIND_GRID_SUPPORT = [
   { name: 'col-start / row-start', status: 'internal', source: 'nitro-css' },
   { name: 'col-span / row-span', status: 'internal', source: 'nitro-css' },
   { name: 'sparse auto placement', status: 'internal', source: 'nitro-css' },
+  { name: 'percentage tracks', status: 'native', source: 'nitro-css' },
+  { name: 'dense auto placement', status: 'native', source: 'nitro-css' },
+  { name: 'place / self alignment', status: 'native', source: 'nitro-css' },
+  { name: 'min-content / max-content', status: 'native', source: 'nitro-css' },
 ] satisfies Array<{ name: string; status: string; source: SupportSource }>;
 
 const GRID_BRIDGE_WORK = [
-  { name: 'NitrowindGridView', status: 'bridge next', source: 'bridge' },
-  { name: 'Fabric ShadowNode layout', status: 'bridge next', source: 'bridge' },
+  { name: 'Fabric ShadowTree layout', status: 'connected', source: 'nitro-css' },
   {
     name: 'JS class metadata to native props',
-    status: 'bridge next',
-    source: 'bridge',
+    status: 'connected',
+    source: 'nitro-css',
   },
   {
     name: 'iOS / Android component registration',
-    status: 'bridge next',
-    source: 'bridge',
+    status: 'connected',
+    source: 'nitro-css',
   },
 ] satisfies Array<{ name: string; status: string; source: SupportSource }>;
 
 const NOT_SUPPORTED_YET = [
   { name: 'display: grid', status: 'not RN', source: 'unsupported' },
   { name: 'grid-column / grid-row', status: 'not RN', source: 'unsupported' },
-  { name: 'dense auto-placement', status: 'later', source: 'unsupported' },
   { name: 'subgrid / masonry', status: 'later', source: 'unsupported' },
   { name: 'named grid lines', status: 'later', source: 'unsupported' },
-  { name: 'min-content / max-content', status: 'later', source: 'unsupported' },
 ] satisfies Array<{ name: string; status: string; source: SupportSource }>;
 
 const INTERNAL_GRID_PREVIEW = [
@@ -325,7 +326,7 @@ export default function GridExamples() {
 
       <Section
         title="Nitrowind internal grid"
-        subtitle="The shared C++ engine can calculate these layouts before the Fabric bridge is connected."
+        subtitle="The shared C++ engine commits these layouts directly into the Fabric ShadowTree."
       >
         <Card className="gap-4">
           <View className="grid grid-cols-3 auto-rows-[64px] flex-row flex-wrap gap-3 rounded-xl bg-surface">
@@ -344,6 +345,25 @@ export default function GridExamples() {
             {NITROWIND_GRID_SUPPORT.map(item => (
               <PropertyRow key={item.name} {...item} />
             ))}
+          </View>
+        </Card>
+      </Section>
+
+      <Section
+        title="Percentage, dense flow, and alignment"
+        subtitle="These cells are placed and aligned by the native grid engine without a React layout-state update."
+      >
+        <Card>
+          <View className="grid grid-cols-[40%_60%] grid-flow-row-dense place-items-center grid-rows-[72px_72px] gap-3 rounded-xl bg-surface p-2">
+            <View className="col-start-2 row-start-1 row-span-2 self-stretch justify-self-stretch items-center justify-center rounded-xl bg-primary">
+              <Text className="font-extrabold text-white">60% / span 2</Text>
+            </View>
+            <View className="h-10 w-20 self-center justify-self-center items-center justify-center rounded-lg bg-accent">
+              <Text className="font-bold text-white">center</Text>
+            </View>
+            <View className="h-10 w-16 self-end justify-self-end items-center justify-center rounded-lg bg-success">
+              <Text className="font-bold text-white">end</Text>
+            </View>
           </View>
         </Card>
       </Section>
@@ -372,8 +392,8 @@ export default function GridExamples() {
       </Section>
 
       <Section
-        title="Bridge work"
-        subtitle="These pieces connect the internal grid engine to a real native component."
+        title="Native integration"
+        subtitle="The serialized grid metadata is consumed by the shared C++ engine on both platforms."
       >
         <Card>
           {GRID_BRIDGE_WORK.map(item => (
@@ -395,8 +415,7 @@ export default function GridExamples() {
 
       <Caption>
         Green rows come from React Native. Blue rows are implemented inside
-        Nitrowind's shared C++ grid engine. Amber rows are the remaining bridge
-        to make the grid engine drive Fabric layout.
+        Nitrowind's shared C++ grid engine and committed directly to Fabric.
       </Caption>
     </Screen>
   );

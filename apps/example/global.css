@@ -83,11 +83,20 @@
 @utility clip-rhombus {
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
 }
+@utility clip-trapezoid {
+  clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+}
 @utility clip-circle {
   clip-path: circle(50%);
 }
+@utility clip-ellipse {
+  clip-path: ellipse(48% 32% at 50% 50%);
+}
 @utility clip-notch {
   clip-path: inset(0 0 0 0 round 24px);
+}
+@utility clip-native-path {
+  clip-path: path("M 8 0 L 104 0 C 110 0 112 2 112 8 L 112 104 L 8 104 C 2 104 0 102 0 96 L 0 8 C 0 2 2 0 8 0 Z");
 }
 /*
  * Gradient border, the classic web recipe — radius-aware, so `rounded-full`
@@ -96,7 +105,7 @@
  * Painted natively by the engine's gradient applier (inner inset layer).
  */
 @utility btn-gradient-border {
-  background: linear-gradient(#ffffff, #ffffff) padding-box,
+  background: linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
     linear-gradient(to right, #00008b, #9932cc) border-box;
   border: 2px solid transparent;
 }

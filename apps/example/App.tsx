@@ -1,6 +1,10 @@
 import './global.css';
 
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  type LinkingOptions,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { usePerformanceMonitorDevTools } from '@rozenite/performance-monitor-plugin';
 import { StatusBar } from 'react-native';
@@ -47,6 +51,32 @@ type RootStackParamList = {
   Lists: undefined;
 };
 
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['nitrowind-example://'],
+  config: {
+    screens: {
+      Home: 'home',
+      Animations: 'animations',
+      Borders: 'borders',
+      Backgrounds: 'backgrounds',
+      Benchmark: 'benchmark',
+      StyleSheetBenchmark: 'benchmark-stylesheet',
+      Transforms: 'transforms',
+      Containers: 'containers',
+      Typography: 'typography',
+      Theming: 'theming',
+      Layout: 'layout',
+      Pseudo: 'pseudo',
+      Grid: 'grid',
+      Gradients: 'gradients',
+      Effects: 'effects',
+      BackgroundImage: 'background-image',
+      Svg: 'svg',
+      Lists: 'lists',
+    },
+  },
+};
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const navTheme = {
@@ -67,11 +97,18 @@ export default function App() {
   return (
     <NitrowindProvider>
       <SafeAreaProvider>
-        <NavigationContainer theme={navTheme}>
+        <NavigationContainer theme={navTheme} linking={linking}>
           <StatusBar barStyle="light-content" />
           <Stack.Navigator
             initialRouteName="Home"
             screenOptions={{
+              // Native stack otherwise paints `navTheme.colors.background`
+              // before the destination's adaptive `bg-surface` mounts. Since
+              // that navigator color is dark, light-mode navigation briefly
+              // flashes black. Keep the scene wrapper transparent so the
+              // outgoing screen remains behind the transition; every screen
+              // already owns an opaque, theme-aware root background.
+              contentStyle: { backgroundColor: 'transparent' },
               headerStyle: { backgroundColor: '#6d28d9' },
               headerTintColor: '#ffffff',
               headerBackButtonDisplayMode: 'minimal',

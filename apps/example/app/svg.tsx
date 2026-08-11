@@ -10,7 +10,7 @@
  */
 import type { ReactNode } from 'react';
 import { Text, View } from '@nitrofoundation/nitrowind';
-import { Circle, Line, Path, Polygon, Rect, Svg } from "@nitrofoundation/nitrowind/svg';
+import { Circle, Line, Path, Polygon, Rect, Svg } from '@nitrofoundation/nitrowind/svg';
 
 import { Caption, Screen, Section, ThemeToggle } from '../components/ui';
 

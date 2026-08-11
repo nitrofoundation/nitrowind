@@ -8,6 +8,9 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "pods": "cd ios && bundle exec pod install",
+    "visual:update": "node visual-regression/run.mjs update",
+    "visual:test": "node visual-regression/run.mjs test",
+    "visual:stress": "node visual-regression/run.mjs stress",
     "lint": "eslint .",
     "test": "jest"
   },
@@ -21,7 +24,7 @@
     "react-native": "patch:react-native@npm%3A0.86.0#~/.yarn/patches/react-native-npm-0.86.0-da5f3ab36a.patch",
     "react-native-gesture-handler": "^3.0.2",
     "react-native-linear-gradient": "^2.8.3",
-    "react-native-nitro-modules": "^0.35.9",
+    "react-native-nitro-modules": "0.35.9",
     "react-native-reanimated": "^4.5.0",
     "react-native-safe-area-context": "^5.8.0",
     "react-native-screens": "4.25.2",
