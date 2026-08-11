@@ -32,3 +32,22 @@ The compiled bucket receives a `ContainerSize` dependency. After layout, the nat
 The compiler also scans custom container-like tokens and emits their base utility so the style can be cloned after the condition matches.
 
 For the full width, height, named-container, and `[cq-*]` syntax, see [Container Queries](./container-queries).
+
+## Native grid sizing
+
+The native grid path measures Yoga children and uses their intrinsic width and
+height for `auto`, `min-content`, `max-content`, spanning items, and `minmax()`
+minimums. Fractional tracks are rebalanced after intrinsic columns are sized,
+and the engine invalidates layout when child measurements change without a
+React re-render.
+
+```tsx
+<View className="grid grid-cols-[auto_minmax(8rem,1fr)_2fr] gap-3">
+  <Text>Content-sized label</Text>
+  <View className="col-span-2" />
+</View>
+```
+
+React Native exposes one Yoga intrinsic measurement rather than separate web
+min-content and max-content modes, so those two keywords share that measurement.
+Percentage grid columns continue through the JS fallback.

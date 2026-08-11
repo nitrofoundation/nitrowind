@@ -3,6 +3,8 @@ import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 const sidebars: SidebarsConfig = {
   docsSidebar: [
     "intro",
+    "roadmap",
+    "plans/react-native-macos",
     "skills",
     {
       type: "category",
@@ -14,6 +16,7 @@ const sidebars: SidebarsConfig = {
         "getting-started/global-css",
         "getting-started/plain-css",
         "getting-started/migration",
+        "getting-started/developer-tools",
       ],
     },
     {
@@ -42,6 +45,13 @@ const sidebars: SidebarsConfig = {
         "features/background-images",
         "features/gradients-and-backgrounds",
         "features/effects",
+        "features/native-effects-pack",
+        "features/native-grid",
+        "features/css-math-and-units",
+        "features/semantic-colors",
+        "features/tailwind-v4-compatibility",
+        "features/accessibility-variants",
+        "features/style-inspector",
         "features/animations",
         "features/svg",
         "features/native-props",

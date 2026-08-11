@@ -7,6 +7,15 @@ description: Move from NativeWind, Uniwind, or an older Nitrowind API.
 
 Nitrowind keeps the familiar React Native Tailwind shape: `className`, `global.css`, a Metro plugin, styled components, and `cssInterop` for third-party components.
 
+Start with the read-only checker. It detects packages, Metro wrappers, the old
+NativeWind Babel plugin, and Tailwind v4 CSS setup without editing files:
+
+```sh
+yarn nitrowind migrate --from nativewind
+# or
+yarn nitrowind migrate --from uniwind
+```
+
 ## From NativeWind
 
 Replace the Babel and Metro setup with the Nitrowind Metro plugin:
@@ -35,6 +44,9 @@ Most utility classes stay familiar because Tailwind v4 still owns utility genera
 ## From Uniwind
 
 The high-level workflow is similar: import Tailwind in CSS, wrap Metro, and use className. Nitrowind exposes both Tailwind and plain-CSS entry points, and the native engine is fully open source through `nitrocss`.
+
+After either migration, rebuild the native application. NitroWind contains a
+native module and therefore cannot be tested inside Expo Go.
 
 ## Historical Nitrowind aliases
 

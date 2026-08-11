@@ -19,6 +19,35 @@ Tailwind gradient utilities compile into compact native descriptors:
 
 Theme-aware gradient stops depend on theme variables and update when the theme changes.
 
+Linear, radial, and conic gradients are supported. Conic geometry accepts CSS
+`from <angle> at <position>` and renders with the platform-native gradient
+layer/shader:
+
+```css
+.dial {
+  background-image: conic-gradient(
+    from 45deg at 50% 50%,
+    #14b8a6,
+    #3b82f6 60%,
+    #8b5cf6
+  );
+}
+```
+
+On iOS versions before 12, conic gradients use a deterministic linear fallback.
+
+## Color mixing
+
+Native color properties can use `color-mix()` with `oklab`, `srgb`, or
+`srgb-linear`. Nitrocss resolves live theme variables first and then lowers the
+mixed value, including percentages and alpha, to a native color:
+
+```css
+.themed-card {
+  background-color: color-mix(in oklab, var(--color-brand) 75%, black);
+}
+```
+
 ## Border gradients
 
 The compiler recognizes the common CSS border-gradient recipe:

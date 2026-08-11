@@ -28,12 +28,13 @@ Useful public reference points:
 | Plain CSS engine | `nitrocss` works without Tailwind. |
 | Native background images | `background-image: url(...)` descriptors support cover, contain, stretch, repeat, repeat-x, repeat-y, and focal position. |
 | Container queries | Width, height, named containers, and custom `[cq-*]` query tokens. |
-| Native gradients | Linear/radial gradients and themed stops fold into native descriptors. |
+| Native gradients | Linear, radial, and conic gradients plus themed stops fold into native descriptors. |
+| Native color mixing | `color-mix()` in oklab, sRGB, and linear sRGB lowers after live theme-variable resolution. |
 | Animated gradient angle | A gradient angle track can be driven from keyframes. |
 | Gradient borders | Web-style gradient-border recipes compile into a native descriptor. |
 | Clip paths | Supported polygon, circle, and inset masks are applied natively. |
 | Text shadow and filters | Dedicated parsers map supported CSS effect values to React Native/native descriptors. |
-| Native grid work | Grid metadata can be serialized for the C++ layout engine where supported, with JS fallback paths for unsupported cases. |
+| Native grid work | The C++ layout engine supports intrinsic/content-sized tracks, spanning contributions, and `minmax()` minimums, with JS fallbacks for unsupported cases. |
 | SVG className primitives | `react-native-svg` paint props are hoisted from className styles. |
 | Reanimated utility family | Entering, exiting, layout, spring/easing config, and built-in CSS-keyframe helpers. |
 

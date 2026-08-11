@@ -4,8 +4,15 @@ services:
   docs:
     image: caddy:2.10-alpine
     ports:
-      - "${DOCS_PORT:-8080}:8080"
+      - "127.0.0.1:${DOCS_PORT:-8080}:8080"
     volumes:
       - ./current/build:/usr/share/caddy:ro
       - ./current/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - proxy
     restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
+    name: nitrowind-proxy

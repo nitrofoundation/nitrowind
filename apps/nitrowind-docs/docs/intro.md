@@ -62,6 +62,12 @@ The engine compiles styles at build time, links rendered Fabric nodes to a nativ
 - Styled React Native primitives, scrollables, SVG primitives, and wrappers for third-party components.
 - Optional Reanimated helpers for entering, exiting, layout, and CSS-keyframe style animations.
 
+## Support Nitrowind
+
+Nitrowind is built and maintained in the open. If it saves you time, helps you ship a better React Native experience, or you simply want to support continued work on the native engine, documentation, and new features, consider [buying me a coffee](https://buymeacoffee.com/joylan).
+
+Your support directly helps keep NitroWind moving forward. ☕
+
 ## Requirements
 
 Nitrowind targets React Native `0.86` with the new architecture, Fabric, and bridgeless runtime.

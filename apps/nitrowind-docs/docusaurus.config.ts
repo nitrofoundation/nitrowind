@@ -12,6 +12,14 @@ const config: Config = {
   favicon: "img/favicon.svg",
   url: docsUrl,
   baseUrl: docsBaseUrl,
+  scripts: [
+    {
+      src: "https://analytics.nitrowind.dev/script.js",
+      defer: true,
+      "data-website-id": "b5107f46-7223-408e-8af0-a68bd8672ba5",
+      "data-domains": "nitrowind.dev",
+    },
+  ],
   organizationName: "AshwithJoylan",
   projectName: "nitrowind",
   trailingSlash: false,
@@ -84,12 +92,22 @@ const config: Config = {
           label: "Docs",
         },
         {
+          to: "/roadmap",
+          label: "Roadmap",
+          position: "left",
+        },
+        {
           type: "search",
           position: "left",
         },
         {
           href: "https://github.com/AshwithJoylan/nitrowind",
           label: "GitHub",
+          position: "right",
+        },
+        {
+          href: "https://buymeacoffee.com/joylan",
+          label: "Support",
           position: "right",
         },
       ],

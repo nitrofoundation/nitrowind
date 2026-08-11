@@ -15,6 +15,21 @@ The native engine is built through `nitrocss`:
 - Android uses the `:nitrocss` Gradle project.
 - Nitro modules generate the native bindings from `*.nitro.ts` specs.
 
+Check an application's actual setup at any time with `yarn nitrowind doctor`.
+Use `--json` to save the compatibility report as a CI artifact.
+
+## Virtualized lists
+
+FlatList and FlashList can reuse a Fabric tag before the old React cell cleanup
+runs. NitroCSS identifies registrations by both tag and ShadowNode family: a late
+cleanup from the old cell cannot unregister the current occupant. Linking a new
+occupant also resets all tag-owned effect, gradient, background, clip-path, grid,
+container, group, structural-state, and mutation-diff entries.
+
+This lifecycle is regression-tested with rapid scrolling, theme changes, data
+insertion/removal, class changes, delayed cleanup, and thousands of recycled
+items. The live native registry remains bounded by the mounted list window.
+
 ## Fallback environments
 
 When the native engine is unavailable, the JS resolver handles styles. This is useful for:

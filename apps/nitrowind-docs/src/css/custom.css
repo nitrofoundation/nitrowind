@@ -799,6 +799,85 @@ html[data-theme="dark"] .theme-code-block .token.deleted {
   padding-top: 26px;
 }
 
+.nitro-doc-toc {
+  align-items: stretch;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  position: sticky;
+  top: calc(var(--ifm-navbar-height) + 22px);
+}
+
+.nitro-doc-toc .theme-doc-toc-desktop {
+  position: static;
+  top: auto;
+}
+
+.nitro-support-toc-card {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ifm-color-primary) 14%, var(--docs-card)), var(--docs-card));
+  border: 1px solid color-mix(in srgb, var(--ifm-color-primary) 26%, var(--docs-border));
+  border-radius: 18px;
+  color: var(--ifm-font-color-base);
+  display: grid;
+  gap: 9px;
+  overflow: hidden;
+  padding: 18px;
+  position: relative;
+  text-decoration: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.nitro-support-toc-card::after {
+  background: color-mix(in srgb, var(--ifm-color-primary) 16%, transparent);
+  border-radius: 999px;
+  content: "";
+  height: 92px;
+  position: absolute;
+  right: -38px;
+  top: -40px;
+  width: 92px;
+}
+
+.nitro-support-toc-card:hover {
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--ifm-color-primary) 17%, transparent);
+  color: var(--ifm-font-color-base);
+  text-decoration: none;
+  transform: translateY(-2px);
+}
+
+.nitro-support-toc-art {
+  color: var(--ifm-color-primary);
+  height: 58px;
+  margin-bottom: 3px;
+  position: relative;
+  width: 58px;
+  z-index: 1;
+}
+
+.nitro-support-toc-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.nitro-support-toc-copy strong {
+  font-size: 14px;
+}
+
+.nitro-support-toc-copy span {
+  color: var(--docs-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.nitro-support-toc-link {
+  color: var(--ifm-color-primary);
+  font-size: 12px;
+  font-weight: 720;
+  margin-top: 3px;
+}
+
 .table-of-contents {
   border-left: 1px solid var(--docs-border);
   font-size: 12.5px;
@@ -1237,3 +1316,159 @@ html[data-theme="dark"] .theme-code-block .token.deleted {
     font-size: 16px;
   }
 }
+
+/* Marketing homepage */
+.nitro-home {
+  --home-ink: #0a1830;
+  --home-muted: #55667c;
+  --home-line: #d8e2ed;
+  --home-cyan: #0daab2;
+  --home-blue: #245be5;
+  background: #f8fbfd;
+  color: var(--home-ink);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .nitro-home {
+  --home-ink: #edf7ff;
+  --home-muted: #b0bdca;
+  --home-line: #23364a;
+  --home-cyan: #42d8d2;
+  --home-blue: #70a5ff;
+  background: #07111d;
+}
+
+.nitro-home-shell {
+  margin: 0 auto;
+  max-width: 1220px;
+  padding: 0 32px;
+}
+
+.nitro-home-hero {
+  background:
+    radial-gradient(circle at 10% 20%, rgba(9, 194, 187, .16), transparent 26rem),
+    radial-gradient(circle at 86% 26%, rgba(35, 91, 229, .12), transparent 24rem),
+    linear-gradient(180deg, #ffffff 0%, #f7fbfd 100%);
+  border-bottom: 1px solid var(--home-line);
+  padding: 96px 0 84px;
+}
+
+[data-theme="dark"] .nitro-home-hero {
+  background:
+    radial-gradient(circle at 10% 20%, rgba(45, 212, 191, .13), transparent 28rem),
+    radial-gradient(circle at 86% 26%, rgba(59, 130, 246, .16), transparent 24rem),
+    linear-gradient(180deg, #0a1725 0%, #07111d 100%);
+}
+
+.nitro-home-hero-grid {
+  align-items: center;
+  display: grid;
+  gap: 60px;
+  grid-template-columns: minmax(0, 1.02fr) minmax(420px, .98fr);
+}
+
+.nitro-home-beta,
+.nitro-home-eyebrow {
+  color: var(--home-cyan);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.nitro-home-beta {
+  align-items: center;
+  background: color-mix(in srgb, var(--home-cyan) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--home-cyan) 24%, transparent);
+  border-radius: 999px;
+  display: inline-flex;
+  margin: 0 0 24px;
+  padding: 7px 12px;
+}
+
+.nitro-home-eyebrow { margin: 0 0 13px; }
+
+.nitro-home h1,
+.nitro-home h2,
+.nitro-home h3,
+.nitro-home p { color: inherit; }
+
+.nitro-home h1 {
+  font-size: clamp(44px, 5vw, 72px);
+  letter-spacing: -.058em;
+  line-height: .98;
+  margin: 0;
+  max-width: 680px;
+}
+
+.nitro-home h1 span {
+  color: var(--home-cyan);
+  display: block;
+}
+
+.nitro-home-lede {
+  color: var(--home-muted) !important;
+  font-size: 18px;
+  line-height: 1.62;
+  margin: 27px 0 30px;
+  max-width: 620px;
+}
+
+.nitro-home-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.nitro-home-button {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 740;
+  gap: 9px;
+  justify-content: center;
+  padding: 12px 18px;
+  text-decoration: none !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.nitro-home-button:hover { transform: translateY(-2px); }
+.nitro-home-button-primary { background: var(--home-ink); box-shadow: 0 10px 22px rgba(17, 46, 75, .16); color: #fff !important; }
+.nitro-home-button-primary:hover { background: var(--home-cyan); box-shadow: 0 12px 28px color-mix(in srgb, var(--home-cyan) 28%, transparent); }
+.nitro-home-button-secondary { border: 1px solid var(--home-line); color: var(--home-ink) !important; }
+.nitro-home-button-secondary:hover { background: color-mix(in srgb, var(--home-cyan) 8%, transparent); border-color: var(--home-cyan); }
+.nitro-home-note { color: var(--home-muted) !important; font-size: 12px; margin: 17px 0 0; }
+
+.nitro-home-preview {
+  background: #0a1830;
+  border: 1px solid rgba(141, 187, 220, .28);
+  border-radius: 18px;
+  box-shadow: 0 28px 70px rgba(10, 34, 61, .24), 0 1px 0 rgba(255,255,255,.08) inset;
+  color: #d9eeff;
+  overflow: hidden;
+  transform: perspective(1200px) rotateY(-4deg) rotateX(2deg);
+}
+
+.nitro-home-preview-bar { align-items: center; background: rgba(255,255,255,.055); border-bottom: 1px solid rgba(152, 200, 230, .15); color: #aac4dc; display: flex; font: 600 12px var(--ifm-font-family-monospace); justify-content: space-between; padding: 14px 16px; }
+.nitro-home-window-dots { display: flex; gap: 5px; }
+.nitro-home-window-dots i { background: #6c8298; border-radius: 50%; display: block; height: 7px; width: 7px; }
+.nitro-home-window-dots i:first-child { background: #f97360; }
+.nitro-home-window-dots i:nth-child(2) { background: #eab84c; }
+.nitro-home-window-dots i:last-child { background: #37c694; }
+.nitro-home-live { color: #4de0c3; }
+.nitro-home-preview pre { background: transparent; border: 0; color: #d5e5f5; font-size: clamp(11px, 1.05vw, 14px); line-height: 1.78; margin: 0; overflow: auto; padding: 28px 30px 22px; }
+.nitro-home-preview code { background: transparent; color: inherit; font-size: inherit; }
+.n-keyword { color: #9aabff; }.n-function { color: #45dfd1; }.n-tag { color: #8acbff; }.n-prop { color: #f9c773; }.n-string { color: #91dfa5; }
+.nitro-home-preview-status { align-items: center; background: rgba(45, 212, 191, .07); border-top: 1px solid rgba(152, 200, 230, .15); color: #aad0d3; display: flex; font: 600 11px var(--ifm-font-family-monospace); gap: 8px; padding: 13px 17px; }
+.nitro-home-preview-status span { background: #45dfc0; border-radius: 50%; box-shadow: 0 0 0 4px rgba(69,223,192,.1); height: 7px; width: 7px; }
+
+.nitro-home-proof { background: var(--home-ink); color: #effbff; }
+.nitro-home-proof-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+.nitro-home-proof-grid > div { border-right: 1px solid rgba(220, 244, 255, .16); padding: 27px 22px; }.nitro-home-proof-grid > div:first-child { padding-left: 0; }.nitro-home-proof-grid > div:last-child { border-right: 0; }
+.nitro-home-proof strong { display: block; font-size: 14px; letter-spacing: -.015em; }.nitro-home-proof span { color: #a7c3d6; display: block; font-size: 12px; margin-top: 5px; }
+
+.nitro-home-section { padding: 110px 0; }.nitro-home-section-heading { align-items: end; display: flex; gap: 48px; justify-content: space-between; margin-bottom: 47px; }.nitro-home-section-heading h2 { font-size: clamp(34px, 3.7vw, 52px); letter-spacing: -.05em; line-height: 1.02; margin: 0; }.nitro-home-section-heading > p { color: var(--home-muted) !important; font-size: 16px; line-height: 1.6; margin: 0; max-width: 430px; }
+.nitro-home-engine { background: #fff; }.nitro-home-engine-visual { background: linear-gradient(135deg, #f3fbfc, #ffffff 70%); border: 1px solid var(--home-line); border-radius: 20px; overflow: hidden; }.nitro-home-engine-visual img { display: block; height: auto; width: 100%; }
+[data-theme="dark"] .nitro-home-engine { background: #091625; }.nitro-home-engine-visual { background: #0b1b2c; }
+.nitro-home-features { border-top: 1px solid var(--home-line); }.nitro-home-section-heading-compact { margin-bottom: 30px; }.nitro-home-section-heading-compact > a { color: var(--home-cyan); font-size: 14px; font-weight: 720; text-decoration: none; }.nitro-home-feature-grid { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); }.nitro-home-feature { background: rgba(255,255,255,.48); border: 1px solid var(--home-line); border-radius: 14px; color: var(--home-ink); min-height: 265px; padding: 20px; position: relative; text-decoration: none !important; transition: transform 180ms ease, background 180ms ease, border-color 180ms ease; }.nitro-home-feature:hover { background: #fff; border-color: var(--home-cyan); color: var(--home-ink); transform: translateY(-4px); }.nitro-home-feature > span { color: var(--home-cyan); font: 700 12px var(--ifm-font-family-monospace); }.nitro-home-feature h3 { font-size: 21px; letter-spacing: -.035em; margin: 51px 0 10px; }.nitro-home-feature p { color: var(--home-muted) !important; font-size: 13px; line-height: 1.55; margin: 0; }.nitro-home-feature b { bottom: 18px; color: var(--home-cyan); font-size: 18px; position: absolute; right: 20px; }[data-theme="dark"] .nitro-home-feature { background: #0c1b2a; }.nitro-home-feature:hover { background: #102338; }
+.nitro-home-install { background: var(--home-ink); color: #f4fbff; }.nitro-home-install-grid { align-items: center; display: grid; gap: 70px; grid-template-columns: .88fr 1.12fr; }.nitro-home-install .nitro-home-eyebrow { color: #55dfd1; }.nitro-home-install h2 { color: inherit; font-size: clamp(34px, 3.8vw, 50px); letter-spacing: -.05em; line-height: 1.04; margin: 0; }.nitro-home-install p:not(.nitro-home-eyebrow) { color: #abc6d6 !important; font-size: 16px; line-height: 1.6; margin: 19px 0 26px; max-width: 490px; }.nitro-home-install .nitro-home-button-primary { background: #fff; color: #0c2037 !important; }.nitro-home-install .nitro-home-button-primary:hover { background: #55dfd1; }.nitro-home-install-code { background: #07111f; border: 1px solid rgba(166, 223, 244, .2); border-radius: 14px; box-shadow: 0 20px 48px rgba(0,0,0,.18); overflow: hidden; }.nitro-home-install-code > div { color: #a9c5d5; display: flex; font: 600 12px var(--ifm-font-family-monospace); justify-content: space-between; padding: 13px 16px; }.nitro-home-install-code > div span:last-child { color: #4de1c2; }.nitro-home-install-code code { background: rgba(58, 97, 135, .2); border-radius: 0; color: #cce8fa; display: block; font: 13px/1.65 var(--ifm-font-family-monospace); overflow-wrap: anywhere; padding: 20px; }.nitro-home-install-code em { color: #4de1c2; font-style: normal; }
+
+@media (max-width: 996px) { .nitro-home-hero { padding: 72px 0; }.nitro-home-hero-grid { gap: 44px; grid-template-columns: 1fr; }.nitro-home-preview { margin: 0 auto; max-width: 640px; transform: none; width: 100%; }.nitro-home-proof-grid { grid-template-columns: repeat(2, 1fr); }.nitro-home-proof-grid > div:nth-child(2) { border-right: 0; }.nitro-home-proof-grid > div:nth-child(n+3) { border-top: 1px solid rgba(220, 244, 255, .16); }.nitro-home-proof-grid > div:nth-child(3) { padding-left: 0; }.nitro-home-section { padding: 78px 0; }.nitro-home-feature-grid { grid-template-columns: repeat(2, 1fr); }.nitro-home-install-grid { gap: 42px; grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .nitro-home-shell { padding: 0 20px; }.nitro-home-hero { padding: 55px 0; }.nitro-home h1 { font-size: 43px; }.nitro-home-lede { font-size: 16px; }.nitro-home-preview pre { font-size: 10px; padding: 20px 18px; }.nitro-home-proof-grid > div { padding: 19px 12px; }.nitro-home-section-heading { align-items: start; flex-direction: column; gap: 16px; margin-bottom: 30px; }.nitro-home-section-heading h2 { font-size: 35px; }.nitro-home-feature-grid { grid-template-columns: 1fr; }.nitro-home-feature { min-height: 222px; }.nitro-home-feature h3 { margin-top: 33px; }.nitro-home-install-code code { font-size: 11px; }.nitro-home-section { padding: 62px 0; } }
