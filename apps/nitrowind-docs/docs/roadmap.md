@@ -55,12 +55,13 @@ surface/text palette during an adaptive light/dark switch; that correctness
 issue remains a gate before publishing device numbers. Physical-device runs are
 intentionally deferred and remain the release-quality performance gate.
 
-## Planned — React Native macOS
+## Experimental — React Native macOS Phase 0
 
 NitroWind already compiles `macos:` variants and the shared C++ resolver can
-identify a macOS target. Native macOS support now has an implementation plan
-covering package integration, AppKit paint adapters, Fabric lifecycle behavior,
-testing, diagnostics, and an experimental release gate.
+identify a macOS target. The Phase 0 core target now builds and runs with React
+Native `0.81.6` / React Native macOS `0.81.9`: CocoaPods integration, core
+HybridObjects, native runtime state, and Fabric linking are in place. AppKit
+paint adapters and release-quality compatibility remain planned.
 
 [Read the React Native macOS support plan](./plans/react-native-macos)
 

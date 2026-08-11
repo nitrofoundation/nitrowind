@@ -13,6 +13,10 @@ The native engine is built through `nitrocss`:
 
 - iOS uses the `NitroCss` pod.
 - Android uses the `:nitrocss` Gradle project.
+- macOS has an experimental, core-only Phase 0 target using React Native
+  `0.81.6` with React Native macOS `0.81.9`. Native class resolution, runtime
+  state, diagnostics, and Fabric mutation are included; AppKit paint effects
+  are not yet supported.
 - Nitro modules generate the native bindings from `*.nitro.ts` specs.
 
 Check an application's actual setup at any time with `yarn nitrowind doctor`.

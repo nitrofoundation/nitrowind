@@ -10,7 +10,10 @@ Pod::Spec.new do |s|
   s.license      = package["license"]
   s.authors      = package["author"]
 
-  s.platforms    = { :ios => min_ios_version_supported }
+  s.platforms    = {
+    :ios => min_ios_version_supported,
+    :osx => "14.0",
+  }
   s.source       = { :git => "https://github.com/nitrofoundation/nitrocss.git", :tag => "#{s.version}" }
 
   # Compiled from source — NOT a prebuilt binary. This is the whole point of nitrocss.
@@ -25,7 +28,24 @@ Pod::Spec.new do |s|
   # umbrella's `#error`, so the Swift header is never emitted (build deadlock).
   s.source_files = [
     "ios/**/*.{swift,h,m,mm}",
+    "macos/**/*.{h,hpp,m,mm,cpp}",
     "cpp/**/*.{hpp,cpp}"
+  ]
+
+  # Phase 0 on macOS is deliberately core-only. UIKit paint adapters and the
+  # generated HybridView bridge are replaced by an AppKit NativePlatform and
+  # a C++ HybridObject registrar under macos/. Fabric style commits remain
+  # enabled; backdrop/gradient/image/effect painters are later phases.
+  s.osx.exclude_files = [
+    "ios/**/*.swift",
+    "ios/NitroCssBackgroundImageApplier.{h,mm}",
+    "ios/NitroCssClipPathApplier.{h,mm}",
+    "ios/NitroCssGradientApplier.{h,mm}",
+    "ios/NitroCssInstallerModule.mm",
+    "ios/effects/**/*",
+    "nitrogen/generated/ios/**/*",
+    "nitrogen/generated/shared/c++/HybridBackdropViewSpec.{hpp,cpp}",
+    "nitrogen/generated/shared/c++/views/**/*",
   ]
 
   # The hand-written Objective-C++ seam that the Swift HybridObject calls into
@@ -67,6 +87,16 @@ Pod::Spec.new do |s|
   # SWIFT_INSTALL_OBJC_HEADER=NO, C++20). Keeps the bridge umbrella private.
   load File.join(__dir__, "nitrogen/generated/ios/NitroCss+autolinking.rb")
   add_nitrogen_files(s)
+
+  # Keep the Clang module umbrella intentionally small. Exposing every
+  # generated C++ spec causes Swift's C++ importer to recursively modularize
+  # React/Fabric (and glog) while compiling the Apple bridge. The generated
+  # specs are implementation details; the Swift bridge and Objective-C seam
+  # are the only headers consumers need to see.
+  s.public_header_files = [
+    "ios/NitroCssBridge.h",
+    "nitrogen/generated/ios/NitroCss-Swift-Cxx-Bridge.hpp",
+  ]
 
   install_modules_dependencies(s)
 end

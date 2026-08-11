@@ -19,25 +19,35 @@ Useful starting points already exist:
 - Most resolution, dependency indexing, mutation diffing, grid, and diagnostics
   logic is portable shared C++.
 
-## Phase 0 — compatibility spike
+## Phase 0 — compatibility spike (implemented)
 
-- Select the newest stable matching `react-native` / `react-native-macos` minor
-  that can build Nitro Modules and Fabric together.
-- Create a minimal New Architecture app under `apps/example-macos` using
-  `react-native-macos-init`.
-- Prove that Nitrogen-generated HybridObjects load and that NitroCSS can obtain
-  the macOS Fabric `UIManager`, `ShadowTree`, families, tags, and surfaces.
-- Document upstream blockers before expanding the supported package metadata.
+The first spike uses React Native `0.81.6`, React Native macOS `0.81.9`, React
+`19.1.4`, Nitro Modules `0.35.9`, macOS 14 as the deployment target, and the New
+Architecture. The runnable fixture lives in `apps/example-macos` and was created
+with `react-native-macos-init`.
 
-Exit criterion: a macOS app loads the engine, registers one styled view, changes
-its native theme, and unlinks it without a crash or leaked registry entry.
+The NitroCSS pod now builds for macOS and registers the core HybridObjects,
+native platform state, diagnostics, ShadowRegistry, and Fabric mutation engine.
+The fixture proves native class registration, a user-driven light/dark update,
+and view unlink/relink without importing UIKit paint adapters.
 
-## Phase 1 — package and Apple build support
+React Native macOS `0.81` needs one Metro compatibility boundary in a monorepo:
+all `react-native` package and subpath imports must resolve to
+`react-native-macos`, and only that fork's `InitializeCore` may run. Loading the
+upstream and macOS runtimes together duplicates native view registrations. Its
+Debug bridge can also leave the `RCTDevLoadingViewWindow` progress sheet visible
+after the bundle is ready; Release builds are the authoritative Phase 0 smoke.
 
-- Change the NitroCSS podspec from iOS-only to Apple platforms with a declared
+Status: the core Phase 0 build and runtime criterion is met. macOS remains
+experimental: AppKit paint adapters, system appearance observers, multi-window
+state, and the full cleanup/stress matrix belong to later phases.
+
+## Phase 1 — package and Apple build support (started)
+
+- ✅ Change the NitroCSS podspec from iOS-only to Apple platforms with a declared
   minimum macOS version.
-- Add macOS autolinking metadata and validate consumer installation through
-  CocoaPods, rather than relying on a repository-relative pod.
+- ✅ Validate consumer installation through CocoaPods and the package's standard
+  podspec discovery, rather than a repository-relative pod.
 - Split `ios/` into shared `apple/`, `ios/`, and `macos/` sources where AppKit
   and UIKit differ; keep CALayer/C++ implementations shared where practical.
 - Add the matching `react-native-macos` development dependency only to the

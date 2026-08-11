@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-surface: #f4f4f5;
+  --color-card: #ffffff;
+  --color-foreground: #18181b;
+  --color-muted: #52525b;
+  --color-border: #d4d4d8;
+  --color-accent: #6d28d9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface: #09090b;
+    --color-card: #18181b;
+    --color-foreground: #fafafa;
+    --color-muted: #a1a1aa;
+    --color-border: #3f3f46;
+    --color-accent: #a78bfa;
+  }
+}

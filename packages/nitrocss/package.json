@@ -141,6 +141,7 @@
     "safe-area.css",
     "cpp",
     "ios",
+    "macos",
     "android",
     "!android/.cxx",
     "!android/build",
@@ -148,7 +149,7 @@
     "nitrogen/generated",
     "nitro.json",
     "NitroCss.podspec",
-    "react-native.config.js",
+    "react-native.config.cjs",
     "README.md",
     "LICENSE",
     "!**/__tests__",
@@ -173,7 +174,7 @@
   },
   "peerDependencies": {
     "react": ">=19.0.0",
-    "react-native": ">=0.85.0",
+    "react-native": "0.81.6 || >=0.85.0",
     "react-native-nitro-modules": ">=0.35.0",
     "react-native-reanimated": ">=3.0.0",
     "react-native-svg": ">=15.0.0"

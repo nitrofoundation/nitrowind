@@ -8,10 +8,6 @@
     "packages/*",
     "apps/*"
   ],
-  "resolutions": {
-    "react": "19.2.7",
-    "react-native": "0.86.0"
-  },
   "scripts": {
     "build": "turbo run build",
     "docs": "yarn workspace nitrowind-docs start",

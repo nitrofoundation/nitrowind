@@ -9,6 +9,7 @@
 #include <react/renderer/components/root/RootShadowNode.h>
 #include <react/renderer/mounting/ShadowTree.h>
 #include <react/renderer/mounting/ShadowTreeRegistry.h>
+#include <cxxreact/ReactNativeVersion.h>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -44,13 +45,21 @@ bool ShadowTreeMutator::commit(const std::vector<NodeMutation>& mutations) {
       PropsParserContext propsParserContext{surfaceId, contextContainerRef};
       auto status = shadowTree.commit(
           [&](const RootShadowNode& oldRootShadowNode) -> RootShadowNode::Unshared {
+#if REACT_NATIVE_VERSION_MINOR >= 86
             std::unordered_set<std::shared_ptr<const ShadowNodeFamily>> families;
+#else
+            std::unordered_set<const ShadowNodeFamily*> families;
+#endif
             std::unordered_map<const ShadowNodeFamily*, const NodeMutation*>
                 mutationByFamily;
             families.reserve(group.size());
             mutationByFamily.reserve(group.size());
             for (const NodeMutation* mutation : group) {
+#if REACT_NATIVE_VERSION_MINOR >= 86
               families.insert(mutation->family);
+#else
+              families.insert(mutation->family.get());
+#endif
               mutationByFamily[mutation->family.get()] = mutation;
             }
 
