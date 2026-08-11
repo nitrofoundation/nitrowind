@@ -62,15 +62,21 @@ rebuilds the iOS NitroCSS target to protect the shared Apple podspec boundary.
 Exit criterion met locally and encoded in CI: clean Debug and Release universal
 builds from a fresh pod install, with the existing iOS target still green.
 
-## Phase 2 — runtime and semantic platform state
+## Phase 2 — runtime and semantic platform state (in progress)
 
-- Implement an AppKit `NativePlatform` adapter for appearance, screens,
+- ✅ Implement an AppKit `NativePlatform` adapter for appearance, screens,
   backing-scale factor, layout direction, font scale, and window/content insets.
-- Map semantic colors to `NSColor`, preserve Display-P3 through Fabric, and
+- ✅ Map semantic colors to `NSColor`, preserve Display-P3 through Fabric, and
   observe light/dark, increased-contrast, and reduced-transparency changes.
-- Define desktop safe-area behavior explicitly: full-window content, title-bar
+- ✅ Define desktop safe-area behavior explicitly: full-window content, title-bar
   content layout, and ordinary zero-inset windows must be distinguishable.
 - Validate runtime subscription teardown across reloads and multiple windows.
+
+The AppKit observer coalesces application activation, key-window, resize,
+screen/backing-scale, effective-appearance, and accessibility-display changes.
+Its KVO and notification tokens are released with the native HybridObject.
+Window metrics follow the active key/main window; per-surface multi-window state
+still needs the Phase 2 stress fixture before this phase is complete.
 
 Exit criterion: native appearance and accessibility changes update only affected
 Fabric nodes with zero React rerenders and correct multi-window state.

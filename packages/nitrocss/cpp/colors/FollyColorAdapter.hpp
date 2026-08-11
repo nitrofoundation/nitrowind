@@ -12,7 +12,7 @@ DescriptorValue fromFollyDynamic(const folly::dynamic& value);
 /** One-call bridge used by the shared style engine. */
 DecodeResult decodeFollyDescriptor(const folly::dynamic& value);
 
-enum class NativeColorPlatform { IOS, Android };
+enum class NativeColorPlatform { Apple, Android };
 
 /**
  * Encode a resolved color using React Native's RawValue color contracts.

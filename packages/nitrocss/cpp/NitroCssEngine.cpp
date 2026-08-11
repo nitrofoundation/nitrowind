@@ -846,14 +846,14 @@ folly::dynamic NitroCssEngine::resolve(const std::string& className,
             runtime.scheme = ctx.colorScheme == 1
                 ? colors::Runtime::Scheme::Dark
                 : colors::Runtime::Scheme::Light;
-            // UIKit understands RN's DynamicColorIOS RawValue (including the
-            // high-contrast branches). Android has no equivalent dynamic raw
-            // object, so select the active branch while preserving any nested
-            // Android resource token as a ColorStateList/resource lookup.
+            // UIKit and AppKit understand React Native's Apple dynamic-color
+            // RawValue (including high-contrast branches). Android has no
+            // equivalent dynamic raw object, so select the active branch while
+            // preserving any nested resource token.
 #if defined(__APPLE__)
             runtime.preserveDynamic = true;
             constexpr auto nativeColorPlatform =
-                colors::NativeColorPlatform::IOS;
+                colors::NativeColorPlatform::Apple;
 #else
             runtime.preserveDynamic = false;
             constexpr auto nativeColorPlatform =

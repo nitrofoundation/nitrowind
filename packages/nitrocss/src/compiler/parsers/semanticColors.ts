@@ -25,16 +25,17 @@ export interface SemanticColorRuntime {
 
 /** Cross-platform aliases. The native adapter may map these to richer platform colors. */
 export const SEMANTIC_COLOR_TOKENS = {
-  label: { ios: "labelColor", android: "?android:attr/textColorPrimary" },
-  secondaryLabel: { ios: "secondaryLabelColor", android: "?android:attr/textColorSecondary" },
-  systemBackground: { ios: "systemBackgroundColor", android: "?android:attr/colorBackground" },
+  label: { ios: "labelColor", macos: "labelColor", android: "?android:attr/textColorPrimary" },
+  secondaryLabel: { ios: "secondaryLabelColor", macos: "secondaryLabelColor", android: "?android:attr/textColorSecondary" },
+  systemBackground: { ios: "systemBackgroundColor", macos: "windowBackgroundColor", android: "?android:attr/colorBackground" },
   secondarySystemBackground: {
     ios: "secondarySystemBackgroundColor",
+    macos: "controlBackgroundColor",
     android: "?android:attr/colorBackgroundFloating",
   },
-  separator: { ios: "separatorColor", android: "?android:attr/listDivider" },
-  link: { ios: "linkColor", android: "?android:attr/textColorLink" },
-  accent: { ios: "systemBlueColor", android: "?android:attr/colorAccent" },
+  separator: { ios: "separatorColor", macos: "separatorColor", android: "?android:attr/listDivider" },
+  link: { ios: "linkColor", macos: "linkColor", android: "?android:attr/textColorLink" },
+  accent: { ios: "systemBlueColor", macos: "controlAccentColor", android: "?android:attr/colorAccent" },
 } as const;
 
 export type SemanticColorToken = keyof typeof SEMANTIC_COLOR_TOKENS;
@@ -109,7 +110,7 @@ export function parseSemanticColor(value: string): SemanticColorDescriptor | und
 /** Produce a native descriptor for a cross-platform semantic token. */
 export function semanticColorToken(
   token: SemanticColorToken,
-  platform: "ios" | "android",
+  platform: "ios" | "macos" | "android",
   fallback?: string,
 ): PlatformSemanticColor {
   return {

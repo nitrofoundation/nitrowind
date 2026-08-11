@@ -43,6 +43,12 @@ describe("semantic color descriptors", () => {
     expect(semanticColorToken("accent", "android").name).toBe(
       "?android:attr/colorAccent",
     );
+    expect(semanticColorToken("systemBackground", "macos").name).toBe(
+      "windowBackgroundColor",
+    );
+    expect(semanticColorToken("accent", "macos").name).toBe(
+      "controlAccentColor",
+    );
   });
 
   it("round-trips the supported syntax", () => {

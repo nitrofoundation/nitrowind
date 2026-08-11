@@ -3,16 +3,17 @@
 #include "HybridNativePlatformSpec.hpp"
 
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace margelo::nitro::nitrocss {
 
-/** Core-only AppKit implementation used by the React Native macOS Phase 0. */
+/** AppKit runtime-state implementation used by React Native macOS. */
 class HybridNativePlatformMacOS final : public HybridNativePlatformSpec {
  public:
   HybridNativePlatformMacOS();
-  ~HybridNativePlatformMacOS() override = default;
+  ~HybridNativePlatformMacOS() override;
 
   ThemeConfig getThemeConfig() override;
   void setTheme(const std::string& theme) override;
@@ -36,6 +37,8 @@ class HybridNativePlatformMacOS final : public HybridNativePlatformSpec {
   void push(const RuntimeSnapshot& value);
   void emit(const std::vector<StyleDependency>& dependencies,
             RuntimeChangeSource source);
+  void emitSystemEnvironmentChange();
+  void installEnvironmentObserver();
 
   std::mutex mutex_;
   std::vector<std::string> extraThemes_;
@@ -45,6 +48,8 @@ class HybridNativePlatformMacOS final : public HybridNativePlatformSpec {
   std::string theme_ = "light";
   ColorSchemeMode mode_ = ColorSchemeMode::SYSTEM;
   bool followsColorScheme_ = true;
+  std::optional<RuntimeSnapshot> lastSnapshot_;
+  void* environmentObserver_ = nullptr;
 };
 
 }  // namespace margelo::nitro::nitrocss

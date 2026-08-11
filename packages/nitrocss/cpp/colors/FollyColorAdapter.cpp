@@ -36,8 +36,8 @@ std::optional<folly::dynamic> toNativeFollyColor(
       folly::dynamic names = folly::dynamic::array;
       names.push_back(color.text);
       folly::dynamic result = folly::dynamic::object;
-      result[platform == NativeColorPlatform::IOS ? "semantic"
-                                                  : "resource_paths"] =
+      result[platform == NativeColorPlatform::Apple ? "semantic"
+                                                    : "resource_paths"] =
           std::move(names);
       return result;
     }
@@ -51,7 +51,7 @@ std::optional<folly::dynamic> toNativeFollyColor(
       return result;
     }
     case ResolvedColor::Kind::Dynamic: {
-      if (platform != NativeColorPlatform::IOS || color.dynamic == nullptr ||
+      if (platform != NativeColorPlatform::Apple || color.dynamic == nullptr ||
           color.dynamic->light == nullptr || color.dynamic->dark == nullptr) {
         return std::nullopt;
       }

@@ -6,6 +6,108 @@
 
 #include <algorithm>
 
+@interface NitroCssMacOSEnvironmentObserver : NSObject
+- (instancetype)initWithCallback:(dispatch_block_t)callback;
+@end
+
+@implementation NitroCssMacOSEnvironmentObserver {
+  dispatch_block_t _callback;
+  NSMutableArray<id> *_notificationTokens;
+  id _accessibilityToken;
+  BOOL _observingAppearance;
+  BOOL _callbackPending;
+}
+
+static void *NitroCssAppearanceContext = &NitroCssAppearanceContext;
+
+- (instancetype)initWithCallback:(dispatch_block_t)callback {
+  self = [super init];
+  if (self == nil) return nil;
+
+  _callback = [callback copy];
+  _notificationTokens = [NSMutableArray array];
+  NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+  NSArray<NSNotificationName> *names = @[
+    NSApplicationDidBecomeActiveNotification,
+    NSWindowDidBecomeKeyNotification,
+    NSWindowDidResizeNotification,
+    NSWindowDidChangeScreenNotification,
+    NSWindowDidChangeBackingPropertiesNotification,
+  ];
+  __weak NitroCssMacOSEnvironmentObserver *weakSelf = self;
+  for (NSNotificationName name in names) {
+    id token = [center addObserverForName:name
+                                   object:nil
+                                    queue:NSOperationQueue.mainQueue
+                               usingBlock:^(__unused NSNotification *note) {
+      [weakSelf notifySoon];
+    }];
+    [_notificationTokens addObject:token];
+  }
+
+  _accessibilityToken = [NSWorkspace.sharedWorkspace.notificationCenter
+      addObserverForName:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification
+                  object:nil
+                   queue:NSOperationQueue.mainQueue
+              usingBlock:^(__unused NSNotification *note) {
+    [weakSelf notifySoon];
+  }];
+
+  @try {
+    [NSApp addObserver:self
+            forKeyPath:@"effectiveAppearance"
+               options:NSKeyValueObservingOptionNew
+               context:NitroCssAppearanceContext];
+    _observingAppearance = YES;
+  } @catch (__unused NSException *exception) {
+    _observingAppearance = NO;
+  }
+  return self;
+}
+
+- (void)notifySoon {
+  if (_callbackPending) return;
+  _callbackPending = YES;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self->_callbackPending = NO;
+    if (self->_callback != nil) self->_callback();
+  });
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary<NSKeyValueChangeKey, id> *)change
+                       context:(void *)context {
+  if (context == NitroCssAppearanceContext) {
+    [self notifySoon];
+    return;
+  }
+  [super observeValueForKeyPath:keyPath
+                       ofObject:object
+                         change:change
+                        context:context];
+}
+
+- (void)dealloc {
+  for (id token in _notificationTokens) {
+    [NSNotificationCenter.defaultCenter removeObserver:token];
+  }
+  if (_accessibilityToken != nil) {
+    [NSWorkspace.sharedWorkspace.notificationCenter
+        removeObserver:_accessibilityToken];
+  }
+  if (_observingAppearance) {
+    @try {
+      [NSApp removeObserver:self
+                 forKeyPath:@"effectiveAppearance"
+                    context:NitroCssAppearanceContext];
+    } @catch (__unused NSException *exception) {
+    }
+  }
+}
+
+@end
+
 namespace margelo::nitro::nitrocss {
 namespace {
 
@@ -21,12 +123,64 @@ NSWindow* activeWindow() {
   return NSApp.keyWindow ?: NSApp.mainWindow ?: NSApp.windows.firstObject;
 }
 
+std::vector<StyleDependency> changedDependencies(
+    const RuntimeSnapshot& previous,
+    const RuntimeSnapshot& next) {
+  std::vector<StyleDependency> dependencies;
+  if (previous.currentThemeName != next.currentThemeName) {
+    dependencies.push_back(StyleDependency::THEME);
+  }
+  if (previous.colorScheme != next.colorScheme) {
+    dependencies.push_back(StyleDependency::COLORSCHEME);
+  }
+  if (previous.screen.width != next.screen.width ||
+      previous.screen.height != next.screen.height) {
+    dependencies.push_back(StyleDependency::DIMENSIONS);
+  }
+  if (previous.insets.top != next.insets.top ||
+      previous.insets.right != next.insets.right ||
+      previous.insets.bottom != next.insets.bottom ||
+      previous.insets.left != next.insets.left) {
+    dependencies.push_back(StyleDependency::INSETS);
+  }
+  if (previous.orientation != next.orientation) {
+    dependencies.push_back(StyleDependency::ORIENTATION);
+  }
+  if (previous.fontScale != next.fontScale) {
+    dependencies.push_back(StyleDependency::FONTSCALE);
+  }
+  if (previous.rtl != next.rtl) {
+    dependencies.push_back(StyleDependency::RTL);
+  }
+  return dependencies;
+}
+
 }  // namespace
 
 HybridNativePlatformMacOS::HybridNativePlatformMacOS()
     : HybridObject(TAG) {
   const auto initial = snapshot();
   push(initial);
+  {
+    std::lock_guard lock(mutex_);
+    lastSnapshot_ = initial;
+  }
+  installEnvironmentObserver();
+}
+
+HybridNativePlatformMacOS::~HybridNativePlatformMacOS() {
+  if (environmentObserver_ != nullptr) {
+    CFBridgingRelease(environmentObserver_);
+    environmentObserver_ = nullptr;
+  }
+}
+
+void HybridNativePlatformMacOS::installEnvironmentObserver() {
+  NitroCssMacOSEnvironmentObserver *observer =
+      [[NitroCssMacOSEnvironmentObserver alloc] initWithCallback:^{
+        this->emitSystemEnvironmentChange();
+      }];
+  environmentObserver_ = (__bridge_retained void *)observer;
 }
 
 RuntimeSnapshot HybridNativePlatformMacOS::snapshot() {
@@ -94,9 +248,34 @@ void HybridNativePlatformMacOS::emit(
                                  RuntimeChangeSource)>> listeners;
   {
     std::lock_guard lock(mutex_);
+    lastSnapshot_ = value;
     listeners = listeners_;
   }
   for (const auto& listener : listeners) listener(dependencies, value, source);
+}
+
+void HybridNativePlatformMacOS::emitSystemEnvironmentChange() {
+  const auto value = snapshot();
+  push(value);
+
+  std::optional<RuntimeSnapshot> previous;
+  std::vector<std::function<void(const std::vector<StyleDependency>&,
+                                 const RuntimeSnapshot&,
+                                 RuntimeChangeSource)>> listeners;
+  {
+    std::lock_guard lock(mutex_);
+    previous = lastSnapshot_;
+    lastSnapshot_ = value;
+    listeners = listeners_;
+  }
+
+  const auto dependencies = previous.has_value()
+      ? changedDependencies(previous.value(), value)
+      : std::vector<StyleDependency>{};
+  if (dependencies.empty()) return;
+  for (const auto& listener : listeners) {
+    listener(dependencies, value, RuntimeChangeSource::SYSTEM);
+  }
 }
 
 ThemeConfig HybridNativePlatformMacOS::getThemeConfig() {
@@ -137,6 +316,10 @@ void HybridNativePlatformMacOS::registerExtraThemes(
 RuntimeSnapshot HybridNativePlatformMacOS::getCurrent() {
   const auto value = snapshot();
   push(value);
+  {
+    std::lock_guard lock(mutex_);
+    lastSnapshot_ = value;
+  }
   return value;
 }
 

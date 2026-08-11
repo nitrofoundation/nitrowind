@@ -23,8 +23,6 @@ function MacOSSmokeScreen() {
     smokeStarted.current = true;
 
     const initialScheme = nitrowind.snapshot.colorScheme;
-    const initialSchemeName =
-      initialScheme === ColorScheme.Dark ? 'dark' : 'light';
     const opposite =
       initialScheme === ColorScheme.Dark ? 'light' : 'dark';
     resetNativeDiagnostics();
@@ -33,10 +31,7 @@ function MacOSSmokeScreen() {
       setTimeout(() => nitrowindRef.current.setColorScheme(opposite), 250),
       setTimeout(() => setLinked(false), 500),
       setTimeout(() => setLinked(true), 750),
-      setTimeout(
-        () => nitrowindRef.current.setColorScheme(initialSchemeName),
-        1000,
-      ),
+      setTimeout(() => nitrowindRef.current.setColorScheme('system'), 1000),
       setTimeout(() => {
         const diagnostics = getNativeDiagnostics();
         setSmokeResult(
@@ -61,7 +56,7 @@ function MacOSSmokeScreen() {
       {linked ? (
         <View className="w-full max-w-xl rounded-3xl border border-border bg-card p-10 shadow-xl">
           <Text className="text-sm font-semibold uppercase tracking-widest text-accent">
-            React Native macOS · Phase 0
+            React Native macOS · Phase 2
           </Text>
           <Text className="mt-3 text-4xl font-black text-foreground">
             NitroCSS is linked
@@ -76,6 +71,17 @@ function MacOSSmokeScreen() {
               {smokeResult}
             </Text>
           ) : null}
+          <View className="native-semantic-panel mt-5 flex-row items-center gap-3 rounded-xl border p-3">
+            <View className="native-p3-swatch h-5 w-5 rounded-full" />
+            <Text className="native-semantic-label text-sm font-semibold">
+              AppKit semantic, high-contrast, and Display-P3 colors
+            </Text>
+          </View>
+          <Text className="mt-3 text-xs text-muted">
+            Active window {Math.round(nitrowind.snapshot.screen.width)} ×{' '}
+            {Math.round(nitrowind.snapshot.screen.height)} ·{' '}
+            {nitrowind.snapshot.pixelRatio.toFixed(1)}× backing scale
+          </Text>
           <View className="mt-8 flex-row gap-4">
             <Text
               accessibilityRole="button"
@@ -88,6 +94,12 @@ function MacOSSmokeScreen() {
               className="rounded-xl border border-border px-5 py-3 font-bold text-foreground"
               onPress={() => setLinked(false)}>
               Unlink card
+            </Text>
+            <Text
+              accessibilityRole="button"
+              className="rounded-xl border border-border px-5 py-3 font-bold text-foreground"
+              onPress={() => nitrowind.setColorScheme('system')}>
+              Follow system
             </Text>
           </View>
         </View>
