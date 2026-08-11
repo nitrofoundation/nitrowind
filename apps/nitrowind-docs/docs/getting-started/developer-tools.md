@@ -77,6 +77,8 @@ yarn nitrowind doctor --json
 
 It checks the NitroWind/NitroCSS pair, React Native, Nitro Modules, Tailwind v4,
 Metro configuration, the global CSS entry, Fabric/New Architecture, and iOS Pod
-autolinking. It also reports optional FlashList, Reanimated, and SVG integration
-status. The command never changes project files. Exit code `0` means all required
-checks pass; exit code `2` means the report contains an incompatibility.
+autolinking. A macOS project also gets version-pair, pod, New Architecture,
+native-adapter, and host-architecture checks. It reports optional FlashList,
+Reanimated, and SVG integration status. The command never changes project files.
+Exit code `0` means all required checks pass; exit code `2` means the report
+contains an incompatibility.

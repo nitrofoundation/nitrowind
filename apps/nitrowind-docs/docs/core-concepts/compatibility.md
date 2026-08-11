@@ -6,6 +6,7 @@ description: React Native, architecture, web, Expo Go, and CSS support boundarie
 # Compatibility
 
 Nitrowind targets React Native `0.86`, Fabric, bridgeless, and the new architecture.
+The experimental macOS target uses the explicitly tested 0.81 version pair.
 
 ## Native engine
 
@@ -13,7 +14,7 @@ The native engine is built through `nitrocss`:
 
 - iOS uses the `NitroCss` pod.
 - Android uses the `:nitrocss` Gradle project.
-- macOS has an experimental, core-only Phase 0 target using React Native
+- macOS has an experimental, core-only Phase 1 target using React Native
   `0.81.6` with React Native macOS `0.81.9`. Native class resolution, runtime
   state, diagnostics, and Fabric mutation are included; AppKit paint effects
   are not yet supported.
@@ -21,6 +22,16 @@ The native engine is built through `nitrocss`:
 
 Check an application's actual setup at any time with `yarn nitrowind doctor`.
 Use `--json` to save the compatibility report as a CI artifact.
+
+| Target | React Native | Platform package | Nitro Modules | Minimum OS | Status |
+| --- | --- | --- | --- | --- | --- |
+| iOS | `0.86.x` | built in | `0.35.9+` | iOS `15.1` | beta |
+| Android | `0.86.x` | built in | `0.35.9+` | API `24` | beta |
+| macOS | `0.81.6` | `react-native-macos 0.81.9` | `0.35.9` | macOS `14` | experimental, core-only |
+
+For macOS, doctor additionally verifies the paired React Native minor, the
+NitroCSS pod lock entry, Fabric/New Architecture flags, the installed AppKit
+adapter, and Apple Silicon or Intel host architecture.
 
 ## Virtualized lists
 

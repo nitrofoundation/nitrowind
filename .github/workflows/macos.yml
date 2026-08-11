@@ -1,0 +1,84 @@
+name: React Native macOS
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/macos.yml"
+      - "apps/example-macos/**"
+      - "packages/nitrocss/**"
+      - "packages/nitrowind/**"
+      - "package.json"
+      - "yarn.lock"
+
+permissions:
+  contents: read
+
+jobs:
+  phase-1:
+    name: Phase 1 Apple build gate
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install JavaScript dependencies
+        run: yarn install --immutable
+
+      - name: Install macOS pods
+        working-directory: apps/example-macos/macos
+        run: RCT_NEW_ARCH_ENABLED=1 pod install
+
+      - name: Validate consumer compatibility
+        run: |
+          yarn workspace @nitrofoundation/nitrowind build
+          node packages/nitrowind/bin/nitrowind.mjs doctor --cwd apps/example-macos
+
+      - name: Test the macOS example
+        run: |
+          yarn workspace nitrowind-example-macos typecheck
+          yarn workspace nitrowind-example-macos test --runInBand
+
+      - name: Build macOS Debug
+        working-directory: apps/example-macos
+        run: >-
+          xcodebuild
+          -workspace macos/NitroWindMacOSExample.xcworkspace
+          -scheme NitroWindMacOSExample-macOS
+          -configuration Debug
+          -destination 'platform=macOS'
+          ONLY_ACTIVE_ARCH=NO
+          ARCHS='arm64 x86_64'
+          build
+
+      - name: Build macOS Release
+        working-directory: apps/example-macos
+        run: >-
+          xcodebuild
+          -workspace macos/NitroWindMacOSExample.xcworkspace
+          -scheme NitroWindMacOSExample-macOS
+          -configuration Release
+          -destination 'platform=macOS'
+          ONLY_ACTIVE_ARCH=NO
+          ARCHS='arm64 x86_64'
+          build
+
+      - name: Build the iOS NitroCSS target
+        run: >-
+          xcodebuild
+          -workspace apps/example/ios/NitrowindExampleCli.xcworkspace
+          -scheme NitroCss
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          build

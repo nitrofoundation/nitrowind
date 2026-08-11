@@ -42,21 +42,25 @@ Status: the core Phase 0 build and runtime criterion is met. macOS remains
 experimental: AppKit paint adapters, system appearance observers, multi-window
 state, and the full cleanup/stress matrix belong to later phases.
 
-## Phase 1 — package and Apple build support (started)
+## Phase 1 — package and Apple build support (implemented)
 
 - ✅ Change the NitroCSS podspec from iOS-only to Apple platforms with a declared
   minimum macOS version.
 - ✅ Validate consumer installation through CocoaPods and the package's standard
   podspec discovery, rather than a repository-relative pod.
-- Split `ios/` into shared `apple/`, `ios/`, and `macos/` sources where AppKit
-  and UIKit differ; keep CALayer/C++ implementations shared where practical.
-- Add the matching `react-native-macos` development dependency only to the
+- ✅ Keep portable resolution/Fabric code in `cpp/`, UIKit adapters in `ios/`,
+  and AppKit adapters in `macos/` so platform paint code cannot leak across.
+- ✅ Add the matching `react-native-macos` development dependency only to the
   macOS example and CI job.
-- Extend `nitrowind doctor` with the macOS version-pair, pod, architecture, and
+- ✅ Extend `nitrowind doctor` with the macOS version-pair, pod, architecture, and
   native-engine checks.
 
-Exit criterion: clean Debug and Release builds for Apple Silicon and Intel
-simulator/host architectures from a fresh install.
+The macOS workflow installs a consumer pod graph, runs doctor and example tests,
+and compiles universal Debug/Release (`arm64` + `x86_64`) artifacts. It also
+rebuilds the iOS NitroCSS target to protect the shared Apple podspec boundary.
+
+Exit criterion met locally and encoded in CI: clean Debug and Release universal
+builds from a fresh pod install, with the existing iOS target still green.
 
 ## Phase 2 — runtime and semantic platform state
 

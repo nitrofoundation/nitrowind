@@ -23,8 +23,14 @@ export interface CompatibilitySnapshot {
   css?: string;
   androidGradleProperties?: string;
   podfileLock?: string;
+  macosPodfile?: string;
+  macosPodfileLock?: string;
   hasIosProject?: boolean;
   hasAndroidProject?: boolean;
+  hasMacosProject?: boolean;
+  hasMacosNativeEngine?: boolean;
+  hostPlatform?: NodeJS.Platform;
+  hostArch?: string;
   installedVersions?: Record<string, string | undefined>;
 }
 
@@ -56,6 +62,7 @@ export function analyzeCompatibility(
   };
   const versions = {
     reactNative: versionOf("react-native"),
+    reactNativeMacos: versionOf("react-native-macos"),
     nitrowind: versionOf("@nitrofoundation/nitrowind"),
     nitrocss: versionOf("@nitrofoundation/nitrocss"),
     nitroModules: versionOf("react-native-nitro-modules"),
@@ -77,9 +84,18 @@ export function analyzeCompatibility(
       message: "Install both @nitrofoundation/nitrowind and @nitrofoundation/nitrocss.",
     });
   }
-  check(atLeast(versions.reactNative, 0, 85)
+  const reactNativeVersion = majorMinor(versions.reactNative);
+  const reactNativeMacosVersion = majorMinor(versions.reactNativeMacos);
+  const usesTestedMacosMinor = Boolean(
+    snapshot.hasMacosProject &&
+      reactNativeVersion?.[0] === 0 &&
+      reactNativeVersion[1] === 81 &&
+      reactNativeMacosVersion?.[0] === 0 &&
+      reactNativeMacosVersion[1] === 81,
+  );
+  check(atLeast(versions.reactNative, 0, 85) || usesTestedMacosMinor
     ? { code: "react-native", status: "pass", message: `React Native ${versions.reactNative} supports NitroWind.` }
-    : { code: "react-native", status: "error", file: "package.json", message: "NitroWind requires React Native 0.85 or newer." });
+    : { code: "react-native", status: "error", file: "package.json", message: "NitroWind requires React Native 0.85 or newer, except for the tested React Native macOS 0.81 pair." });
   check(atLeast(versions.tailwindcss, 4)
     ? { code: "tailwind", status: "pass", message: `Tailwind CSS ${versions.tailwindcss} is compatible.` }
     : { code: "tailwind", status: "error", file: "package.json", message: "Install Tailwind CSS v4 or newer." });
@@ -105,13 +121,88 @@ export function analyzeCompatibility(
     ? { code: "new-architecture", status: "error", file: "android/gradle.properties", message: "Enable React Native's New Architecture; NitroWind requires Fabric." }
     : { code: "new-architecture", status: "pass", message: "Fabric/New Architecture is enabled or uses the React Native default." });
 
-  if (!snapshot.hasIosProject && !snapshot.hasAndroidProject) {
+  if (!snapshot.hasIosProject && !snapshot.hasAndroidProject && !snapshot.hasMacosProject) {
     check({ code: "native-project", status: "warning", message: "No ios/ or android/ project was found. Expo Go cannot load NitroWind; create a development build." });
   }
   if (snapshot.hasIosProject) {
     check(snapshot.podfileLock && /NitroCss|nitrocss/i.test(snapshot.podfileLock)
       ? { code: "ios-autolink", status: "pass", file: "ios/Podfile.lock", message: "NitroCSS is present in the iOS Pods lockfile." }
       : { code: "ios-autolink", status: "warning", file: "ios/Podfile.lock", message: "NitroCSS is not visible in Podfile.lock; run pod install or Expo prebuild." });
+  }
+
+  if (snapshot.hasMacosProject) {
+    check(usesTestedMacosMinor
+      ? {
+          code: "macos-version-pair",
+          status: "pass",
+          file: "package.json",
+          message: `React Native ${versions.reactNative} and React Native macOS ${versions.reactNativeMacos} use the tested 0.81 minor pair.`,
+        }
+      : {
+          code: "macos-version-pair",
+          status: "error",
+          file: "package.json",
+          message: "React Native macOS Phase 1 supports the 0.81 minor pair (tested with react-native 0.81.6 and react-native-macos 0.81.9).",
+        });
+    check(snapshot.macosPodfileLock && /NitroCss|nitrocss/i.test(snapshot.macosPodfileLock)
+      ? {
+          code: "macos-autolink",
+          status: "pass",
+          file: "macos/Podfile.lock",
+          message: "NitroCSS is present in the macOS Pods lockfile.",
+        }
+      : {
+          code: "macos-autolink",
+          status: "error",
+          file: "macos/Podfile.lock",
+          message: "NitroCSS is not visible in the macOS Pods lockfile; run pod install with the New Architecture enabled.",
+        });
+    check(/RCT_NEW_ARCH_ENABLED\s*['\"]?\]?\s*=\s*['\"]?1|fabric_enabled\s*=>\s*true/.test(
+      snapshot.macosPodfile ?? "",
+    )
+      ? {
+          code: "macos-new-architecture",
+          status: "pass",
+          file: "macos/Podfile",
+          message: "The macOS target enables Fabric/New Architecture.",
+        }
+      : {
+          code: "macos-new-architecture",
+          status: "error",
+          file: "macos/Podfile",
+          message: "Enable RCT_NEW_ARCH_ENABLED and Fabric for the macOS target.",
+        });
+    check(snapshot.hasMacosNativeEngine
+      ? {
+          code: "macos-native-engine",
+          status: "pass",
+          message: "The installed NitroCSS package contains the macOS native engine adapter.",
+        }
+      : {
+          code: "macos-native-engine",
+          status: "error",
+          message: "The installed NitroCSS package does not contain its macOS native engine adapter.",
+        });
+
+    if (snapshot.hostPlatform === "darwin") {
+      check(snapshot.hostArch === "arm64" || snapshot.hostArch === "x64"
+        ? {
+            code: "macos-host-architecture",
+            status: "pass",
+            message: `The ${snapshot.hostArch} macOS host architecture is supported.`,
+          }
+        : {
+            code: "macos-host-architecture",
+            status: "error",
+            message: `The ${snapshot.hostArch ?? "unknown"} macOS host architecture is not supported.`,
+          });
+    } else {
+      check({
+        code: "macos-host-architecture",
+        status: "info",
+        message: "Run doctor on macOS to validate the Apple Silicon or Intel host architecture.",
+      });
+    }
   }
 
   check({
@@ -168,23 +259,57 @@ async function installedVersion(
   }
 }
 
+async function installedPackageContains(
+  root: string,
+  packageName: string,
+  relativePath: string,
+): Promise<boolean> {
+  let directory = root;
+  const filesystemRoot = parse(root).root;
+  while (true) {
+    const text = await optionalText(
+      resolve(directory, "node_modules", packageName, relativePath),
+    );
+    if (text !== undefined) return true;
+    if (directory === filesystemRoot) return false;
+    directory = dirname(directory);
+  }
+}
+
 export async function inspectCompatibility(
   cwd = process.cwd(),
 ): Promise<CompatibilityReport> {
   const root = resolve(cwd);
-  const [packageText, metro, css, androidGradleProperties, podfileLock] =
+  const [
+    packageText,
+    metro,
+    css,
+    androidGradleProperties,
+    podfileLock,
+    macosPodfile,
+    macosPodfileLock,
+    macosNativeEngine,
+  ] =
     await Promise.all([
       optionalText(resolve(root, "package.json")),
       optionalText(resolve(root, "metro.config.js")),
       optionalText(resolve(root, "global.css")),
       optionalText(resolve(root, "android/gradle.properties")),
       optionalText(resolve(root, "ios/Podfile.lock")),
+      optionalText(resolve(root, "macos/Podfile")),
+      optionalText(resolve(root, "macos/Podfile.lock")),
+      installedPackageContains(
+        root,
+        "@nitrofoundation/nitrocss",
+        "macos/HybridNativePlatformMacOS.mm",
+      ),
     ]);
   const packageJson = packageText
     ? (JSON.parse(packageText) as Record<string, unknown>)
     : undefined;
   const packageNames = [
     "react-native",
+    "react-native-macos",
     "@nitrofoundation/nitrowind",
     "@nitrofoundation/nitrocss",
     "react-native-nitro-modules",
@@ -202,8 +327,14 @@ export async function inspectCompatibility(
     css,
     androidGradleProperties,
     podfileLock,
+    macosPodfile,
+    macosPodfileLock,
     hasIosProject: podfileLock !== undefined,
     hasAndroidProject: androidGradleProperties !== undefined,
+    hasMacosProject: macosPodfile !== undefined,
+    hasMacosNativeEngine: macosNativeEngine,
+    hostPlatform: process.platform,
+    hostArch: process.arch,
     installedVersions: Object.fromEntries(installedEntries),
   });
 }
