@@ -1,6 +1,7 @@
 import './global.css';
 
 import {useEffect, useRef, useState} from 'react';
+import {useWindowDimensions} from 'react-native';
 import {
   ColorScheme,
   getNativeDiagnostics,
@@ -19,30 +20,40 @@ type ExampleId = 'overview' | 'runtime' | 'paint' | 'recycling';
 
 const EXAMPLES: ReadonlyArray<{
   id: ExampleId;
+  group: 'Library' | 'Diagnostics';
+  symbol: string;
   eyebrow: string;
   title: string;
   description: string;
 }> = [
   {
     id: 'overview',
+    group: 'Library',
+    symbol: '⌂',
     eyebrow: 'Start here',
     title: 'macOS overview',
     description: 'Package compatibility and the native Fabric path.',
   },
   {
     id: 'runtime',
+    group: 'Library',
+    symbol: '◐',
     eyebrow: 'Phase 2',
     title: 'Runtime & themes',
     description: 'AppKit colors, Display-P3, window state, and theme updates.',
   },
   {
     id: 'paint',
+    group: 'Library',
+    symbol: '✦',
     eyebrow: 'Phase 3',
     title: 'Native paint',
     description: 'CALayer gradients, gradient borders, and clip paths.',
   },
   {
     id: 'recycling',
+    group: 'Diagnostics',
+    symbol: '↻',
     eyebrow: 'Reliability',
     title: 'Tag reuse',
     description: 'Unlink and relink a Fabric view to verify registry cleanup.',
@@ -71,12 +82,22 @@ function ExampleHeader({
 
 function MacOSExampleBrowser() {
   const nitrowind = useNitrowind();
+  const {width} = useWindowDimensions();
+  const compact = width < 900;
   const [selected, setSelected] = useState<ExampleId>('overview');
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   const [linked, setLinked] = useState(true);
   const [smokeResult, setSmokeResult] = useState<string | null>(null);
   const smokeStarted = useRef(false);
   const nitrowindRef = useRef(nitrowind);
+  const compactRef = useRef(compact);
   nitrowindRef.current = nitrowind;
+
+  useEffect(() => {
+    if (compactRef.current === compact) return;
+    compactRef.current = compact;
+    setSidebarVisible(!compact);
+  }, [compact]);
 
   useEffect(() => {
     if (__DEV__ || smokeStarted.current) return;
@@ -113,71 +134,90 @@ function MacOSExampleBrowser() {
   const activeExample = EXAMPLES.find(example => example.id === selected)!;
 
   return (
-    <View className="flex-1 flex-row bg-surface">
-      <View className="w-72 border-r border-border bg-card p-5">
-        <View className="border-b border-border px-2 pb-5">
-          <Text className="text-xs font-semibold uppercase tracking-widest text-accent">
-            Nitrowind laboratory
+    <View className="mac-window flex-1 flex-row">
+      {sidebarVisible ? (
+        <View className="mac-sidebar w-64 border-r border-border px-3 py-4">
+          <View className="px-2 pb-5 pt-1">
+            <Text className="text-xl font-bold text-foreground">Nitrowind</Text>
+            <Text className="mt-1 text-xs text-muted">macOS examples</Text>
+          </View>
+
+          {(['Library', 'Diagnostics'] as const).map(group => (
+            <View className="mb-5" key={group}>
+              <Text className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                {group}
+              </Text>
+              <View className="gap-1">
+                {EXAMPLES.filter(example => example.group === group).map(
+                  example => {
+                    const active = example.id === selected;
+                    return (
+                      <Pressable
+                        key={example.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={example.title}
+                        accessibilityState={{selected: active}}
+                        focusable
+                        className={
+                          active
+                            ? 'mac-sidebar-selection rounded-lg px-3 py-2'
+                            : 'rounded-lg px-3 py-2 hover:bg-surface focus:bg-surface'
+                        }
+                        onPress={() => setSelected(example.id)}>
+                        <View className="flex-row items-center gap-3">
+                          <Text
+                            className={
+                              active
+                                ? 'mac-sidebar-selection-text w-5 text-center text-base font-semibold'
+                                : 'w-5 text-center text-base font-semibold text-accent'
+                            }>
+                            {example.symbol}
+                          </Text>
+                          <Text
+                            className={
+                              active
+                                ? 'mac-sidebar-selection-text flex-1 text-sm font-semibold'
+                                : 'flex-1 text-sm font-medium text-foreground'
+                            }>
+                            {example.title}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  },
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <View className="mac-content flex-1">
+        <View className="mac-toolbar h-12 flex-row items-center gap-3 border-b border-border px-4">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'}
+            className="h-8 w-8 items-center justify-center rounded-md hover:bg-surface focus:bg-surface"
+            focusable
+            onPress={() => setSidebarVisible(value => !value)}>
+            <Text className="text-lg font-semibold text-foreground">☷</Text>
+          </Pressable>
+          <View className="h-5 w-px bg-border" />
+          <Text className="text-sm font-semibold text-foreground">
+            {activeExample.title}
           </Text>
-          <Text className="mt-2 text-2xl font-black text-foreground">
-            macOS examples
-          </Text>
-          <Text className="mt-2 text-sm text-muted">
-            Select an example to open it in the main canvas.
-          </Text>
+          <View className="ml-auto flex-row items-center gap-2">
+            <View className="h-2 w-2 rounded-full bg-emerald-500" />
+            <Text className="text-xs text-muted">
+              {smokeResult ? 'Native engine ready' : 'Checking native engine…'}
+            </Text>
+          </View>
         </View>
 
-        <View className="mt-4 gap-2">
-          {EXAMPLES.map(example => {
-            const active = example.id === selected;
-            return (
-              <Pressable
-                key={example.id}
-                accessibilityRole="button"
-                accessibilityLabel={example.title}
-                accessibilityState={{selected: active}}
-                className={
-                  active
-                    ? 'rounded-xl border border-border bg-surface p-4'
-                    : 'rounded-xl border border-transparent p-4'
-                }
-                onPress={() => setSelected(example.id)}>
-                <View className="flex-row items-start gap-3">
-                  <View
-                    className={
-                      active
-                        ? 'mt-1 h-2 w-2 rounded-full bg-accent'
-                        : 'mt-1 h-2 w-2 rounded-full bg-border'
-                    }
-                  />
-                  <View className="flex-1">
-                    <Text className="text-xs font-semibold uppercase tracking-widest text-accent">
-                      {example.eyebrow}
-                    </Text>
-                    <Text className="mt-1 text-base font-bold text-foreground">
-                      {example.title}
-                    </Text>
-                    <Text className="mt-1 text-xs text-muted">
-                      {example.description}
-                    </Text>
-                  </View>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View className="mt-auto rounded-xl border border-border bg-surface p-4">
-          <Text className="text-xs font-semibold text-muted">Native engine</Text>
-          <Text className="mt-1 text-sm font-bold text-foreground">
-            {smokeResult ?? 'Running Release smoke…'}
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView className="flex-1">
-        <View className="min-h-full items-center justify-center p-12">
-          <View className="w-full max-w-3xl rounded-3xl border border-border bg-card p-10 shadow-xl">
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{paddingHorizontal: 40, paddingVertical: 36}}>
+          <View className="w-full max-w-4xl self-center">
             <ExampleHeader
               eyebrow={activeExample.eyebrow}
               title={activeExample.title}
@@ -290,8 +330,8 @@ function MacOSExampleBrowser() {
               </View>
             ) : null}
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }

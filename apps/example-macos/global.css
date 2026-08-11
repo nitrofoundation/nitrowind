@@ -9,6 +9,27 @@
   --color-accent: #6d28d9;
 }
 
+.mac-window,
+.mac-content {
+  background-color: platform-color(windowBackgroundColor, #f4f4f5);
+}
+
+.mac-sidebar {
+  background-color: platform-color(underPageBackgroundColor, #ececf0);
+}
+
+.mac-toolbar {
+  background-color: platform-color(windowBackgroundColor, #f4f4f5);
+}
+
+.mac-sidebar-selection {
+  background-color: platform-color(selectedContentBackgroundColor, #6d28d9);
+}
+
+.mac-sidebar-selection-text {
+  color: platform-color(selectedControlTextColor, #ffffff);
+}
+
 .native-semantic-panel {
   background-color: platform-color(controlBackgroundColor, #f3f4f6);
   border-color: platform-color(separatorColor, #d1d5db);

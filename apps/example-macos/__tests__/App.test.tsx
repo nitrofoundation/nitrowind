@@ -40,3 +40,24 @@ test('opens each sidebar example in the main canvas', async () => {
     expect(activeButton.props.accessibilityState).toEqual({selected: true});
   }
 });
+
+test('hides and restores the sidebar from the toolbar', async () => {
+  let renderer!: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(() => {
+    renderer = ReactTestRenderer.create(<App />);
+  });
+
+  await ReactTestRenderer.act(() =>
+    renderer.root.findByProps({accessibilityLabel: 'Hide sidebar'}).props.onPress(),
+  );
+  expect(
+    renderer.root.findAllByProps({accessibilityLabel: 'macOS overview'}),
+  ).toHaveLength(0);
+
+  await ReactTestRenderer.act(() =>
+    renderer.root.findByProps({accessibilityLabel: 'Show sidebar'}).props.onPress(),
+  );
+  expect(
+    renderer.root.findAllByProps({accessibilityLabel: 'macOS overview'}),
+  ).not.toHaveLength(0);
+});
