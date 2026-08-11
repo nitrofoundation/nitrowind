@@ -1,4 +1,4 @@
-#import <UIKit/UIKit.h>
+#import "NitroCssPlatform.h"
 
 @class RCTSurfacePresenter;
 

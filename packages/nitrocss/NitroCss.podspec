@@ -29,7 +29,15 @@ Pod::Spec.new do |s|
   s.source_files = [
     "ios/**/*.{swift,h,m,mm}",
     "macos/**/*.{h,hpp,m,mm,cpp}",
+    "apple/**/*.{h,hpp,m,mm,cpp}",
     "cpp/**/*.{hpp,cpp}"
+  ]
+
+  # Keep AppKit-only platform glue out of iOS builds. The shared Apple paint
+  # adapters live under ios/ and compile for both platforms through
+  # apple/NitroCssPlatform.h.
+  s.ios.exclude_files = [
+    "macos/**/*",
   ]
 
   # Phase 0 on macOS is deliberately core-only. UIKit paint adapters and the
@@ -39,8 +47,6 @@ Pod::Spec.new do |s|
   s.osx.exclude_files = [
     "ios/**/*.swift",
     "ios/NitroCssBackgroundImageApplier.{h,mm}",
-    "ios/NitroCssClipPathApplier.{h,mm}",
-    "ios/NitroCssGradientApplier.{h,mm}",
     "ios/NitroCssInstallerModule.mm",
     "ios/effects/**/*",
     "nitrogen/generated/ios/**/*",

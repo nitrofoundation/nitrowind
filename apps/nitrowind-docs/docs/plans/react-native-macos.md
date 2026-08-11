@@ -81,9 +81,11 @@ still needs the Phase 2 stress fixture before this phase is complete.
 Exit criterion: native appearance and accessibility changes update only affected
 Fabric nodes with zero React rerenders and correct multi-window state.
 
-## Phase 3 — native paint adapters
+## Phase 3 — native paint adapters (in progress)
 
-- Port gradients, gradient borders, clip paths, background images, shadows,
+- ✅ Port gradients, gradient borders, and clip paths through the shared Apple
+  CALayer appliers, including mount/recycle pruning and bounds invalidation.
+- Port background images, shadows,
   filters, outlines, backdrop effects, and animated gradient angles from UIKit
   views to AppKit layer-backed views.
 - Use `NSImage` for raster loading and preserve cancellation/tag-reuse behavior.

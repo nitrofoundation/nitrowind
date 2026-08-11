@@ -7,6 +7,8 @@
 #endif
 
 #include "NitroCssInstaller.hpp"
+#import "NitroCssClipPathApplier.h"
+#import "NitroCssGradientApplier.h"
 
 #include <ReactCommon/RuntimeExecutor.h>
 #include <react/utils/ContextContainer.h>
@@ -43,6 +45,10 @@ RCT_EXPORT_MODULE(NitroCssInstaller)
 
 #if __has_include(<React/RCTSurfacePresenter.h>)
     RCTSurfacePresenter *presenter = bridge.surfacePresenter;
+    if (presenter != nil) {
+      [[NitroCssGradientApplier shared] attachToSurfacePresenter:presenter];
+      [[NitroCssClipPathApplier shared] attachToSurfacePresenter:presenter];
+    }
     if ([presenter respondsToSelector:@selector(contextContainer)]) {
       auto contextContainer = [presenter contextContainer];
       if (contextContainer != nullptr) {

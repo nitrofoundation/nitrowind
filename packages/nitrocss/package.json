@@ -140,6 +140,7 @@
     "lib",
     "safe-area.css",
     "cpp",
+    "apple",
     "ios",
     "macos",
     "android",

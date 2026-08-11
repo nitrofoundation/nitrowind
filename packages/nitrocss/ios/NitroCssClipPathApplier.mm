@@ -109,7 +109,7 @@ UIBezierPath *bezierFromSVGPath(const std::string &d) {
         CGFloat x, y;
         if (!readNumber(x) || !readNumber(y)) return nil;
         current = CGPointMake(x, y);
-        [path addLineToPoint:current];
+        NitroCssPathAddLine(path, current);
         break;
       }
       case 'C': {
@@ -119,9 +119,8 @@ UIBezierPath *bezierFromSVGPath(const std::string &d) {
           return nil;
         }
         current = CGPointMake(x, y);
-        [path addCurveToPoint:current
-                controlPoint1:CGPointMake(x1, y1)
-                controlPoint2:CGPointMake(x2, y2)];
+        NitroCssPathAddCurve(path, current, CGPointMake(x1, y1),
+                            CGPointMake(x2, y2));
         break;
       }
       case 'Z':
@@ -172,7 +171,7 @@ UIBezierPath *pathForDescriptor(const folly::dynamic &descriptor, CGSize size) {
         [path moveToPoint:point];
         first = NO;
       } else {
-        [path addLineToPoint:point];
+        NitroCssPathAddLine(path, point);
       }
     }
     if (first) return nil; // no valid points
@@ -226,7 +225,7 @@ UIBezierPath *pathForDescriptor(const folly::dynamic &descriptor, CGSize size) {
       round = (CGFloat)roundPtr->asDouble();
     }
     if (round > 0) {
-      return [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:round];
+      return NitroCssRoundedPath(rect, round);
     }
     return [UIBezierPath bezierPathWithRect:rect];
   }
@@ -250,7 +249,7 @@ bool clipDescriptorUsesEvenOdd(const folly::dynamic &descriptor) {
   return frPtr != nullptr && frPtr->isString() && frPtr->getString() == "evenodd";
 }
 
-CAShapeLayer *findMaskLayer(UIView *view) {
+CAShapeLayer *findMaskLayer(RCTPlatformView *view) {
   CALayer *mask = view.layer.mask;
   if ([mask.name isEqualToString:kNitroCssClipPathLayerName] &&
       [mask isKindOfClass:[CAShapeLayer class]]) {
@@ -264,7 +263,7 @@ CAShapeLayer *findMaskLayer(UIView *view) {
 @implementation NitroCssClipPathApplier {
   __weak RCTSurfacePresenter *_surfacePresenter;
   /** Views currently carrying our mask, weakly held for the prune pass. */
-  NSHashTable<UIView *> *_maskedViews;
+  NSHashTable<RCTPlatformView *> *_maskedViews;
   std::atomic<bool> _flushScheduled;
   /** Bounded first-paint retry (mirrors the gradient applier). */
   std::atomic<NSInteger> _retriesLeft;
@@ -323,13 +322,13 @@ CAShapeLayer *findMaskLayer(UIView *view) {
   [CATransaction setDisableActions:YES];
 
   // 1) Prune: drop the mask from any view whose tag no longer maps to it.
-  for (UIView *view in [_maskedViews allObjects]) {
+  for (RCTPlatformView *view in [_maskedViews allObjects]) {
     NSNumber *appliedTag = objc_getAssociatedObject(view, kClipAppliedTagKey);
     BOOL keep = NO;
     if (appliedTag != nil) {
       const auto it = snapshot.find(appliedTag.intValue);
       if (it != snapshot.end()) {
-        UIView *current = [presenter
+        RCTPlatformView *current = [presenter
             findComponentViewWithTag_DO_NOT_USE_DEPRECATED:appliedTag.integerValue];
         keep = (current == view);
       }
@@ -342,7 +341,7 @@ CAShapeLayer *findMaskLayer(UIView *view) {
   // 2) Apply: (re)install the mask on every mounted target.
   BOOL anyMissing = NO;
   for (const auto &entry : snapshot) {
-    UIView *view =
+    RCTPlatformView *view =
         [presenter findComponentViewWithTag_DO_NOT_USE_DEPRECATED:entry.first];
     if (view == nil) {
       anyMissing = YES;
@@ -365,7 +364,7 @@ CAShapeLayer *findMaskLayer(UIView *view) {
   }
 }
 
-- (void)removeMaskFromView:(UIView *)view {
+- (void)removeMaskFromView:(RCTPlatformView *)view {
   if ([view.layer.mask.name isEqualToString:kNitroCssClipPathLayerName]) {
     view.layer.mask = nil;
   }
@@ -379,8 +378,9 @@ CAShapeLayer *findMaskLayer(UIView *view) {
 }
 
 - (void)applyEntry:(const ClipPathTargets::Entry &)entry
-            toView:(UIView *)view
+            toView:(RCTPlatformView *)view
                tag:(int32_t)tag {
+  NitroCssPrepareLayerBackedView(view);
   const CGRect bounds = view.layer.bounds;
 
   // Skip only when tag + generation + bounds are all unchanged: the mask path
@@ -394,7 +394,7 @@ CAShapeLayer *findMaskLayer(UIView *view) {
       appliedTag.intValue == tag && appliedGeneration != nil &&
       appliedGeneration.unsignedLongLongValue == entry.generation &&
       appliedBounds != nil &&
-      CGRectEqualToRect(appliedBounds.CGRectValue, bounds)) {
+      CGRectEqualToRect(NitroCssRectValue(appliedBounds), bounds)) {
     return;
   }
 
@@ -414,7 +414,7 @@ CAShapeLayer *findMaskLayer(UIView *view) {
     objc_setAssociatedObject(view, kClipAppliedGenerationKey, @(entry.generation),
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     objc_setAssociatedObject(view, kClipAppliedBoundsKey,
-                             [NSValue valueWithCGRect:bounds],
+                             NitroCssValueWithRect(bounds),
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     return;
   }
@@ -436,7 +436,7 @@ CAShapeLayer *findMaskLayer(UIView *view) {
   objc_setAssociatedObject(view, kClipAppliedGenerationKey, @(entry.generation),
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   objc_setAssociatedObject(view, kClipAppliedBoundsKey,
-                           [NSValue valueWithCGRect:bounds],
+                           NitroCssValueWithRect(bounds),
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   [_maskedViews addObject:view];
 }

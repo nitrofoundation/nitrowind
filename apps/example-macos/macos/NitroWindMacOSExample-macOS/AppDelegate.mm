@@ -2,6 +2,40 @@
 
 #import <React/RCTBundleURLProvider.h>
 #import <ReactAppDependencyProvider/RCTAppDependencyProvider.h>
+#import <objc/message.h>
+
+static void AttachNitroCssPaintAppliers(AppDelegate *appDelegate, NSInteger attempt)
+{
+  if (attempt >= 20) {
+    return;
+  }
+
+  id factory = [appDelegate valueForKey:@"reactNativeFactory"];
+  id rootViewFactory = [factory valueForKey:@"rootViewFactory"];
+  id host = [rootViewFactory valueForKey:@"reactHost"];
+  id presenter = [host valueForKey:@"surfacePresenter"];
+  if (presenter == nil) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+                     AttachNitroCssPaintAppliers(appDelegate, attempt + 1);
+                   });
+    return;
+  }
+
+  Class applierClass = NSClassFromString(@"NitroCssGradientApplier");
+  SEL sharedSelector = NSSelectorFromString(@"shared");
+  SEL attachSelector = NSSelectorFromString(@"attachToSurfacePresenter:");
+  if (applierClass == Nil || ![applierClass respondsToSelector:sharedSelector]) {
+    return;
+  }
+
+  id (*sendShared)(id, SEL) = (id (*)(id, SEL))objc_msgSend;
+  void (*sendAttach)(id, SEL, id) = (void (*)(id, SEL, id))objc_msgSend;
+  id applier = sendShared(applierClass, sharedSelector);
+  if ([applier respondsToSelector:attachSelector]) {
+    sendAttach(applier, attachSelector, presenter);
+  }
+}
 
 @implementation AppDelegate
 
@@ -13,7 +47,11 @@
   self.initialProps = @{};
   self.dependencyProvider = [RCTAppDependencyProvider new];
 
-  return [super applicationDidFinishLaunching:notification];
+  [super applicationDidFinishLaunching:notification];
+  // React Native macOS can create the Fabric presenter after the legacy module
+  // bootstrap. Attach the shared Apple paint registry once that presenter is
+  // available so gradients and clip masks paint on the first mounted surface.
+  AttachNitroCssPaintAppliers(self, 0);
 }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge

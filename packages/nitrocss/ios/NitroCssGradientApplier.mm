@@ -10,7 +10,9 @@
 #import "GradientTargets.hpp"
 #import "GradientAngleOverrides.hpp"
 #import "NitroCssClipPathApplier.h"
+#if !TARGET_OS_OSX
 #import "NitroCssBackgroundImageApplier.h"
+#endif
 
 #include <atomic>
 #include <cctype>
@@ -51,7 +53,7 @@ const void *kAppliedAngleKey = &kAppliedAngleKey;
  * CSS `transparent` keyword. Anything unparseable renders clear rather than
  * crashing — the compiler lowers all literal colors to hex upstream.
  */
-UIColor *colorFromHexString(const std::string &raw) {
+RCTUIColor *colorFromHexString(const std::string &raw) {
   std::string value;
   value.reserve(raw.size());
   for (char c : raw) {
@@ -59,10 +61,10 @@ UIColor *colorFromHexString(const std::string &raw) {
     value.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
   }
   if (value == "transparent") {
-    return [UIColor colorWithRed:0 green:0 blue:0 alpha:0];
+    return [RCTUIColor colorWithRed:0 green:0 blue:0 alpha:0];
   }
   if (value.empty() || value[0] != '#') {
-    return [UIColor colorWithRed:0 green:0 blue:0 alpha:0];
+    return [RCTUIColor colorWithRed:0 green:0 blue:0 alpha:0];
   }
   std::string hex = value.substr(1);
   auto expand = [](const std::string &shorthand) {
@@ -79,25 +81,25 @@ UIColor *colorFromHexString(const std::string &raw) {
     case 4: hex = expand(hex); break;        // rgba → rrggbbaa
     case 6: hex += "ff"; break;
     case 8: break;
-    default: return [UIColor colorWithRed:0 green:0 blue:0 alpha:0];
+    default: return [RCTUIColor colorWithRed:0 green:0 blue:0 alpha:0];
   }
   uint64_t bits = 0;
   for (char c : hex) {
     uint64_t nibble;
     if (c >= '0' && c <= '9') nibble = static_cast<uint64_t>(c - '0');
     else if (c >= 'a' && c <= 'f') nibble = static_cast<uint64_t>(10 + c - 'a');
-    else return [UIColor colorWithRed:0 green:0 blue:0 alpha:0];
+    else return [RCTUIColor colorWithRed:0 green:0 blue:0 alpha:0];
     bits = (bits << 4) | nibble;
   }
-  return [UIColor colorWithRed:((bits >> 24) & 0xff) / 255.0
+  return [RCTUIColor colorWithRed:((bits >> 24) & 0xff) / 255.0
                          green:((bits >> 16) & 0xff) / 255.0
                           blue:((bits >> 8) & 0xff) / 255.0
                          alpha:(bits & 0xff) / 255.0];
 }
 
-BOOL isTransparentBlack(UIColor *color) {
+BOOL isTransparentBlack(RCTUIColor *color) {
   CGFloat r = 0, g = 0, b = 0, a = 0;
-  if (![color getRed:&r green:&g blue:&b alpha:&a]) return NO;
+  if (!NitroCssGetRGBA(color, &r, &g, &b, &a)) return NO;
   return r == 0 && g == 0 && b == 0 && a == 0;
 }
 
@@ -108,7 +110,7 @@ BOOL isTransparentBlack(UIColor *color) {
  * copy of its neighbor (previous first, else next) so only alpha fades.
  */
 NSArray *cgColorsFromHex(const std::vector<std::string> &hexColors) {
-  NSMutableArray<UIColor *> *colors =
+  NSMutableArray<RCTUIColor *> *colors =
       [NSMutableArray arrayWithCapacity:hexColors.size()];
   for (const auto &hex : hexColors) {
     [colors addObject:colorFromHexString(hex)];
@@ -122,7 +124,7 @@ NSArray *cgColorsFromHex(const std::vector<std::string> &hexColors) {
     }
   }
   NSMutableArray *cgColors = [NSMutableArray arrayWithCapacity:colors.count];
-  for (UIColor *color in colors) {
+  for (RCTUIColor *color in colors) {
     [cgColors addObject:(id)color.CGColor];
   }
   return cgColors;
@@ -360,7 +362,7 @@ ParsedDescriptor parseDescriptor(const folly::dynamic &descriptor) {
   return out;
 }
 
-CAGradientLayer *findGradientLayer(UIView *view) {
+CAGradientLayer *findGradientLayer(RCTPlatformView *view) {
   for (CALayer *sublayer in view.layer.sublayers) {
     if ([sublayer.name isEqualToString:kNitroCssGradientLayerName] &&
         [sublayer isKindOfClass:[CAGradientLayer class]]) {
@@ -375,7 +377,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 @implementation NitroCssGradientApplier {
   __weak RCTSurfacePresenter *_surfacePresenter;
   /** Views currently carrying our layer, weakly held for the prune pass. */
-  NSHashTable<UIView *> *_paintedViews;
+  NSHashTable<RCTPlatformView *> *_paintedViews;
   std::atomic<bool> _flushScheduled;
   /**
    * Bounded first-paint retry: a JS-thread `link` can register a descriptor
@@ -430,8 +432,10 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   // applier that IS reliably wired guarantees clip-path and background-image
   // paint on the same surface without extra host-app wiring.
   [[NitroCssClipPathApplier shared] attachToSurfacePresenter:surfacePresenter];
+#if !TARGET_OS_OSX
   [[NitroCssBackgroundImageApplier shared]
       attachToSurfacePresenter:surfacePresenter];
+#endif
 }
 
 - (void)setNeedsFlush {
@@ -467,13 +471,13 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   // 1) Prune: remove our layer from any view whose tag no longer maps to it —
   //    the descriptor was cleared, the view was unmounted/culled, or the
   //    component view was recycled for a different tag.
-  for (UIView *view in [_paintedViews allObjects]) {
+  for (RCTPlatformView *view in [_paintedViews allObjects]) {
     NSNumber *appliedTag = objc_getAssociatedObject(view, kAppliedTagKey);
     BOOL keep = NO;
     if (appliedTag != nil) {
       const auto it = snapshot.find(appliedTag.intValue);
       if (it != snapshot.end()) {
-        UIView *current = [presenter
+        RCTPlatformView *current = [presenter
             findComponentViewWithTag_DO_NOT_USE_DEPRECATED:appliedTag.integerValue];
         keep = (current == view);
       }
@@ -487,7 +491,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   //    currently mounted. Unchanged (generation + frame) views are skipped.
   BOOL anyMissing = NO;
   for (const auto &entry : snapshot) {
-    UIView *view =
+    RCTPlatformView *view =
         [presenter findComponentViewWithTag_DO_NOT_USE_DEPRECATED:entry.first];
     if (view == nil) {
       // Not mounted right now (first paint racing the mount, or culled
@@ -512,7 +516,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   }
 }
 
-- (void)removePaintFromView:(UIView *)view {
+- (void)removePaintFromView:(RCTPlatformView *)view {
   CAGradientLayer *layer = findGradientLayer(view);
   [layer removeFromSuperlayer];
   objc_setAssociatedObject(view, kAppliedTagKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -524,8 +528,9 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 }
 
 - (void)applyEntry:(const GradientTargets::Entry &)entry
-            toView:(UIView *)view
+            toView:(RCTPlatformView *)view
                tag:(int32_t)tag {
+  NitroCssPrepareLayerBackedView(view);
   CAGradientLayer *layer = findGradientLayer(view);
 
   const ParsedDescriptor d = parseDescriptor(entry.descriptor);
