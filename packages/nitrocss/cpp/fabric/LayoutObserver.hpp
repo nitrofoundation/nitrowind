@@ -58,6 +58,9 @@ public:
   void shadowTreeDidMount(
       const facebook::react::RootShadowNode::Shared& rootShadowNode,
       facebook::react::HighResTimeStamp mountTime) noexcept override;
+  void shadowTreeDidUnmount(
+      facebook::react::SurfaceId surfaceId,
+      facebook::react::HighResTimeStamp unmountTime) noexcept override;
 
 private:
   LayoutObserver() = default;

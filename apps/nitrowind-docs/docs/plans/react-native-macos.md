@@ -62,7 +62,7 @@ rebuilds the iOS NitroCSS target to protect the shared Apple podspec boundary.
 Exit criterion met locally and encoded in CI: clean Debug and Release universal
 builds from a fresh pod install, with the existing iOS target still green.
 
-## Phase 2 — runtime and semantic platform state (in progress)
+## Phase 2 — runtime and semantic platform state (implemented)
 
 - ✅ Implement an AppKit `NativePlatform` adapter for appearance, screens,
   backing-scale factor, layout direction, font scale, and window/content insets.
@@ -70,16 +70,20 @@ builds from a fresh pod install, with the existing iOS target still green.
   observe light/dark, increased-contrast, and reduced-transparency changes.
 - ✅ Define desktop safe-area behavior explicitly: full-window content, title-bar
   content layout, and ordinary zero-inset windows must be distinguishable.
-- Validate runtime subscription teardown across reloads and multiple windows.
+- ✅ Make responsive dimensions surface-scoped, clear them when a Fabric
+  surface unmounts or the React instance reloads, and validate observer teardown.
 
-The AppKit observer coalesces application activation, key-window, resize,
-screen/backing-scale, effective-appearance, and accessibility-display changes.
-Its KVO and notification tokens are released with the native HybridObject.
-Window metrics follow the active key/main window; per-surface multi-window state
-still needs the Phase 2 stress fixture before this phase is complete.
+The AppKit observer coalesces application activation, key/main-window changes,
+close, resize, screen/backing-scale, effective-appearance, and
+accessibility-display changes. Invalidation clears its callback before removing
+KVO and notification tokens, so an already-coalesced main-queue callback cannot
+reach a destroyed HybridObject. JavaScript's runtime snapshot follows the active
+key/main window; native responsive resolution overlays dimensions measured from
+each Fabric root, allowing two windows to occupy different breakpoints at once.
 
-Exit criterion: native appearance and accessibility changes update only affected
-Fabric nodes with zero React rerenders and correct multi-window state.
+Exit criterion met: native appearance and accessibility changes update only
+affected Fabric nodes with zero React rerenders, while window-size dependencies
+are resolved independently for each mounted surface.
 
 ## Phase 3 — native paint adapters (in progress)
 

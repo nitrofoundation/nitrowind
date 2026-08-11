@@ -84,6 +84,11 @@ public:
   // --- Runtime -------------------------------------------------------------
   RuntimeState runtimeState() const;
   void setRuntimeState(const RuntimeState& next);
+  void setSurfaceDimensions(facebook::react::SurfaceId surfaceId,
+                            double width,
+                            double height);
+  void clearSurfaceRuntimeState(facebook::react::SurfaceId surfaceId);
+  void resetSurfaceRuntimeStates();
   void setTheme(const std::string& themeName);
   std::string currentTheme() const;
   bool hasAdaptiveThemes() const;
@@ -184,6 +189,8 @@ public:
 
   // --- Recompute -----------------------------------------------------------
   void recompute(uint32_t changedMask);
+  void recomputeSurface(uint32_t changedMask,
+                        facebook::react::SurfaceId surfaceId);
 
   /**
    * Re-resolve and re-commit EVERY linked node, ignoring dependency masks.
@@ -206,6 +213,8 @@ public:
 private:
   NitroCssCore() = default;
   void notifyDependencyListeners(uint32_t changedMask);
+  ResolveContext runtimeContextForSurface(
+      facebook::react::SurfaceId surfaceId) const;
   folly::dynamic resolveForNode(const LinkedNode& node, const ResolveContext& ctx);
   folly::dynamic resolveAccent(const LinkedAccent& accent, const ResolveContext& ctx);
   void commitResolvedNode(const LinkedNode& node, const ResolveContext& ctx);
@@ -232,6 +241,8 @@ private:
 
   mutable std::mutex stateMutex_;
   RuntimeState state_;
+  std::unordered_map<facebook::react::SurfaceId, std::pair<double, double>>
+      surfaceDimensions_;
 
   // Measured container sizes, keyed by the container's Fabric tag and (for
   // named queries) by container name. Written by the layout layer.

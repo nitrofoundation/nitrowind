@@ -352,6 +352,48 @@ RuntimeState NitroCssCore::runtimeState() const {
   return state_;
 }
 
+ResolveContext NitroCssCore::runtimeContextForSurface(
+    SurfaceId surfaceId) const {
+  std::lock_guard<std::mutex> lock(stateMutex_);
+  ResolveContext context = state_.toContext();
+  const auto dimensions = surfaceDimensions_.find(surfaceId);
+  if (dimensions != surfaceDimensions_.end()) {
+    context.screenWidth = dimensions->second.first;
+    context.screenHeight = dimensions->second.second;
+  }
+  return context;
+}
+
+void NitroCssCore::setSurfaceDimensions(
+    SurfaceId surfaceId,
+    double width,
+    double height) {
+  if (surfaceId == 0 || width < 0 || height < 0) return;
+  bool changed = false;
+  {
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    const auto current = surfaceDimensions_.find(surfaceId);
+    changed = current == surfaceDimensions_.end() ||
+        current->second.first != width || current->second.second != height;
+    if (changed) surfaceDimensions_[surfaceId] = {width, height};
+  }
+  if (changed) {
+    recomputeSurface(
+        depFlag(Dependency::Dimensions) | depFlag(Dependency::Orientation),
+        surfaceId);
+  }
+}
+
+void NitroCssCore::resetSurfaceRuntimeStates() {
+  std::lock_guard<std::mutex> lock(stateMutex_);
+  surfaceDimensions_.clear();
+}
+
+void NitroCssCore::clearSurfaceRuntimeState(SurfaceId surfaceId) {
+  std::lock_guard<std::mutex> lock(stateMutex_);
+  surfaceDimensions_.erase(surfaceId);
+}
+
 void NitroCssCore::setRuntimeState(const RuntimeState& next) {
   uint32_t changed;
   {
@@ -512,7 +554,7 @@ void NitroCssCore::link(Tag tag,
   // batches them through `recompute`. Accents are the exception: they target a
   // prop outside the host style object (such as TextInput placeholder color),
   // so their initial value must still be committed natively.
-  const ResolveContext initialContext = runtimeState().toContext();
+  const ResolveContext initialContext = runtimeContextForSurface(surfaceId);
   if (!initialNativeResolve && node.accents.empty()) {
     // React already committed the resolved first-paint props. Do not repeat the
     // full native resolution for ordinary runtime-dependent styles on mount.
@@ -721,7 +763,7 @@ void NitroCssCore::syncStructuralPseudos(
     for (const auto& entry : stateByTag) {
       LinkedNode node;
       if (!index_.tryGet(entry.first, node)) continue;
-      commitResolvedNode(node, runtimeState().toContext());
+      commitResolvedNode(node, runtimeContextForSurface(node.surfaceId));
     }
   }
 }
@@ -828,7 +870,7 @@ void NitroCssCore::setComponentState(Tag tag, const ResolveContext& context) {
   if (!index_.updateContext(tag, context)) return;
   LinkedNode node;
   if (!index_.tryGet(tag, node)) return;
-  commitResolvedNode(node, runtimeState().toContext());
+  commitResolvedNode(node, runtimeContextForSurface(node.surfaceId));
 }
 
 std::unordered_map<Tag, std::string> NitroCssCore::containerTags() const {
@@ -1000,8 +1042,14 @@ folly::dynamic NitroCssCore::resolveForNode(const LinkedNode& node,
 }
 
 void NitroCssCore::recompute(uint32_t changedMask) {
-  const ResolveContext ctx = runtimeState().toContext();
   const auto nodes = index_.affectedNodes(changedMask);
+  RuntimeState runtime;
+  std::unordered_map<SurfaceId, std::pair<double, double>> surfaceDimensions;
+  {
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    runtime = state_;
+    surfaceDimensions = surfaceDimensions_;
+  }
   std::vector<NodeMutation> batch;
   std::vector<const LinkedNode*> changedNodes;
   std::vector<std::size_t> changedHashes;
@@ -1015,6 +1063,12 @@ void NitroCssCore::recompute(uint32_t changedMask) {
   for (const auto& nodeSnapshot : nodes) {
     const auto& node = *nodeSnapshot;
     if (node.family == nullptr) continue;
+    ResolveContext ctx = runtime.toContext();
+    const auto dimensions = surfaceDimensions.find(node.surfaceId);
+    if (dimensions != surfaceDimensions.end()) {
+      ctx.screenWidth = dimensions->second.first;
+      ctx.screenHeight = dimensions->second.second;
+    }
     folly::dynamic props = resolveForNode(node, ctx);
     ++resolved;
     for (const auto& accent : node.accents) {
@@ -1057,9 +1111,73 @@ void NitroCssCore::recompute(uint32_t changedMask) {
       std::chrono::duration<double, std::milli>(commitEnd - commitStart).count());
 }
 
+void NitroCssCore::recomputeSurface(uint32_t changedMask, SurfaceId surfaceId) {
+  const auto nodes = index_.affectedNodes(changedMask);
+  const ResolveContext ctx = runtimeContextForSurface(surfaceId);
+  std::vector<NodeMutation> batch;
+  std::vector<const LinkedNode*> changedNodes;
+  std::vector<std::size_t> changedHashes;
+  batch.reserve(nodes.size());
+  changedNodes.reserve(nodes.size());
+  changedHashes.reserve(nodes.size());
+  std::size_t affected = 0;
+  std::size_t resolved = 0;
+  std::size_t skipped = 0;
+  const auto resolveStart = std::chrono::steady_clock::now();
+
+  for (const auto& nodeSnapshot : nodes) {
+    const auto& node = *nodeSnapshot;
+    if (node.surfaceId != surfaceId) continue;
+    ++affected;
+    if (node.family == nullptr) continue;
+    folly::dynamic props = resolveForNode(node, ctx);
+    ++resolved;
+    for (const auto& accent : node.accents) {
+      const auto accentMask = accent.dependencyMask |
+          styleEngine_.dependencyMask(accent.className);
+      if ((changedMask & accentMask) == 0) continue;
+      folly::dynamic accentProps = resolveAccent(accent, ctx);
+      if (!accentProps.isObject()) continue;
+      for (const auto& pair : accentProps.items()) {
+        props[pair.first] = pair.second;
+      }
+    }
+    processSvgPaintProps(node.componentName, props);
+    const auto propsHash = hashDynamic(props);
+    if (resolvedPropsUnchanged(node, props, propsHash)) {
+      ++skipped;
+      continue;
+    }
+    batch.push_back({node.family, node.surfaceId, std::move(props)});
+    changedNodes.push_back(&node);
+    changedHashes.push_back(propsHash);
+  }
+  const auto resolveEnd = std::chrono::steady_clock::now();
+
+  bool committed = false;
+  const auto commitStart = std::chrono::steady_clock::now();
+  if (!batch.empty()) committed = ShadowTreeMutator::commit(batch);
+  const auto commitEnd = std::chrono::steady_clock::now();
+  if (committed) {
+    for (std::size_t i = 0; i < batch.size(); ++i) {
+      rememberResolvedProps(*changedNodes[i], batch[i].props, changedHashes[i]);
+    }
+  }
+  recordDiagnostics(
+      affected, resolved, skipped, committed ? batch.size() : 0,
+      std::chrono::duration<double, std::milli>(resolveEnd - resolveStart).count(),
+      std::chrono::duration<double, std::milli>(commitEnd - commitStart).count());
+}
+
 void NitroCssCore::recomputeAll() {
-  const ResolveContext ctx = runtimeState().toContext();
   const auto nodes = index_.activeNodes();
+  RuntimeState runtime;
+  std::unordered_map<SurfaceId, std::pair<double, double>> surfaceDimensions;
+  {
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    runtime = state_;
+    surfaceDimensions = surfaceDimensions_;
+  }
   std::vector<NodeMutation> batch;
   std::vector<const LinkedNode*> changedNodes;
   std::vector<std::size_t> changedHashes;
@@ -1073,6 +1191,12 @@ void NitroCssCore::recomputeAll() {
   for (const auto& nodeSnapshot : nodes) {
     const auto& node = *nodeSnapshot;
     if (node.family == nullptr) continue;
+    ResolveContext ctx = runtime.toContext();
+    const auto dimensions = surfaceDimensions.find(node.surfaceId);
+    if (dimensions != surfaceDimensions.end()) {
+      ctx.screenWidth = dimensions->second.first;
+      ctx.screenHeight = dimensions->second.second;
+    }
     folly::dynamic props = resolveForNode(node, ctx);
     ++resolved;
     for (const auto& accent : node.accents) {

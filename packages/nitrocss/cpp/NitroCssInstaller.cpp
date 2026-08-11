@@ -2,6 +2,7 @@
 
 #include "bgimage/BackgroundImageTargets.hpp"
 #include "clippath/ClipPathTargets.hpp"
+#include "core/NitroCssCore.hpp"
 #include "fabric/LayoutObserver.hpp"
 #include "gradient/GradientAngleOverrides.hpp"
 #include "gradient/GradientTargets.hpp"
@@ -144,6 +145,7 @@ void NitroCssInstaller::captureFromRuntime(jsi::Runtime& runtime) {
     BackgroundImageTargets::shared().resetForNewInstance();
     GradientAngleOverrides::shared().resetForNewInstance();
     EffectTargets::shared().resetForNewInstance();
+    NitroCssCore::shared().resetSurfaceRuntimeStates();
   }
 
   // Register the Fabric layout observer that drives native container queries

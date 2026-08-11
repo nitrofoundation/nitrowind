@@ -8,6 +8,7 @@
 
 @interface NitroCssMacOSEnvironmentObserver : NSObject
 - (instancetype)initWithCallback:(dispatch_block_t)callback;
+- (void)invalidate;
 @end
 
 @implementation NitroCssMacOSEnvironmentObserver {
@@ -16,6 +17,7 @@
   id _accessibilityToken;
   BOOL _observingAppearance;
   BOOL _callbackPending;
+  BOOL _invalidated;
 }
 
 static void *NitroCssAppearanceContext = &NitroCssAppearanceContext;
@@ -29,7 +31,12 @@ static void *NitroCssAppearanceContext = &NitroCssAppearanceContext;
   NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
   NSArray<NSNotificationName> *names = @[
     NSApplicationDidBecomeActiveNotification,
+    NSApplicationDidResignActiveNotification,
     NSWindowDidBecomeKeyNotification,
+    NSWindowDidResignKeyNotification,
+    NSWindowDidBecomeMainNotification,
+    NSWindowDidResignMainNotification,
+    NSWindowWillCloseNotification,
     NSWindowDidResizeNotification,
     NSWindowDidChangeScreenNotification,
     NSWindowDidChangeBackingPropertiesNotification,
@@ -66,11 +73,11 @@ static void *NitroCssAppearanceContext = &NitroCssAppearanceContext;
 }
 
 - (void)notifySoon {
-  if (_callbackPending) return;
+  if (_invalidated || _callbackPending) return;
   _callbackPending = YES;
   dispatch_async(dispatch_get_main_queue(), ^{
     self->_callbackPending = NO;
-    if (self->_callback != nil) self->_callback();
+    if (!self->_invalidated && self->_callback != nil) self->_callback();
   });
 }
 
@@ -88,13 +95,18 @@ static void *NitroCssAppearanceContext = &NitroCssAppearanceContext;
                         context:context];
 }
 
-- (void)dealloc {
+- (void)invalidate {
+  if (_invalidated) return;
+  _invalidated = YES;
+  _callback = nil;
   for (id token in _notificationTokens) {
     [NSNotificationCenter.defaultCenter removeObserver:token];
   }
+  [_notificationTokens removeAllObjects];
   if (_accessibilityToken != nil) {
     [NSWorkspace.sharedWorkspace.notificationCenter
         removeObserver:_accessibilityToken];
+    _accessibilityToken = nil;
   }
   if (_observingAppearance) {
     @try {
@@ -103,7 +115,12 @@ static void *NitroCssAppearanceContext = &NitroCssAppearanceContext;
                     context:NitroCssAppearanceContext];
     } @catch (__unused NSException *exception) {
     }
+    _observingAppearance = NO;
   }
+}
+
+- (void)dealloc {
+  [self invalidate];
 }
 
 @end
@@ -170,6 +187,15 @@ HybridNativePlatformMacOS::HybridNativePlatformMacOS()
 
 HybridNativePlatformMacOS::~HybridNativePlatformMacOS() {
   if (environmentObserver_ != nullptr) {
+    NitroCssMacOSEnvironmentObserver *observer =
+        (__bridge NitroCssMacOSEnvironmentObserver *)environmentObserver_;
+    if (NSThread.isMainThread) {
+      [observer invalidate];
+    } else {
+      dispatch_sync(dispatch_get_main_queue(), ^{
+        [observer invalidate];
+      });
+    }
     CFBridgingRelease(environmentObserver_);
     environmentObserver_ = nullptr;
   }

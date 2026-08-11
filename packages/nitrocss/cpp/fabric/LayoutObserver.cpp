@@ -203,6 +203,16 @@ void LayoutObserver::shadowTreeDidMount(
   // This hook is `noexcept`: a thrown exception would terminate the app, so we
   // contain any failure to a skipped frame rather than a crash.
   try {
+    // Every Fabric surface owns its own root layout. On desktop, two windows
+    // can have different responsive breakpoints at the same time, so never use
+    // the active NSWindow's dimensions for both. The core overlays these
+    // surface dimensions onto the shared appearance/theme runtime state.
+    const auto rootMetrics = rootShadowNode->getLayoutMetrics();
+    NitroCssCore::shared().setSurfaceDimensions(
+        rootShadowNode->getSurfaceId(),
+        static_cast<double>(rootMetrics.frame.size.width),
+        static_cast<double>(rootMetrics.frame.size.height));
+
     // Native gradients: a mount transaction may have created/recycled/resized
     // component views (view culling deletes off-screen views and re-creates
     // them on scroll-back). Ping the platform applier so every registered
@@ -221,6 +231,12 @@ void LayoutObserver::shadowTreeDidMount(
   } catch (...) {
     // Swallow — container styles will be reconciled on the next mount.
   }
+}
+
+void LayoutObserver::shadowTreeDidUnmount(
+    SurfaceId surfaceId,
+    HighResTimeStamp /*unmountTime*/) noexcept {
+  NitroCssCore::shared().clearSurfaceRuntimeState(surfaceId);
 }
 
 void LayoutObserver::remeasure() noexcept {
