@@ -4,6 +4,14 @@
   "private": true,
   "description": "Nitrowind — fully open-source, fastest Tailwind bindings for React Native (native C++ ShadowTree engine, free for everyone)",
   "license": "MIT",
+  "homepage": "https://nitrowind.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nitrofoundation/nitrowind.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nitrofoundation/nitrowind/issues"
+  },
   "workspaces": [
     "packages/*",
     "apps/*"

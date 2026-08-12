@@ -1,9 +1,9 @@
 ---
-title: Theming
-description: Define theme tokens and switch themes without React re-renders.
+title: React Native Theming
+description: Define Nitrowind theme tokens and switch light, dark, system, or named themes in React Native without React re-renders.
 ---
 
-# Theming
+# React Native Theming
 
 Themes are CSS variable maps extracted from your stylesheet.
 

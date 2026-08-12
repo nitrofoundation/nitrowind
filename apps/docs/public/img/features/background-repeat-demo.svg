@@ -1,0 +1,46 @@
+<svg width="1040" height="420" viewBox="0 0 1040 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="tile" width="64" height="64" patternUnits="userSpaceOnUse">
+      <rect width="64" height="64" fill="#F8FAFC"/>
+      <rect x="0" y="0" width="32" height="32" fill="#22D3EE"/>
+      <rect x="32" y="0" width="32" height="32" fill="#F97316"/>
+      <rect x="0" y="32" width="32" height="32" fill="#DB2777"/>
+      <rect x="32" y="32" width="32" height="32" fill="#14B8A6"/>
+      <path d="M0 0H64V64H0V0Z" stroke="#0F172A" stroke-width="4"/>
+      <path d="M32 0V64M0 32H64" stroke="#0F172A" stroke-width="3"/>
+      <circle cx="32" cy="32" r="10" fill="#F8FAFC" stroke="#0F172A" stroke-width="3"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#0F172A" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect width="1040" height="420" rx="30" fill="#F8FAFC"/>
+  <text x="56" y="62" fill="#0F172A" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="760">Background repeat modes</text>
+  <text x="56" y="96" fill="#64748B" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="500">The tile is intentionally loud so the repeated axes are visible at a glance.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="56" y="132" width="288" height="220" rx="20" fill="white" stroke="#CBD5E1" stroke-width="2"/>
+    <rect x="76" y="178" width="248" height="132" rx="12" fill="url(#tile)" stroke="#0F172A" stroke-width="2"/>
+    <text x="76" y="164" fill="#0F172A" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="740">repeat</text>
+    <text x="77" y="334" fill="#475569" font-family="Inter, system-ui, sans-serif" font-size="14">Tiles across X and Y</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="376" y="132" width="288" height="220" rx="20" fill="white" stroke="#CBD5E1" stroke-width="2"/>
+    <rect x="396" y="178" width="248" height="132" rx="12" fill="#E2E8F0" stroke="#0F172A" stroke-width="2"/>
+    <rect x="396" y="178" width="248" height="64" rx="12" fill="url(#tile)"/>
+    <line x1="396" y1="242" x2="644" y2="242" stroke="#0F172A" stroke-width="2"/>
+    <text x="396" y="164" fill="#0F172A" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="740">repeat-x</text>
+    <text x="397" y="334" fill="#475569" font-family="Inter, system-ui, sans-serif" font-size="14">Tiles only horizontally</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="696" y="132" width="288" height="220" rx="20" fill="white" stroke="#CBD5E1" stroke-width="2"/>
+    <rect x="716" y="178" width="248" height="132" rx="12" fill="#E2E8F0" stroke="#0F172A" stroke-width="2"/>
+    <rect x="716" y="178" width="64" height="132" rx="12" fill="url(#tile)"/>
+    <line x1="780" y1="178" x2="780" y2="310" stroke="#0F172A" stroke-width="2"/>
+    <text x="716" y="164" fill="#0F172A" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="740">repeat-y</text>
+    <text x="717" y="334" fill="#475569" font-family="Inter, system-ui, sans-serif" font-size="14">Tiles only vertically</text>
+  </g>
+</svg>

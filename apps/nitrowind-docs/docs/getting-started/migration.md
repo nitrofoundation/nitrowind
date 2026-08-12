@@ -1,11 +1,13 @@
 ---
-title: Migration Notes
-description: Move from NativeWind, Uniwind, or an older Nitrowind API.
+title: Migrate from NativeWind or Uniwind
+description: A React Native Tailwind CSS migration guide for moving from NativeWind or Uniwind to Nitrowind.
 ---
 
-# Migration Notes
+# Migrate from NativeWind or Uniwind
 
-Nitrowind keeps the familiar React Native Tailwind shape: `className`, `global.css`, a Metro plugin, styled components, and `cssInterop` for third-party components.
+Nitrowind is a React Native Tailwind CSS engine for teams moving from NativeWind, Uniwind, or an older Nitrowind API. It keeps the familiar `className`, `global.css`, Metro plugin, styled components, and `cssInterop` workflow while using the open-source `nitrocss` native engine underneath.
+
+Before migrating, read [Installation](./installation), then keep this page open while you replace the styling integration. The utility classes you author still come from Tailwind v4; the key change is the native runtime and Metro setup.
 
 ## From NativeWind
 
@@ -34,7 +36,18 @@ Most utility classes stay familiar because Tailwind v4 still owns utility genera
 
 ## From Uniwind
 
-The high-level workflow is similar: import Tailwind in CSS, wrap Metro, and use className. Nitrowind exposes both Tailwind and plain-CSS entry points, and the native engine is fully open source through `nitrocss`.
+The high-level Uniwind workflow is similar: import Tailwind in CSS, wrap Metro, and use `className`. Nitrowind exposes both Tailwind and plain-CSS entry points, and its native engine is fully open source through `nitrocss`.
+
+Check these areas during a Uniwind migration:
+
+- Replace the Uniwind Metro integration with `withNitrowindMetroConfig`.
+- Keep your Tailwind tokens in `global.css`, then validate theme and dark-mode behavior with [Theming](../core-concepts/theming).
+- Move component wrappers to Nitrowind's [cssInterop](../api/css-interop) API where a third-party component needs a class mapping.
+- Review [Compatibility](../core-concepts/compatibility) for web-only CSS that React Native cannot represent.
+
+## Choosing a React Native Tailwind CSS engine
+
+NativeWind, Uniwind, and Nitrowind all make Tailwind-style utilities available to React Native developers. Choose Nitrowind when you want an open-source Tailwind v4 workflow with a native C++ engine for runtime style dependency updates, including themes, container size, safe-area insets, and group state. Verify the migration on the iOS and Android versions your app supports before removing the existing styling dependency.
 
 ## Historical Nitrowind aliases
 

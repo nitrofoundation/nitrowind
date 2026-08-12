@@ -8,4 +8,10 @@ services:
     volumes:
       - ./current/build:/usr/share/caddy:ro
       - ./current/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      nitrowind-proxy:
     restart: unless-stopped
+
+networks:
+  nitrowind-proxy:
+    external: true

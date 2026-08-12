@@ -1,9 +1,9 @@
 ---
-title: Installation
-description: Install Nitrowind and wire it into a React Native or Expo app.
+title: Install Nitrowind in React Native
+description: Install Nitrowind in a React Native or Expo app, configure Metro, import Tailwind CSS v4, and render your first className.
 ---
 
-# Installation
+# Install Nitrowind in React Native
 
 Install the Tailwind wrapper, the core native engine, Tailwind CSS, and Nitro modules:
 

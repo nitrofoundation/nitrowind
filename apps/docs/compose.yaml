@@ -1,0 +1,10 @@
+name: nitrowind-docs
+
+services:
+  docs:
+    build:
+      context: ../..
+      dockerfile: apps/docs/Dockerfile
+    ports:
+      - "${DOCS_PORT:-8080}:8080"
+    restart: unless-stopped

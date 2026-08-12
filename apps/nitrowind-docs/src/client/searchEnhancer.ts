@@ -252,6 +252,9 @@ const initSearchEnhancer = () => {
 
   trigger.addEventListener("focus", openModal);
   trigger.addEventListener("click", openModal);
+  document.querySelectorAll<HTMLElement>("[data-docs-search-trigger]").forEach((button) => {
+    button.addEventListener("click", openModal);
+  });
   trigger.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
       event.preventDefault();

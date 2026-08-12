@@ -5,14 +5,17 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nitrofoundation/nitrowind.git"
+    "url": "git+https://github.com/nitrofoundation/nitrowind.git",
+    "directory": "packages/nitrowind-skills"
+  },
+  "homepage": "https://nitrowind.dev/skills",
+  "bugs": {
+    "url": "https://github.com/nitrofoundation/nitrowind/issues"
   },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": {
-    "nitrowind-skills": "dist/cli.js"
-  },
+  "bin": "dist/cli.js",
   "files": [
     "dist",
     "skills",

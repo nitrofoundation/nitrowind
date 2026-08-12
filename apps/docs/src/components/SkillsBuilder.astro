@@ -1,0 +1,133 @@
+---
+type Preset = [string, string, string, string[], string[]];
+
+const presets: Preset[] = [
+  ["nitrowind-setup", "Setup", "Install Nitrowind, configure Metro, and connect Tailwind CSS v4.", ["/getting-started/installation/", "/getting-started/metro/", "/getting-started/global-css/"], ["Inspect dependencies and app entry points.", "Configure Metro and one CSS entry file together.", "Verify with a styled native primitive."]],
+  ["nitrowind-migration", "Migration", "Move a NativeWind or Uniwind app to Nitrowind safely.", ["/getting-started/migration/", "/getting-started/installation/", "/core-concepts/compatibility/"], ["Inventory the existing styling setup.", "Replace Metro and CSS configuration deliberately.", "Call out unsupported web-only CSS."]],
+  ["nitrocss-plain-css", "Plain CSS", "Use Nitrocss directly without Tailwind utilities.", ["/getting-started/plain-css/", "/api/metro/", "/core-concepts/compatibility/"], ["Use the Nitrocss Metro entry point.", "Keep authored CSS within native capabilities.", "Confirm Metro scans class candidates."]],
+  ["nitrowind-theming", "Adaptive theming", "Create named themes and light, dark, and system behavior.", ["/core-concepts/theming/", "/core-concepts/adaptive-theming/", "/api/runtime/"], ["Define semantic theme variables.", "Use setTheme for named choices.", "Use setColorScheme for adaptive behavior."]],
+  ["nitrowind-components-interop", "Components and interop", "Style native and third-party components with className mappings.", ["/features/components/", "/api/css-interop/", "/features/native-props/"], ["Prefer supported wrappers.", "Map classes to the component's visual props.", "Separate container and content styles."]],
+  ["nitrowind-interaction-states", "Interaction states", "Build pressed, disabled, focus, hover, and group-state UI.", ["/features/states-and-groups/", "/features/components/", "/core-concepts/runtime-state/"], ["Use supported variants on the interactive primitive.", "Choose Pressable-compatible controls.", "Use group markers only for parent-driven state."]],
+  ["nitrowind-responsive-layouts", "Responsive layouts", "Adapt layout to dimensions, platform, RTL, and font scale.", ["/features/responsive-and-containers/", "/core-concepts/platforms/", "/core-concepts/runtime-state/"], ["Use responsive utilities for screen changes.", "Use platform variants for platform differences.", "Use a container query for parent-size logic."]],
+  ["nitrowind-container-queries", "Container queries", "Make a component respond to the measured size of its parent.", ["/features/container-queries/", "/features/responsive-and-containers/", "/core-concepts/how-it-works/"], ["Mark the layout boundary as a container.", "Use named containers for nested layouts.", "Keep screen and container conditions distinct."]],
+  ["nitrowind-safe-area", "Safe area", "Apply inset-aware spacing and screen layouts.", ["/features/safe-area/", "/core-concepts/runtime-state/", "/getting-started/global-css/"], ["Use safe-area utilities at visual edges.", "Combine insets with design spacing.", "Confirm safe-area data reaches the app."]],
+  ["nitrowind-background-images", "Background images", "Paint native image backgrounds, focal positions, and repeat patterns.", ["/features/background-images/", "/features/gradients-and-backgrounds/", "/core-concepts/compatibility/"], ["Use CSS URL backgrounds for decorative surfaces.", "Use a clearly tileable asset for repeat options.", "Use Image for semantic content."]],
+  ["nitrowind-native-effects", "Native effects", "Use gradients, gradient borders, shadows, filters, and clip paths.", ["/features/gradients-and-backgrounds/", "/features/effects/", "/features/nitrowind-specific/"], ["Start from supported CSS declarations.", "Use theme variables for reactive tokens.", "Describe native fallbacks honestly."]],
+  ["nitrowind-animations", "Animations", "Add entering, exiting, layout, and CSS-keyframe helpers.", ["/features/animations/", "/getting-started/installation/", "/getting-started/metro/"], ["Confirm Reanimated is installed.", "Use lifecycle utilities for mount and layout changes.", "Use keyframes for visual animation."]],
+  ["nitrowind-svg", "SVG styling", "Style react-native-svg fill, stroke, and sizing with className.", ["/features/svg/", "/features/components/", "/getting-started/installation/"], ["Use supported SVG primitives or wrappers.", "Put paint classes on the owning SVG element.", "Keep structural definitions separate."]],
+  ["nitrowind-native-props", "Native props", "Map className values to component-specific native visual props.", ["/features/native-props/", "/features/components/", "/api/css-interop/"], ["Identify the target visual prop.", "Map only classes that target it.", "Keep unrelated classes out of the mapping."]],
+  ["nitrowind-native-engine", "Native engine", "Reason about ShadowTree updates, dependencies, and fallbacks.", ["/core-concepts/how-it-works/", "/native-engine/architecture/", "/native-engine/fallbacks/", "/core-concepts/compatibility/"], ["Trace CSS through compilation and runtime dependencies.", "Use native behavior where supported.", "Validate target platform requirements."]],
+];
+---
+
+<section class="skill-builder" id="skill-builder" aria-labelledby="skill-builder-title">
+  <header>
+    <div>
+      <span>Interactive builder</span>
+      <h2 id="skill-builder-title">Create a focused skill</h2>
+    </div>
+    <p>Choose a proven workflow, then describe the job your agent should own.</p>
+  </header>
+
+  <div class="skill-builder__grid">
+    <div class="skill-builder__controls">
+      <label for="skill-preset">Nitrowind workflow</label>
+      <select id="skill-preset">
+        {presets.map(([id, title]) => <option value={id}>{title}</option>)}
+      </select>
+
+      <label for="skill-name">Skill name</label>
+      <input id="skill-name" value="nitrowind-setup" maxlength="63" />
+      <small>Lowercase letters, numbers, and hyphens only.</small>
+
+      <label for="skill-intent">Project-specific intent</label>
+      <textarea id="skill-intent" rows="5" placeholder={presets[0][2]}></textarea>
+
+      <div class="skill-builder__summary">
+        <strong id="skill-summary-title">Setup</strong>
+        <p id="skill-summary-copy">{presets[0][2]}</p>
+      </div>
+    </div>
+
+    <div class="skill-builder__preview">
+      <div class="skill-builder__bar">
+        <span>SKILL.md</span>
+        <div>
+          <button id="skill-copy" type="button">Copy</button>
+          <button id="skill-download" type="button">Download</button>
+        </div>
+      </div>
+      <pre><code id="skill-output"></code></pre>
+    </div>
+  </div>
+</section>
+
+<script is:inline type="application/json" id="skill-presets" set:html={JSON.stringify(presets)} />
+
+<script>
+  type Preset = [string, string, string, string[], string[]];
+
+  const data = document.querySelector<HTMLScriptElement>("#skill-presets");
+  const presets = JSON.parse(data?.textContent || "[]") as Preset[];
+  const select = document.querySelector<HTMLSelectElement>("#skill-preset");
+  const name = document.querySelector<HTMLInputElement>("#skill-name");
+  const intent = document.querySelector<HTMLTextAreaElement>("#skill-intent");
+  const output = document.querySelector<HTMLElement>("#skill-output");
+  const summaryTitle = document.querySelector<HTMLElement>("#skill-summary-title");
+  const summaryCopy = document.querySelector<HTMLElement>("#skill-summary-copy");
+  const copy = document.querySelector<HTMLButtonElement>("#skill-copy");
+  const download = document.querySelector<HTMLButtonElement>("#skill-download");
+
+  const normalize = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63);
+
+  const selectedPreset = () => presets.find(([id]) => id === select?.value) ?? presets[0];
+
+  const render = () => {
+    const preset = selectedPreset();
+    if (!preset || !name || !intent || !output) return "";
+    const [id, title, summary, docs, workflow] = preset;
+    const skillName = normalize(name.value) || id;
+    const purpose = (intent.value || summary).trim();
+    const markdown = `---\nname: ${skillName}\ndescription: ${JSON.stringify(`${purpose} Use this skill whenever the user asks about ${title.toLowerCase()} in a Nitrowind or Nitrocss React Native project.`)}\n---\n\n# ${skillName}\n\nUse this skill to implement supported Nitrowind behavior. Read the linked canonical docs before changing configuration or relying on a native capability.\n\n## Workflow\n\n${workflow.map((step, index) => `${index + 1}. ${step}`).join("\n")}\n\n## Canonical docs\n\n${docs.map((doc) => `- [${doc}](https://nitrowind.dev${doc})`).join("\n")}\n\n## Validate\n\n- Run the narrowest relevant build or typecheck after changing code or configuration.\n- Keep the result native-first and explain platform limits instead of assuming browser behavior.\n`;
+    output.textContent = markdown;
+    if (summaryTitle) summaryTitle.textContent = title;
+    if (summaryCopy) summaryCopy.textContent = summary;
+    intent.placeholder = summary;
+    return markdown;
+  };
+
+  select?.addEventListener("change", () => {
+    const preset = selectedPreset();
+    if (preset && name && intent) {
+      name.value = preset[0];
+      intent.value = "";
+    }
+    render();
+  });
+  name?.addEventListener("input", () => {
+    name.value = normalize(name.value);
+    render();
+  });
+  intent?.addEventListener("input", render);
+  copy?.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(render());
+    copy.textContent = "Copied";
+    window.setTimeout(() => (copy.textContent = "Copy"), 1400);
+  });
+  download?.addEventListener("click", () => {
+    const url = URL.createObjectURL(new Blob([render()], { type: "text/markdown;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "SKILL.md";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  });
+
+  const requestedPreset = new URLSearchParams(window.location.search).get("preset");
+  if (requestedPreset && presets.some(([id]) => id === requestedPreset) && select && name) {
+    select.value = requestedPreset;
+    name.value = requestedPreset;
+  }
+  render();
+</script>

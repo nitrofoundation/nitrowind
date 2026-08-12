@@ -4,8 +4,15 @@
   "description": "The fastest Tailwind bindings for React Native — a thin Tailwind CSS wrapper around nitrocss, the fully open-source native C++ ShadowTree styling engine.",
   "license": "MIT",
   "author": "Nitrowind contributors",
-  "repository": "https://github.com/nitrowind/nitrowind",
-  "homepage": "https://github.com/nitrowind/nitrowind",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nitrofoundation/nitrowind.git",
+    "directory": "packages/nitrowind"
+  },
+  "homepage": "https://nitrowind.dev/",
+  "bugs": {
+    "url": "https://github.com/nitrofoundation/nitrowind/issues"
+  },
   "type": "module",
   "source": "./src/index.ts",
   "main": "./lib/commonjs/index.js",
@@ -88,6 +95,20 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
+  "keywords": [
+    "react-native",
+    "tailwind",
+    "tailwindcss",
+    "tailwind-v4",
+    "nativewind",
+    "uniwind",
+    "nitrowind",
+    "nitro-modules",
+    "fabric",
+    "shadowtree",
+    "styling",
+    "theme"
+  ],
   "scripts": {
     "build": "bob build",
     "prepack": "yarn build",

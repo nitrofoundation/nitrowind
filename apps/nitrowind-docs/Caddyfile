@@ -6,6 +6,19 @@
   @assets path /assets/*
   header @assets Cache-Control "public, max-age=31536000, immutable"
 
+  @legacyPipeline path /assets/images/native-engine-pipeline-97118503735ad5ceb7e0cf0f9204934a.png
+  header @legacyPipeline X-Robots-Tag "noindex"
+  respond @legacyPipeline 410
+
+  @generatedImages path /assets/images/*
+  header @generatedImages X-Robots-Tag "noindex"
+
+  @pipelineArtwork path /img/features/native-engine-pipeline.png
+  header @pipelineArtwork X-Robots-Tag "noindex"
+
+  @search path /search /search.html
+  header @search X-Robots-Tag "noindex, follow"
+
   try_files {path} {path}.html {path}/
   file_server
 }

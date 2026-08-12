@@ -16,6 +16,7 @@ node_modules/
 dist/
 lib/
 build/
+.astro/
 *.tsbuildinfo
 
 # Nitro / native generated

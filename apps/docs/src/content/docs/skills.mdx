@@ -1,0 +1,32 @@
+---
+title: Nitrowind Skills
+description: Install or tailor reusable agent skills for supported Nitrowind workflows.
+---
+
+import SkillsBuilder from "../../components/SkillsBuilder.astro";
+
+Give an agent focused, up-to-date workflows for the Nitrowind features that benefit from careful native React Native decisions: setup, theming, container layouts, background images, effects, animations, SVG, and component interop.
+
+## Install curated skills
+
+Install every shipped skill into your current project's `.agents/skills` folder:
+
+```bash
+npx @nitrofoundation/nitrowind-skills add --all
+```
+
+Or choose a focused workflow:
+
+```bash
+npx @nitrofoundation/nitrowind-skills add nitrowind-background-images
+```
+
+Each skill links to these canonical docs instead of copying the complete reference into an agent's context. Use the builder to create a tailored starting point for your own project.
+
+<SkillsBuilder />
+
+## What gets generated
+
+A skill is a small folder containing `SKILL.md` plus optional agent-facing metadata. Keep it near the project at `.agents/skills/<skill-name>/SKILL.md`, commit it when it describes shared engineering practice, and update it when the underlying workflow changes.
+
+The curated set covers every documented feature area: component interop, interaction states, responsive and container layouts, safe area, background images, gradients and native effects, animations, SVG, native props, and the C++ runtime engine. It also includes setup, migration, plain CSS, and adaptive theming.

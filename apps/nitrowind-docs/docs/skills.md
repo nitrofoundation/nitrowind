@@ -1,8 +1,8 @@
 ---
 id: skills
-title: Skills
+title: Nitrowind Skills
 slug: /skills
-description: Install or tailor reusable agent skills for supported Nitrowind workflows.
+description: Install or create Nitrowind agent skills for React Native Tailwind CSS setup, migration, theming, components, and native features.
 hide_title: true
 ---
 

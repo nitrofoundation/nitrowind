@@ -1,0 +1,50 @@
+---
+title: Runtime State
+description: Runtime snapshots, dependency masks, and provider hooks.
+---
+
+
+`NitroCssProvider` starts runtime observation and exposes state through hooks.
+
+```tsx
+import { useNitrowind } from "@nitrofoundation/nitrowind";
+
+function ThemeToggle() {
+  const { snapshot, themeName, setTheme, setColorScheme } = useNitrowind();
+
+  return (
+    <Button
+      title={snapshot.colorScheme === "dark" ? "Light" : "Dark"}
+      onPress={() => setColorScheme("dark")}
+    />
+  );
+}
+```
+
+## Snapshot fields
+
+The runtime snapshot tracks:
+
+- `currentThemeName`
+- `hasAdaptiveThemes`
+- `colorScheme`
+- `screen`
+- `insets`
+- `orientation`
+- `pixelRatio`
+- `fontScale`
+- `rtl`
+- `rem`
+- `hairlineWidth`
+
+## Hooks
+
+| Hook | Returns |
+| --- | --- |
+| `useNitroCss` / `useNitrowind` | Snapshot, theme name, `setTheme`, and `setColorScheme`. |
+| `useRuntimeSnapshot` | The current runtime snapshot. |
+| `useTheme` | Current theme name and setter. |
+| `useColorScheme` | Current color scheme and setter. |
+| `useDimensions` | Current screen dimensions. |
+| `useInsets` | Current safe-area insets. |
+| `useFontScale` | Current font scale. |

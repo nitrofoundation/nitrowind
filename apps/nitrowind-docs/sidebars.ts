@@ -32,6 +32,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Features",
+      link: { type: "doc", id: "features/index" },
       collapsed: false,
       items: [
         "features/components",
@@ -51,6 +52,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "API Reference",
+      link: { type: "doc", id: "api/index" },
       collapsed: false,
       items: [
         "api/runtime",

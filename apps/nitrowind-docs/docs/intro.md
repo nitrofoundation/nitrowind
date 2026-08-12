@@ -1,8 +1,8 @@
 ---
 id: intro
-title: Introduction
+title: Nitrowind Documentation
 slug: /intro
-description: Nitrowind is an open-source Tailwind v4 styling system for React Native backed by a native C++ ShadowTree engine.
+description: Explore Nitrowind documentation for React Native Tailwind CSS v4 setup, theming, components, native features, APIs, and the C++ ShadowTree engine.
 hide_title: true
 ---
 
