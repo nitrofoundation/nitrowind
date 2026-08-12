@@ -3,6 +3,7 @@ import {
   Dimensions as RNDimensions,
   I18nManager,
   PixelRatio,
+  Platform,
   StyleSheet,
 } from "react-native";
 import {
@@ -249,7 +250,13 @@ class RuntimeManager {
   setColorScheme(scheme: "light" | "dark" | "system"): void {
     this.colorSchemeMode = scheme;
     this.adaptiveThemeFollowsColorScheme = true;
-    Appearance.setColorScheme((scheme === "system" ? null : scheme) as never);
+    // RN macOS 0.81's ObjC Appearance TurboModule can throw while hopping to
+    // its main queue; that release's exception-to-JSI conversion then corrupts
+    // Hermes and terminates the process. The NitroCSS AppKit platform object
+    // applies NSApp.appearance itself, so never enter that unsafe bridge path.
+    if (Platform.OS !== "macos") {
+      Appearance.setColorScheme((scheme === "system" ? null : scheme) as never);
+    }
     if (hasNativeEngine()) {
       try {
         const engine = getEngine()!;

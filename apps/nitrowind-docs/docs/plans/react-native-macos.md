@@ -85,18 +85,26 @@ Exit criterion met: native appearance and accessibility changes update only
 affected Fabric nodes with zero React rerenders, while window-size dependencies
 are resolved independently for each mounted surface.
 
-## Phase 3 — native paint adapters (in progress)
+## Phase 3 — native paint adapters (implemented)
 
 - ✅ Port gradients, gradient borders, and clip paths through the shared Apple
   CALayer appliers, including mount/recycle pruning and bounds invalidation.
-- Port background images, shadows,
-  filters, outlines, backdrop effects, and animated gradient angles from UIKit
-  views to AppKit layer-backed views.
-- Use `NSImage` for raster loading and preserve cancellation/tag-reuse behavior.
-- Provide deterministic fallbacks for effects unavailable on the selected
-  minimum macOS version.
-- Verify that tag reuse clears every CALayer/descriptor registry before a new
+- ✅ Port background images, multi/inset shadows, foreground filters, outlines,
+  blend modes, continuous corners, and backdrop effects from UIKit views to
+  AppKit layer-backed views.
+- ✅ Use `NSImage` for cached raster loading and preserve async URL/tag-reuse
+  validation and repeat tiling behavior.
+- ✅ Use Core Image layer filters and background filters as the deterministic
+  macOS 14 implementation.
+- ✅ Verify that tag reuse clears every CALayer/descriptor registry before a new
   cell occupies the tag.
+
+Animated gradient angles remain static on the tested React Native macOS
+`0.81.9` / Reanimated combination. That Reanimated build calls the platform's
+ObjC Timing TurboModule, which throws on macOS; Hermes `0.12` then crashes while
+converting the exception. NitroCSS therefore does not load the Reanimated host
+or its RAF gradient-angle driver on this version pair. Static gradients and all
+other native paint paths remain available without a React rerender.
 
 Exit criterion: the effects and backgrounds examples visually match iOS within
 the documented platform differences in light, dark, and high-contrast modes.

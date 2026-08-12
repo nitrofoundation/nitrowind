@@ -38,6 +38,7 @@ describe("runtime native subscriptions", () => {
       },
       I18nManager: { isRTL: false },
       PixelRatio: { get: () => 3 },
+      Platform: { OS: "ios" },
       StyleSheet: { hairlineWidth: 1 },
     }));
     vi.doMock("../native", () => ({
@@ -83,6 +84,7 @@ describe("runtime native subscriptions", () => {
       },
       I18nManager: { isRTL: false },
       PixelRatio: { get: () => 3 },
+      Platform: { OS: "ios" },
       StyleSheet: { hairlineWidth: 1 },
     }));
     vi.doMock("../native", () => ({
@@ -129,6 +131,7 @@ describe("runtime native subscriptions", () => {
       },
       I18nManager: { isRTL: false },
       PixelRatio: { get: () => 3 },
+      Platform: { OS: "ios" },
       StyleSheet: { hairlineWidth: 1 },
     }));
     vi.doMock("../native", () => ({
@@ -185,6 +188,7 @@ describe("runtime native subscriptions", () => {
       },
       I18nManager: { isRTL: false },
       PixelRatio: { get: () => 3 },
+      Platform: { OS: "macos" },
       StyleSheet: { hairlineWidth: 1 },
     }));
     vi.doMock("../native", () => ({
@@ -204,7 +208,7 @@ describe("runtime native subscriptions", () => {
     const { runtime } = await import("../runtime");
     runtime.setColorScheme("dark");
 
-    expect(setAppearanceColorScheme).toHaveBeenCalledWith("dark");
+    expect(setAppearanceColorScheme).not.toHaveBeenCalled();
     expect(setColorScheme).toHaveBeenCalledWith("dark");
     expect(setTheme).not.toHaveBeenCalled();
     await Promise.resolve();
@@ -232,6 +236,7 @@ describe("runtime native subscriptions", () => {
       },
       I18nManager: { isRTL: false },
       PixelRatio: { get: () => 3 },
+      Platform: { OS: "ios" },
       StyleSheet: { hairlineWidth: 1 },
     }));
     vi.doMock("../native", () => ({
@@ -269,6 +274,7 @@ describe("runtime native subscriptions", () => {
       },
       I18nManager: { isRTL: false },
       PixelRatio: { get: () => 3 },
+      Platform: { OS: "ios" },
       StyleSheet: { hairlineWidth: 1 },
     }));
     vi.doMock("../native", () => ({
@@ -309,6 +315,7 @@ describe("runtime native subscriptions", () => {
       },
       I18nManager: { isRTL: false },
       PixelRatio: { get: () => 3 },
+      Platform: { OS: "ios" },
       StyleSheet: { hairlineWidth: 1 },
     }));
     vi.doMock("../native", () => ({

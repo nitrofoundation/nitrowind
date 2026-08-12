@@ -48,7 +48,7 @@ const EXAMPLES: ReadonlyArray<{
     symbol: '✦',
     eyebrow: 'Phase 3',
     title: 'Native paint',
-    description: 'CALayer gradients, gradient borders, and clip paths.',
+    description: 'CALayer gradients, rasters, effects, borders, and clip paths.',
   },
   {
     id: 'recycling',
@@ -296,6 +296,19 @@ function MacOSExampleBrowser() {
                   <Text className="native-semantic-label text-sm font-semibold">
                     Shared Apple gradient-border adapter
                   </Text>
+                </View>
+                <View className="flex-row gap-4 pt-2">
+                  <View className="phase3-photo h-36 flex-1 items-end justify-end overflow-hidden rounded-2xl p-4">
+                    <Text className="font-bold text-white">NSImage · cover</Text>
+                  </View>
+                  <View className="phase3-effects h-36 flex-1 items-center justify-center rounded-2xl bg-amber-400">
+                    <Text className="font-bold text-black">shadow · outline · filter</Text>
+                  </View>
+                </View>
+                <View className="h-28 overflow-hidden rounded-2xl bg-linear-to-r from-fuchsia-600 to-cyan-500 p-4">
+                  <View className="phase3-backdrop flex-1 items-center justify-center rounded-xl bg-white/20">
+                    <Text className="font-bold text-white">native backdrop filter</Text>
+                  </View>
                 </View>
               </View>
             ) : null}

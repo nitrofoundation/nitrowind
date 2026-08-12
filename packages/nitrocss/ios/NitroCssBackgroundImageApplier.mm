@@ -1,7 +1,6 @@
 #import "NitroCssBackgroundImageApplier.h"
 
 #import <QuartzCore/QuartzCore.h>
-#import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
 #if __has_include(<React/RCTSurfacePresenter.h>)
@@ -90,7 +89,7 @@ bool isRepeating(const std::string &repeat) {
  * axes; `repeat-x` / `repeat-y` tile one axis and centre the other. Returns the
  * source unchanged when the target is degenerate.
  */
-UIImage *renderTiledImage(UIImage *source, CGSize size,
+RCTPlatformImage *renderTiledImage(RCTPlatformImage *source, CGSize size,
                           const std::string &repeat) {
   if (source == nil || size.width <= 0.5 || size.height <= 0.5) return source;
   const CGSize tile = source.size;
@@ -99,12 +98,12 @@ UIImage *renderTiledImage(UIImage *source, CGSize size,
   const bool repeatX = (repeat == "repeat" || repeat == "repeat-x");
   const bool repeatY = (repeat == "repeat" || repeat == "repeat-y");
 
-  UIGraphicsImageRendererFormat *format =
-      [UIGraphicsImageRendererFormat preferredFormat];
+  RCTUIGraphicsImageRendererFormat *format =
+      [RCTUIGraphicsImageRendererFormat defaultFormat];
   format.opaque = NO;
-  UIGraphicsImageRenderer *renderer =
-      [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
-  return [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+  RCTUIGraphicsImageRenderer *renderer =
+      [[RCTUIGraphicsImageRenderer alloc] initWithSize:size format:format];
+  return [renderer imageWithActions:^(RCTUIGraphicsImageRendererContext *context) {
     (void)context;
     const NSInteger cols =
         repeatX ? (NSInteger)std::ceil(size.width / tile.width) : 1;
@@ -122,7 +121,7 @@ UIImage *renderTiledImage(UIImage *source, CGSize size,
   }];
 }
 
-CALayer *findImageLayer(UIView *view) {
+CALayer *findImageLayer(RCTPlatformView *view) {
   for (CALayer *sublayer in view.layer.sublayers) {
     if ([sublayer.name isEqualToString:kNitroCssBackgroundImageLayerName]) {
       return sublayer;
@@ -132,8 +131,8 @@ CALayer *findImageLayer(UIView *view) {
 }
 
 /** Shared decoded-image cache keyed by URL string. */
-NSCache<NSString *, UIImage *> *imageCache() {
-  static NSCache<NSString *, UIImage *> *cache;
+NSCache<NSString *, RCTPlatformImage *> *imageCache() {
+  static NSCache<NSString *, RCTPlatformImage *> *cache;
   static dispatch_once_t once;
   dispatch_once(&once, ^{
     cache = [NSCache new];
@@ -147,7 +146,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
 @implementation NitroCssBackgroundImageApplier {
   __weak RCTSurfacePresenter *_surfacePresenter;
   /** Views currently carrying our layer, weakly held for the prune pass. */
-  NSHashTable<UIView *> *_paintedViews;
+  NSHashTable<RCTPlatformView *> *_paintedViews;
   std::atomic<bool> _flushScheduled;
   /** Bounded first-paint retry (mirrors the gradient applier). */
   std::atomic<NSInteger> _retriesLeft;
@@ -206,13 +205,13 @@ NSCache<NSString *, UIImage *> *imageCache() {
   [CATransaction setDisableActions:YES];
 
   // 1) Prune: drop the layer from any view whose tag no longer maps to it.
-  for (UIView *view in [_paintedViews allObjects]) {
+  for (RCTPlatformView *view in [_paintedViews allObjects]) {
     NSNumber *appliedTag = objc_getAssociatedObject(view, kBgAppliedTagKey);
     BOOL keep = NO;
     if (appliedTag != nil) {
       const auto it = snapshot.find(appliedTag.intValue);
       if (it != snapshot.end()) {
-        UIView *current = [presenter
+        RCTPlatformView *current = [presenter
             findComponentViewWithTag_DO_NOT_USE_DEPRECATED:appliedTag.integerValue];
         keep = (current == view);
       }
@@ -225,7 +224,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
   // 2) Apply: (re)install the layer on every mounted target.
   BOOL anyMissing = NO;
   for (const auto &entry : snapshot) {
-    UIView *view =
+    RCTPlatformView *view =
         [presenter findComponentViewWithTag_DO_NOT_USE_DEPRECATED:entry.first];
     if (view == nil) {
       anyMissing = YES;
@@ -248,7 +247,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
   }
 }
 
-- (void)removePaintFromView:(UIView *)view {
+- (void)removePaintFromView:(RCTPlatformView *)view {
   CALayer *layer = findImageLayer(view);
   [layer removeFromSuperlayer];
   objc_setAssociatedObject(view, kBgAppliedTagKey, nil,
@@ -268,8 +267,8 @@ NSCache<NSString *, UIImage *> *imageCache() {
  * (native tile size) and display it 1:1. Retains the source image on `view` so
  * a later resize can re-tile without re-fetching.
  */
-- (void)paintImage:(UIImage *)image
-            onView:(UIView *)view
+- (void)paintImage:(RCTPlatformImage *)image
+            onView:(RCTPlatformView *)view
              layer:(CALayer *)layer
             bounds:(CGRect)bounds
               size:(const std::string &)size
@@ -278,18 +277,19 @@ NSCache<NSString *, UIImage *> *imageCache() {
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
   if (!isRepeating(repeat)) {
     layer.contentsGravity = contentsGravityForSize(size);
-    layer.contents = (id)image.CGImage;
+    layer.contents = (__bridge id)UIImageGetCGImageRef(image);
     return;
   }
-  UIImage *tiled = renderTiledImage(image, bounds.size, repeat);
+  RCTPlatformImage *tiled = renderTiledImage(image, bounds.size, repeat);
   layer.contentsGravity = kCAGravityResize;
-  layer.contents = (id)tiled.CGImage;
+  layer.contents = (__bridge id)UIImageGetCGImageRef(tiled);
 }
 
 - (void)applyEntry:(const BackgroundImageTargets::Entry &)entry
-            toView:(UIView *)view
+            toView:(RCTPlatformView *)view
                tag:(int32_t)tag
          presenter:(RCTSurfacePresenter *)presenter {
+  NitroCssPrepareLayerBackedView(view);
   const ParsedBackgroundImage d = parseDescriptor(entry.descriptor);
   if (d.url.empty()) {
     if (findImageLayer(view) != nil) {
@@ -318,7 +318,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
     if (!CGRectEqualToRect(layer.frame, bounds)) {
       layer.frame = bounds;
       if (isRepeating(d.repeat)) {
-        UIImage *source = objc_getAssociatedObject(view, kBgSourceImageKey);
+        RCTPlatformImage *source = objc_getAssociatedObject(view, kBgSourceImageKey);
         if (source != nil) {
           [self paintImage:source
                     onView:view
@@ -353,7 +353,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
   [_paintedViews addObject:view];
 
   // Cached decoded image → paint synchronously (still inside this CATransaction).
-  UIImage *cached = [imageCache() objectForKey:urlString];
+  RCTPlatformImage *cached = [imageCache() objectForKey:urlString];
   if (cached != nil) {
     [self paintImage:cached
               onView:view
@@ -376,7 +376,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
         dataTaskWithURL:url
       completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error != nil || data == nil) return;
-        UIImage *image = [UIImage imageWithData:data];
+        RCTPlatformImage *image = [[RCTPlatformImage alloc] initWithData:data];
         if (image == nil) return;
         [imageCache() setObject:image forKey:urlString];
 
@@ -389,7 +389,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
           // recycled to a different tag, or a different view may now own the
           // tag. Only paint if the mapping still holds and the intended URL
           // hasn't been superseded.
-          UIView *currentView = [strongPresenter
+          RCTPlatformView *currentView = [strongPresenter
               findComponentViewWithTag_DO_NOT_USE_DEPRECATED:tag];
           if (currentView == nil) return;
           NSString *wantURL =

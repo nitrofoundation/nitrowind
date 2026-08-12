@@ -113,7 +113,16 @@ export function startGradientAngleDriver(
 ): () => void {
   // Web paints via CSS; nothing to drive. Also bail without a valid tag or
   // without the native channel installed.
-  if (Platform.OS === "web" || typeof tag !== "number" || Number.isNaN(tag)) {
+  // RN macOS 0.81's requestAnimationFrame is backed by an ObjC Timing
+  // TurboModule that can throw during rapid frame scheduling; that release's
+  // exception conversion then corrupts Hermes. Keep the static native
+  // gradient until Phase 4 installs a CAAnimation-backed macOS angle driver.
+  if (
+    Platform.OS === "web" ||
+    Platform.OS === "macos" ||
+    typeof tag !== "number" ||
+    Number.isNaN(tag)
+  ) {
     return () => {};
   }
   const setAngle = globalThis.__nitrocssSetGradientAngle;

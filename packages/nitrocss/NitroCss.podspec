@@ -40,15 +40,11 @@ Pod::Spec.new do |s|
     "macos/**/*",
   ]
 
-  # Phase 0 on macOS is deliberately core-only. UIKit paint adapters and the
-  # generated HybridView bridge are replaced by an AppKit NativePlatform and
-  # a C++ HybridObject registrar under macos/. Fabric style commits remain
-  # enabled; backdrop/gradient/image/effect painters are later phases.
+  # UIKit-only generated views and Swift bridges are replaced by AppKit native
+  # adapters. Shared Apple paint appliers compile against NitroCssPlatform.h.
   s.osx.exclude_files = [
     "ios/**/*.swift",
-    "ios/NitroCssBackgroundImageApplier.{h,mm}",
     "ios/NitroCssInstallerModule.mm",
-    "ios/effects/**/*",
     "nitrogen/generated/ios/**/*",
     "nitrogen/generated/shared/c++/HybridBackdropViewSpec.{hpp,cpp}",
     "nitrogen/generated/shared/c++/views/**/*",

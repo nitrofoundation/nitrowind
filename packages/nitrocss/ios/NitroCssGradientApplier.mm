@@ -10,9 +10,8 @@
 #import "GradientTargets.hpp"
 #import "GradientAngleOverrides.hpp"
 #import "NitroCssClipPathApplier.h"
-#if !TARGET_OS_OSX
 #import "NitroCssBackgroundImageApplier.h"
-#endif
+#import "effects/NitroCssEffectApplier.h"
 
 #include <atomic>
 #include <cctype>
@@ -432,10 +431,9 @@ CAGradientLayer *findGradientLayer(RCTPlatformView *view) {
   // applier that IS reliably wired guarantees clip-path and background-image
   // paint on the same surface without extra host-app wiring.
   [[NitroCssClipPathApplier shared] attachToSurfacePresenter:surfacePresenter];
-#if !TARGET_OS_OSX
   [[NitroCssBackgroundImageApplier shared]
       attachToSurfacePresenter:surfacePresenter];
-#endif
+  [[NitroCssEffectApplier shared] attachToSurfacePresenter:surfacePresenter];
 }
 
 - (void)setNeedsFlush {

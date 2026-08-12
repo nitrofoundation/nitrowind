@@ -1,4 +1,4 @@
-#import <UIKit/UIKit.h>
+#import "NitroCssPlatform.h"
 
 @class RCTSurfacePresenter;
 
@@ -6,7 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /**
  * Applies a compiler-produced `--nitrocss-native-effects` dictionary to a
- * mounted UIView. The caller owns target lookup and lifecycle; this class owns
+ * mounted Apple platform view. The caller owns target lookup and lifecycle; this class owns
  * only effect layers, all named `nitrocss.effect.*`, so updates are idempotent
  * and never disturb gradient/background/clip-path layers.
  */
@@ -19,9 +19,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setNeedsFlush;
 
 + (void)applyDescriptor:(NSDictionary<NSString *, id> *)descriptor
-                  toView:(UIView *)view;
+                  toView:(RCTPlatformView *)view;
 
-+ (void)clearFromView:(UIView *)view;
++ (void)clearFromView:(RCTPlatformView *)view;
 
 /** Native support advertised to the diagnostics overlay. */
 + (NSDictionary<NSString *, NSNumber *> *)capabilities;

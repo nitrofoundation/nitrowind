@@ -8,7 +8,14 @@
 #else
 #import <UIKit/UIKit.h>
 #define RCTPlatformView UIView
+#define RCTPlatformImage UIImage
 #define RCTUIColor UIColor
+#define RCTUIGraphicsImageRenderer UIGraphicsImageRenderer
+#define RCTUIGraphicsImageRendererContext UIGraphicsImageRendererContext
+#define RCTUIGraphicsImageRendererFormat UIGraphicsImageRendererFormat
+NS_INLINE CGImageRef UIImageGetCGImageRef(UIImage *image) {
+  return image.CGImage;
+}
 #endif
 
 NS_INLINE void NitroCssPrepareLayerBackedView(RCTPlatformView *view) {
@@ -50,6 +57,22 @@ NS_INLINE UIBezierPath *NitroCssRoundedPath(CGRect rect, CGFloat radius) {
                                          yRadius:radius];
 #else
   return [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:radius];
+#endif
+}
+
+NS_INLINE void NitroCssAppendPath(UIBezierPath *path, UIBezierPath *other) {
+#if TARGET_OS_OSX
+  [path appendBezierPath:other];
+#else
+  [path appendPath:other];
+#endif
+}
+
+NS_INLINE void NitroCssUseEvenOddFill(UIBezierPath *path) {
+#if TARGET_OS_OSX
+  path.windingRule = NSWindingRuleEvenOdd;
+#else
+  path.usesEvenOddFillRule = YES;
 #endif
 }
 

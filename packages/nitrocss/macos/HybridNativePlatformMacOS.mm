@@ -329,6 +329,24 @@ void HybridNativePlatformMacOS::setColorScheme(ColorSchemeMode scheme) {
     mode_ = scheme;
     followsColorScheme_ = true;
   }
+  dispatch_block_t applyAppearance = ^{
+    switch (scheme) {
+      case ColorSchemeMode::LIGHT:
+        NSApp.appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
+        break;
+      case ColorSchemeMode::DARK:
+        NSApp.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+        break;
+      case ColorSchemeMode::SYSTEM:
+        NSApp.appearance = nil;
+        break;
+    }
+  };
+  if (NSThread.isMainThread) {
+    applyAppearance();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), applyAppearance);
+  }
   dependencies.push_back(StyleDependency::THEME);
   emit(dependencies, RuntimeChangeSource::USER);
 }

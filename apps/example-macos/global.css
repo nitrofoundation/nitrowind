@@ -59,6 +59,25 @@
   clip-path: polygon(12% 0%, 100% 0%, 88% 100%, 0% 100%);
 }
 
+.phase3-photo {
+  background-image: url('https://picsum.photos/id/1015/900/500');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.phase3-effects {
+  box-shadow: inset 0 0 0 3px #c4b5fd, 0 14px 28px #00000044;
+  outline: 3px dashed #06b6d4;
+  outline-offset: 5px;
+  border-curve: continuous;
+  filter: saturate(125%) contrast(105%);
+}
+
+.phase3-backdrop {
+  backdrop-filter: blur(14px) saturate(130%);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --color-surface: #09090b;
