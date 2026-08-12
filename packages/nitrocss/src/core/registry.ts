@@ -6,6 +6,7 @@ let serializedArtifact: string | null = null;
 let serializedThemeNames: string[] = [];
 let serializedRem = 16;
 let artifactVersion = 0;
+let nativeArtifactVersion = -1;
 
 function clearSerializedCache(): void {
   serializedArtifact = null;
@@ -40,14 +41,7 @@ export function registerStyles(next: CompiledArtifact): void {
   clearSerializedCache();
   artifactVersion += 1;
 
-  const engine = getEngine();
-  if (!engine) return;
-  try {
-    engine.Config.setCompiledStyles(JSON.stringify(next));
-    engine.Runtime.registerThemes(next.themeNames);
-  } catch {
-    // Native engine not ready yet; the JS fallback will serve styles.
-  }
+  ensureNativeStylesRegistered();
 }
 
 /**
@@ -69,13 +63,36 @@ export function registerSerializedStyles(
   serializedRem = rem;
   artifactVersion += 1;
 
+  ensureNativeStylesRegistered();
+}
+
+/**
+ * Replay the latest Metro artifact into C++ once the HybridObjects become
+ * usable. Development startup and Fast Refresh can evaluate the generated CSS
+ * bootstrap before NitroModules finishes installing. Keeping this operation
+ * idempotent lets mounted native-paint views retry without recompiling CSS or
+ * repeatedly clearing the native caches.
+ */
+export function ensureNativeStylesRegistered(): boolean {
+  if (nativeArtifactVersion === artifactVersion) return true;
+
   const engine = getEngine();
-  if (!engine) return;
+  if (!engine) return false;
+  const json = serializedArtifact ?? (artifact ? JSON.stringify(artifact) : null);
+  // Tests and low-level consumers may link an explicitly resolved style
+  // without installing a compiler artifact first.
+  if (!json) return true;
+  const themeNames = artifact?.themeNames ?? serializedThemeNames;
+
   try {
     engine.Config.setCompiledStyles(json);
     engine.Runtime.registerThemes(themeNames);
+    nativeArtifactVersion = artifactVersion;
+    return true;
   } catch {
-    // Native engine not ready yet; the JS fallback will lazily parse if needed.
+    // The native library exists but its runtime is still being installed. A
+    // mounted host ref will retry shortly; JS first-paint remains available.
+    return false;
   }
 }
 

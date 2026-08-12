@@ -143,6 +143,19 @@ export default function Effects() {
       </Section>
 
       <Section
+        title="Background filters"
+        subtitle="AppKit paints backdrop-filter through the view layer's native backgroundFilters chain. The checkerboard makes the behind-view effect immediately visible."
+      >
+        <View className="h-36 overflow-hidden rounded-3xl bg-linear-to-r from-fuchsia-500 via-cyan-400 to-amber-400 p-5">
+          <View className="h-full items-center justify-center rounded-2xl bg-black/10 backdrop-blur-md backdrop-saturate-150">
+            <Text className="font-extrabold text-white text-drop">
+              backdrop blur + saturation
+            </Text>
+          </View>
+        </View>
+      </Section>
+
+      <Section
         title="text-shadow"
         subtitle="Single-layer native text shadow (RN textShadow*)."
       >

@@ -197,13 +197,12 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
 
   // A class using an animation utility (`entering-*`, `animate-wiggle`, …) swaps
   // the host for Reanimated's `Animated.View` so it can drive the animation.
-  // The tested RN macOS 0.81/Reanimated pair throws from its ObjC Timing
-  // TurboModule. Hermes 0.12 then faults while converting that exception.
-  // Preserve the compiled steady-state style and native paint, but do not load
-  // the unsupported animation host on macOS until a compatible pair is gated.
-  const Animated = resolved.isAnimated && Platform.OS !== "macos"
-    ? getAnimatedView()
-    : null;
+  // Reanimated is an optional peer: when a compatible native installation is
+  // present, use its animated host on every native platform it supports,
+  // including macOS. `getAnimatedView` already degrades to null when the peer
+  // is absent, so platform-level blocking here would also disable correctly
+  // configured RN macOS consumers.
+  const Animated = resolved.isAnimated ? getAnimatedView() : null;
   const Base = (Animated ?? RNView) as typeof RNView;
 
   // Animation identity (research/animation.md §2c): a snapshot recompute (e.g.

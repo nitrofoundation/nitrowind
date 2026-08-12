@@ -5,6 +5,7 @@
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import App from '../App';
+import {MOBILE_EXAMPLES} from '../mobile-examples';
 
 test('renders correctly', async () => {
   await ReactTestRenderer.act(() => {
@@ -94,4 +95,30 @@ test('hides and restores the sidebar from the toolbar', async () => {
   expect(
     renderer.root.findAllByProps({accessibilityLabel: 'macOS overview'}),
   ).not.toHaveLength(0);
+});
+
+test('opens every mobile example from the macOS sidebar', async () => {
+  jest.useFakeTimers();
+  let renderer!: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(() => {
+    renderer = ReactTestRenderer.create(<App />);
+  });
+
+  for (const example of MOBILE_EXAMPLES) {
+    const button = renderer.root.findByProps({accessibilityLabel: example.title});
+    await ReactTestRenderer.act(() => button.props.onPress());
+    expect(
+      renderer.root.findByProps({accessibilityLabel: example.title}).props
+        .accessibilityState,
+    ).toEqual({selected: true});
+    expect(
+      renderer.root
+        .findAllByProps({className: 'text-sm font-semibold text-foreground'})
+        .some(node => node.props.children === example.title),
+    ).toBe(true);
+  }
+
+  await ReactTestRenderer.act(() => renderer.unmount());
+  jest.clearAllTimers();
+  jest.useRealTimers();
 });

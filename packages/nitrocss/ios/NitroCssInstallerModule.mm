@@ -4,6 +4,7 @@
 #if __has_include(<React/RCTBridge.h>)
 #import <React/RCTBridge.h>
 #import <React/RCTBridge+Private.h>
+#import <React/RCTBridgeConstants.h>
 #endif
 
 #if __has_include(<React/RCTSurfacePresenter.h>)
@@ -42,7 +43,10 @@ extern facebook::react::RuntimeExecutor RCTRuntimeExecutorFromBridge(RCTBridge *
 @end
 #endif
 
-@implementation NitroCssInstallerModule
+@implementation NitroCssInstallerModule {
+  __weak RCTBridge *_nitrocssBridge;
+  NSUInteger _paintAttachGeneration;
+}
 
 RCT_EXPORT_MODULE(NitroCssInstaller)
 
@@ -50,8 +54,59 @@ RCT_EXPORT_MODULE(NitroCssInstaller)
   return NO;
 }
 
+- (void)attachPaintAppliersWhenReady:(NSUInteger)generation
+                              attempt:(NSUInteger)attempt {
+#if __has_include(<React/RCTSurfacePresenter.h>)
+  if (generation != _paintAttachGeneration) return;
+  RCTBridge *bridge = _nitrocssBridge;
+  if (bridge == nil) return;
+
+  RCTSurfacePresenter *presenter = nil;
+  @try {
+    presenter = bridge.surfacePresenter;
+  } @catch (NSException *e) {
+    // A bridgeless proxy can throw while its host is between instances. Treat
+    // that exactly like a presenter that is not ready yet.
+  }
+  if (presenter != nil) {
+    [[NitroCssGradientApplier shared] attachToSurfacePresenter:presenter];
+    [[NitroCssClipPathApplier shared] attachToSurfacePresenter:presenter];
+    [[NitroCssBackgroundImageApplier shared] attachToSurfacePresenter:presenter];
+    [[NitroCssEffectApplier shared] attachToSurfacePresenter:presenter];
+    return;
+  }
+
+  // Debug startup, inspector attachment and Fast Refresh can keep the bridge
+  // alive well before Fabric publishes its SurfacePresenter. The former
+  // one-shot lookup made every descriptor resolve correctly in C++ while the
+  // Apple painters remained permanently detached. Retry for the lifetime of a
+  // normal development startup; a new bridge/reload invalidates this chain.
+  if (attempt >= 600) return;
+  __weak NitroCssInstallerModule *weakSelf = self;
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                               (int64_t)(0.05 * NSEC_PER_SEC)),
+                 dispatch_get_main_queue(), ^{
+                   [weakSelf attachPaintAppliersWhenReady:generation
+                                                  attempt:attempt + 1];
+                 });
+#else
+  (void)generation;
+  (void)attempt;
+#endif
+}
+
+- (void)restartPaintAttachment {
+  _paintAttachGeneration += 1;
+  NSUInteger generation = _paintAttachGeneration;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [self attachPaintAppliersWhenReady:generation attempt:0];
+  });
+}
+
 - (void)setBridge:(RCTBridge *)bridge {
   if (bridge == nil) return;
+  _nitrocssBridge = bridge;
+  [self restartPaintAttachment];
 
 #if __has_include(<React/RCTSurfacePresenter.h>)
   // Gradient applier FIRST: it must attach even if the legacy runtime

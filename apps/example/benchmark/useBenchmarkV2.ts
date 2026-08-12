@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import {Platform} from 'react-native';
 import {
   getNativeDiagnostics,
   resetNativeDiagnostics,
@@ -44,6 +45,14 @@ const wait = (milliseconds: number) =>
 /** Used outside measurements to let the simulator paint before more work. */
 const waitForVisualCommit = () =>
   new Promise<void>(resolve => {
+    // RN macOS 0.81 routes requestAnimationFrame through an ObjC Timing
+    // TurboModule that can throw and corrupt Hermes 0.12 while the exception is
+    // converted. A timer still waits for the AppKit transaction boundary and
+    // keeps the benchmark usable without entering that unsupported bridge path.
+    if (Platform.OS === 'macos') {
+      setTimeout(resolve, 16);
+      return;
+    }
     requestAnimationFrame(() => {
       requestAnimationFrame(() => resolve());
     });

@@ -97,4 +97,5 @@ describe("native link batching", () => {
     child?.cleanup();
     expect(unlink).toHaveBeenCalledTimes(2);
   });
+
 });

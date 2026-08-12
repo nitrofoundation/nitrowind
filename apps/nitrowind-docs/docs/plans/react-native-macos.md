@@ -99,12 +99,10 @@ are resolved independently for each mounted surface.
 - ✅ Verify that tag reuse clears every CALayer/descriptor registry before a new
   cell occupies the tag.
 
-Animated gradient angles remain static on the tested React Native macOS
-`0.81.9` / Reanimated combination. That Reanimated build calls the platform's
-ObjC Timing TurboModule, which throws on macOS; Hermes `0.12` then crashes while
-converting the exception. NitroCSS therefore does not load the Reanimated host
-or its RAF gradient-angle driver on this version pair. Static gradients and all
-other native paint paths remain available without a React rerender.
+The macOS consumer pins Reanimated `4.2.1` with Worklets `0.7.1`, a compatible
+Fabric line for React Native macOS `0.81.9`, and includes the Worklets Babel
+plugin and both native pods. Worklets `0.5` advertised macOS but used iOS-only
+display-link APIs; `0.7` added the required AppKit branches.
 
 Exit criterion: the effects and backgrounds examples visually match iOS within
 the documented platform differences in light, dark, and high-contrast modes.
@@ -124,12 +122,16 @@ Responsive layout destinations. Their tests exercise controlled text input,
 switch state, press activation, selection/navigation state, responsive grid,
 CSS `clamp()`, RTL ordering, and macOS/native variant output.
 
+The same sidebar also exposes every destination from the mobile example app.
+All destinations render the shared mobile screen modules directly, so their
+content and class names cannot drift.
+
 Optional ecosystem gate for the tested `0.81` pair:
 
 | Integration | Status | Reason |
 | --- | --- | --- |
-| React Native SVG | not enabled | no explicitly tested macOS peer is installed in the consumer example |
-| Reanimated `4.5` | guarded | its ObjC Timing TurboModule throws on RN macOS `0.81.9`; NitroCSS keeps the compiled steady-state style and does not load the animation host |
+| React Native SVG `15.15.5` | enabled | installed in the consumer, autolinked through CocoaPods, and exercised by the shared mobile SVG screen |
+| Reanimated `4.2.1` + Worklets `0.7.1` | enabled | compatible with React Native `0.81`, includes AppKit display-link handling, and is autolinked through CocoaPods |
 | Gesture Handler `3.0` | not enabled | the package is not part of the macOS consumer graph |
 | FlashList | not enabled | no macOS-supported consumer version is installed; core FlatList/SectionList remain covered |
 

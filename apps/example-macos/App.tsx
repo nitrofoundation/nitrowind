@@ -1,7 +1,7 @@
 import './global.css';
 
-import {useEffect, useRef, useState} from 'react';
-import {useWindowDimensions} from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 import {
   ColorScheme,
   getNativeDiagnostics,
@@ -18,8 +18,13 @@ import {
   TextInput,
   View,
 } from '@nitrofoundation/nitrowind/components';
+import {
+  MOBILE_EXAMPLES,
+  MobileExample,
+  type MobileExampleId,
+} from './mobile-examples';
 
-type ExampleId =
+type MacExampleId =
   | 'overview'
   | 'runtime'
   | 'paint'
@@ -28,71 +33,82 @@ type ExampleId =
   | 'layout'
   | 'recycling';
 
+type ExampleId = MacExampleId | MobileExampleId;
+
 const EXAMPLES: ReadonlyArray<{
   id: ExampleId;
-  group: 'Library' | 'Diagnostics';
+  group: 'Library' | 'Mobile examples' | 'Diagnostics';
   symbol: string;
   eyebrow: string;
   title: string;
   description: string;
 }> = [
-  {
-    id: 'overview',
-    group: 'Library',
-    symbol: '⌂',
-    eyebrow: 'Start here',
-    title: 'macOS overview',
-    description: 'Package compatibility and the native Fabric path.',
-  },
-  {
-    id: 'runtime',
-    group: 'Library',
-    symbol: '◐',
-    eyebrow: 'Phase 2',
-    title: 'Runtime & themes',
-    description: 'AppKit colors, Display-P3, window state, and theme updates.',
-  },
-  {
-    id: 'paint',
-    group: 'Library',
-    symbol: '✦',
-    eyebrow: 'Phase 3',
-    title: 'Native paint',
-    description: 'CALayer gradients, rasters, effects, borders, and clip paths.',
-  },
-  {
-    id: 'components',
-    group: 'Library',
-    symbol: '▣',
-    eyebrow: 'Phase 4',
-    title: 'Core components',
-    description: 'Desktop-safe inputs, controls, indicators, text, and scrolling.',
-  },
-  {
-    id: 'interaction',
-    group: 'Library',
-    symbol: '⌁',
-    eyebrow: 'Phase 4',
-    title: 'Pointer & keyboard',
-    description: 'Hover, focus-visible, keyboard activation, and disabled state.',
-  },
-  {
-    id: 'layout',
-    group: 'Library',
-    symbol: '⊞',
-    eyebrow: 'Phase 4',
-    title: 'Responsive layout',
-    description: 'Grid, CSS math, platform variants, RTL, and window resizing.',
-  },
-  {
-    id: 'recycling',
-    group: 'Diagnostics',
-    symbol: '↻',
-    eyebrow: 'Reliability',
-    title: 'Tag reuse',
-    description: 'Unlink and relink a Fabric view to verify registry cleanup.',
-  },
-];
+    {
+      id: 'overview',
+      group: 'Library',
+      symbol: '⌂',
+      eyebrow: 'Start here',
+      title: 'macOS overview',
+      description: 'Package compatibility and the native Fabric path.',
+    },
+    {
+      id: 'runtime',
+      group: 'Library',
+      symbol: '◐',
+      eyebrow: 'Phase 2',
+      title: 'Runtime & themes',
+      description: 'AppKit colors, Display-P3, window state, and theme updates.',
+    },
+    {
+      id: 'paint',
+      group: 'Library',
+      symbol: '✦',
+      eyebrow: 'Phase 3',
+      title: 'Native paint',
+      description: 'CALayer gradients, rasters, effects, borders, and clip paths.',
+    },
+    {
+      id: 'components',
+      group: 'Library',
+      symbol: '▣',
+      eyebrow: 'Phase 4',
+      title: 'Core components',
+      description: 'Desktop-safe inputs, controls, indicators, text, and scrolling.',
+    },
+    {
+      id: 'interaction',
+      group: 'Library',
+      symbol: '⌁',
+      eyebrow: 'Phase 4',
+      title: 'Pointer & keyboard',
+      description: 'Hover, focus-visible, keyboard activation, and disabled state.',
+    },
+    {
+      id: 'layout',
+      group: 'Library',
+      symbol: '⊞',
+      eyebrow: 'Phase 4',
+      title: 'Responsive layout',
+      description: 'Grid, CSS math, platform variants, RTL, and window resizing.',
+    },
+    {
+      id: 'recycling',
+      group: 'Diagnostics',
+      symbol: '↻',
+      eyebrow: 'Reliability',
+      title: 'Tag reuse',
+      description: 'Unlink and relink a Fabric view to verify registry cleanup.',
+    },
+    ...MOBILE_EXAMPLES.map(example => ({
+      ...example,
+      group: 'Mobile examples' as const,
+      eyebrow: 'Mobile parity',
+    })),
+  ];
+
+function isMobileExample(id: ExampleId): id is MobileExampleId {
+  return id.startsWith('mobile-');
+}
 
 function ExampleHeader({
   eyebrow,
@@ -116,7 +132,7 @@ function ExampleHeader({
 
 function MacOSExampleBrowser() {
   const nitrowind = useNitrowind();
-  const {width} = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const compact = width < 900;
   const [selected, setSelected] = useState<ExampleId>('overview');
   const [sidebarVisible, setSidebarVisible] = useState(true);
@@ -162,6 +178,25 @@ function MacOSExampleBrowser() {
     return () => timers.forEach(clearTimeout);
   }, []);
 
+  useEffect(() => {
+    if (!__DEV__) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const checkNativeEngine = () => {
+      const diagnostics = getNativeDiagnostics();
+      if (diagnostics.nativeAvailable) {
+        if (!cancelled) setSmokeResult('Development native engine ready');
+        return;
+      }
+      timer = setTimeout(checkNativeEngine, 100);
+    };
+    checkNativeEngine();
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, []);
+
   const toggleTheme = () => {
     const next =
       nitrowind.snapshot.colorScheme === ColorScheme.Dark ? 'light' : 'dark';
@@ -174,58 +209,60 @@ function MacOSExampleBrowser() {
     <View className="mac-window flex-1 flex-row">
       {sidebarVisible ? (
         <View className="mac-sidebar w-64 border-r border-border px-3 py-4">
-          <View className="px-2 pb-5 pt-1">
-            <Text className="text-xl font-bold text-foreground">Nitrowind</Text>
-            <Text className="mt-1 text-xs text-muted">macOS examples</Text>
-          </View>
-
-          {(['Library', 'Diagnostics'] as const).map(group => (
-            <View className="mb-5" key={group}>
-              <Text className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-muted">
-                {group}
-              </Text>
-              <View className="gap-1">
-                {EXAMPLES.filter(example => example.group === group).map(
-                  example => {
-                    const active = example.id === selected;
-                    return (
-                      <Pressable
-                        key={example.id}
-                        accessibilityRole="button"
-                        accessibilityLabel={example.title}
-                        accessibilityState={{selected: active}}
-                        focusable
-                        className={
-                          active
-                            ? 'mac-sidebar-selection rounded-lg px-3 py-2'
-                            : 'rounded-lg px-3 py-2 hover:bg-surface focus:bg-surface'
-                        }
-                        onPress={() => setSelected(example.id)}>
-                        <View className="flex-row items-center gap-3">
-                          <Text
-                            className={
-                              active
-                                ? 'mac-sidebar-selection-text w-5 text-center text-base font-semibold'
-                                : 'w-5 text-center text-base font-semibold text-accent'
-                            }>
-                            {example.symbol}
-                          </Text>
-                          <Text
-                            className={
-                              active
-                                ? 'mac-sidebar-selection-text flex-1 text-sm font-semibold'
-                                : 'flex-1 text-sm font-medium text-foreground'
-                            }>
-                            {example.title}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    );
-                  },
-                )}
-              </View>
+          <ScrollView className="flex-1">
+            <View className="px-2 pb-5 pt-1">
+              <Text className="text-xl font-bold text-foreground">Nitrowind</Text>
+              <Text className="mt-1 text-xs text-muted">macOS examples</Text>
             </View>
-          ))}
+
+            {(['Library', 'Mobile examples', 'Diagnostics'] as const).map(group => (
+              <View className="mb-5" key={group}>
+                <Text className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                  {group}
+                </Text>
+                <View className="gap-1">
+                  {EXAMPLES.filter(example => example.group === group).map(
+                    example => {
+                      const active = example.id === selected;
+                      return (
+                        <Pressable
+                          key={example.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={example.title}
+                          accessibilityState={{ selected: active }}
+                          focusable
+                          className={
+                            active
+                              ? 'mac-sidebar-selection rounded-lg px-3 py-2'
+                              : 'rounded-lg px-3 py-2 hover:bg-surface focus:bg-surface'
+                          }
+                          onPress={() => setSelected(example.id)}>
+                          <View className="flex-row items-center gap-3">
+                            <Text
+                              className={
+                                active
+                                  ? 'mac-sidebar-selection-text w-5 text-center text-base font-semibold'
+                                  : 'w-5 text-center text-base font-semibold text-accent'
+                              }>
+                              {example.symbol}
+                            </Text>
+                            <Text
+                              className={
+                                active
+                                  ? 'mac-sidebar-selection-text flex-1 text-sm font-semibold'
+                                  : 'flex-1 text-sm font-medium text-foreground'
+                              }>
+                              {example.title}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    },
+                  )}
+                </View>
+              </View>
+            ))}
+          </ScrollView>
         </View>
       ) : null}
 
@@ -251,226 +288,230 @@ function MacOSExampleBrowser() {
           </View>
         </View>
 
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{paddingHorizontal: 40, paddingVertical: 36}}>
-          <View className="w-full max-w-4xl self-center">
-            <ExampleHeader
-              eyebrow={activeExample.eyebrow}
-              title={activeExample.title}
-              description={activeExample.description}
-            />
+        {isMobileExample(selected) ? (
+          <MobileExample id={selected} />
+        ) : (
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 40, paddingVertical: 36 }}>
+            <View className="w-full max-w-4xl self-center">
+              <ExampleHeader
+                eyebrow={activeExample.eyebrow}
+                title={activeExample.title}
+                description={activeExample.description}
+              />
 
-            {selected === 'overview' ? (
-              <View className="mt-8 gap-3">
-                <View className="rounded-2xl border border-border bg-surface p-5">
-                  <Text className="text-lg font-bold text-foreground">
-                    NitroCSS is linked
-                  </Text>
-                  <Text className="mt-2 text-sm text-muted">
-                    Tailwind classes compile once, then the native Fabric engine
-                    resolves runtime changes without rerendering React.
-                  </Text>
-                </View>
-                <View className="flex-row gap-3">
-                  <View className="flex-1 rounded-2xl border border-border p-5">
-                    <Text className="font-bold text-foreground">macOS 14+</Text>
-                    <Text className="mt-1 text-sm text-muted">New Architecture</Text>
-                  </View>
-                  <View className="flex-1 rounded-2xl border border-border p-5">
-                    <Text className="font-bold text-foreground">Shared C++</Text>
-                    <Text className="mt-1 text-sm text-muted">Native resolver</Text>
-                  </View>
-                  <View className="flex-1 rounded-2xl border border-border p-5">
-                    <Text className="font-bold text-foreground">AppKit</Text>
-                    <Text className="mt-1 text-sm text-muted">Platform adapters</Text>
-                  </View>
-                </View>
-              </View>
-            ) : null}
-
-            {selected === 'runtime' ? (
-              <View className="mt-8 gap-4">
-                <View className="native-semantic-panel flex-row items-center gap-3 rounded-xl border p-4">
-                  <View className="native-p3-swatch h-6 w-6 rounded-full" />
-                  <Text className="native-semantic-label text-sm font-semibold">
-                    AppKit semantic, high-contrast, and Display-P3 colors
-                  </Text>
-                </View>
-                <Text className="text-sm text-muted">
-                  Active window {Math.round(nitrowind.snapshot.screen.width)} ×{' '}
-                  {Math.round(nitrowind.snapshot.screen.height)} ·{' '}
-                  {nitrowind.snapshot.pixelRatio.toFixed(1)}× backing scale
-                </Text>
-                <View className="flex-row gap-3">
-                  <Pressable
-                    accessibilityRole="button"
-                    className="rounded-xl bg-accent px-5 py-3"
-                    onPress={toggleTheme}>
-                    <Text className="font-bold text-white">Toggle theme</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    className="rounded-xl border border-border px-5 py-3"
-                    onPress={() => nitrowind.setColorScheme('system')}>
-                    <Text className="font-bold text-foreground">Follow system</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : null}
-
-            {selected === 'paint' ? (
-              <View className="mt-8 gap-4">
-                <View className="flex-row gap-4">
-                  <View className="h-32 flex-1 items-center justify-center rounded-2xl bg-linear-45 from-violet-600 via-blue-600 to-cyan-500">
-                    <Text className="font-bold text-white">AppKit gradient</Text>
-                  </View>
-                  <View className="phase3-clip h-32 flex-1 items-center justify-center bg-linear-45 from-orange-500 to-pink-500">
-                    <Text className="font-bold text-white">Native clip path</Text>
-                  </View>
-                </View>
-                <View className="phase3-gradient-border items-center rounded-xl p-5">
-                  <Text className="native-semantic-label text-sm font-semibold">
-                    Shared Apple gradient-border adapter
-                  </Text>
-                </View>
-                <View className="flex-row gap-4 pt-2">
-                  <View className="phase3-photo h-36 flex-1 items-end justify-end overflow-hidden rounded-2xl p-4">
-                    <Text className="font-bold text-white">NSImage · cover</Text>
-                  </View>
-                  <View className="phase3-effects h-36 flex-1 items-center justify-center rounded-2xl bg-amber-400">
-                    <Text className="font-bold text-black">shadow · outline · filter</Text>
-                  </View>
-                </View>
-                <View className="h-28 overflow-hidden rounded-2xl bg-linear-to-r from-fuchsia-600 to-cyan-500 p-4">
-                  <View className="phase3-backdrop flex-1 items-center justify-center rounded-xl bg-white/20">
-                    <Text className="font-bold text-white">native backdrop filter</Text>
-                  </View>
-                </View>
-              </View>
-            ) : null}
-
-            {selected === 'components' ? (
-              <View className="mt-8 gap-5">
-                <View className="rounded-2xl border border-border bg-surface p-5">
-                  <Text className="mb-3 font-bold text-foreground">TextInput</Text>
-                  <TextInput
-                    accessibilityLabel="macOS example text input"
-                    className="rounded-lg border border-border bg-card px-4 py-3 text-foreground focus-visible:border-accent"
-                    onChangeText={setInputValue}
-                    value={inputValue}
-                  />
-                </View>
-                <View className="flex-row items-center gap-4 rounded-2xl border border-border bg-surface p-5">
-                  <Switch
-                    accessibilityLabel="Enable native styling"
-                    onValueChange={setSwitchEnabled}
-                    value={switchEnabled}
-                  />
-                  <View className="flex-1">
-                    <Text className="font-bold text-foreground">Native styling</Text>
-                    <Text className="mt-1 text-sm text-muted">
-                      Switch {switchEnabled ? 'enabled' : 'disabled'} · AppKit control
-                    </Text>
-                  </View>
-                  <ActivityIndicator color="#8b5cf6" />
-                </View>
-                <ScrollView horizontal className="rounded-2xl border border-border p-4">
-                  <View className="flex-row gap-3">
-                    {['View', 'Text', 'Image', 'ScrollView', 'FlatList', 'SectionList'].map(
-                      component => (
-                        <View key={component} className="w-36 rounded-xl bg-card p-4">
-                          <Text className="font-bold text-foreground">{component}</Text>
-                          <Text className="mt-1 text-xs text-muted">wrapper ready</Text>
-                        </View>
-                      ),
-                    )}
-                  </View>
-                </ScrollView>
-              </View>
-            ) : null}
-
-            {selected === 'interaction' ? (
-              <View className="mt-8 gap-5">
-                <Pressable
-                  accessibilityLabel="Desktop interaction target"
-                  accessibilityRole="button"
-                  className="rounded-2xl border-2 border-transparent bg-accent p-6 hover:opacity-80 focus-visible:border-cyan-400 active:opacity-60"
-                  focusable
-                  onPress={() => setActivationCount(value => value + 1)}>
-                  <Text className="text-lg font-bold text-white">
-                    Click or press Space / Return
-                  </Text>
-                  <Text className="mt-2 text-sm text-white">
-                    Activations: {activationCount}
-                  </Text>
-                </Pressable>
-                <View className="flex-row gap-3">
-                  <Pressable
-                    disabled
-                    className="rounded-xl bg-card px-5 py-3 disabled:opacity-50">
-                    <Text className="font-semibold text-foreground">Disabled</Text>
-                  </Pressable>
-                  <View className="macos:bg-violet-600 native:border-violet-300 rounded-xl border px-5 py-3">
-                    <Text className="font-semibold text-white">macos: + native:</Text>
-                  </View>
-                </View>
-              </View>
-            ) : null}
-
-            {selected === 'layout' ? (
-              <View className="mt-8 gap-5">
-                <Text className="text-sm text-muted">
-                  Resize the window: cards change from one column to three at the
-                  responsive breakpoint without rebuilding the class registry.
-                </Text>
-                <View className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {['Grid', 'CSS math', 'Container state'].map((label, index) => (
-                    <View
-                      key={label}
-                      className="h-[clamp(88px,12vw,132px)] items-center justify-center rounded-2xl border border-border bg-surface">
-                      <Text className="font-bold text-foreground">{index + 1}. {label}</Text>
-                    </View>
-                  ))}
-                </View>
-                <View className="flex-row items-center justify-between rounded-xl border border-border p-4 rtl:flex-row-reverse">
-                  <Text className="font-semibold text-foreground">LTR / RTL aware</Text>
-                  <Text className="text-accent">→</Text>
-                </View>
-              </View>
-            ) : null}
-
-            {selected === 'recycling' ? (
-              <View className="mt-8 gap-4">
-                {linked ? (
-                  <View className="rounded-2xl border border-border bg-surface p-6">
+              {selected === 'overview' ? (
+                <View className="mt-8 gap-3">
+                  <View className="rounded-2xl border border-border bg-surface p-5">
                     <Text className="text-lg font-bold text-foreground">
-                      Linked Fabric view
+                      NitroCSS is linked
                     </Text>
                     <Text className="mt-2 text-sm text-muted">
-                      Remove and restore this node to verify native registry
-                      cleanup, recycled tags, and fresh style application.
+                      Tailwind classes compile once, then the native Fabric engine
+                      resolves runtime changes without rerendering React.
                     </Text>
                   </View>
-                ) : (
-                  <View className="rounded-2xl border border-dashed border-border p-6">
-                    <Text className="text-sm text-muted">
-                      Native view unlinked. Its registry entry should be gone.
+                  <View className="flex-row gap-3">
+                    <View className="flex-1 rounded-2xl border border-border p-5">
+                      <Text className="font-bold text-foreground">macOS 14+</Text>
+                      <Text className="mt-1 text-sm text-muted">New Architecture</Text>
+                    </View>
+                    <View className="flex-1 rounded-2xl border border-border p-5">
+                      <Text className="font-bold text-foreground">Shared C++</Text>
+                      <Text className="mt-1 text-sm text-muted">Native resolver</Text>
+                    </View>
+                    <View className="flex-1 rounded-2xl border border-border p-5">
+                      <Text className="font-bold text-foreground">AppKit</Text>
+                      <Text className="mt-1 text-sm text-muted">Platform adapters</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
+              {selected === 'runtime' ? (
+                <View className="mt-8 gap-4">
+                  <View className="native-semantic-panel flex-row items-center gap-3 rounded-xl border p-4">
+                    <View className="native-p3-swatch h-6 w-6 rounded-full" />
+                    <Text className="native-semantic-label text-sm font-semibold">
+                      AppKit semantic, high-contrast, and Display-P3 colors
                     </Text>
                   </View>
-                )}
-                <Pressable
-                  accessibilityRole="button"
-                  className="self-start rounded-xl bg-accent px-5 py-3"
-                  onPress={() => setLinked(value => !value)}>
-                  <Text className="font-bold text-white">
-                    {linked ? 'Unlink native view' : 'Relink native view'}
+                  <Text className="text-sm text-muted">
+                    Active window {Math.round(nitrowind.snapshot.screen.width)} ×{' '}
+                    {Math.round(nitrowind.snapshot.screen.height)} ·{' '}
+                    {nitrowind.snapshot.pixelRatio.toFixed(1)}× backing scale
                   </Text>
-                </Pressable>
-              </View>
-            ) : null}
-          </View>
-        </ScrollView>
+                  <View className="flex-row gap-3">
+                    <Pressable
+                      accessibilityRole="button"
+                      className="rounded-xl bg-accent px-5 py-3"
+                      onPress={toggleTheme}>
+                      <Text className="font-bold text-white">Toggle theme</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      className="rounded-xl border border-border px-5 py-3"
+                      onPress={() => nitrowind.setColorScheme('system')}>
+                      <Text className="font-bold text-foreground">Follow system</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
+
+              {selected === 'paint' ? (
+                <View className="mt-8 gap-4">
+                  <View className="flex-row gap-4">
+                    <View className="h-32 flex-1 items-center justify-center rounded-2xl bg-linear-45 from-violet-600 via-blue-600 to-cyan-500">
+                      <Text className="font-bold text-white">AppKit gradient</Text>
+                    </View>
+                    <View className="phase3-clip h-32 flex-1 items-center justify-center bg-linear-45 from-orange-500 to-pink-500">
+                      <Text className="font-bold text-white">Native clip path</Text>
+                    </View>
+                  </View>
+                  <View className="phase3-gradient-border items-center rounded-xl p-5">
+                    <Text className="native-semantic-label text-sm font-semibold">
+                      Shared Apple gradient-border adapter
+                    </Text>
+                  </View>
+                  <View className="flex-row gap-4 pt-2">
+                    <View className="phase3-photo h-36 flex-1 items-end justify-end overflow-hidden rounded-2xl p-4">
+                      <Text className="font-bold text-white">NSImage · cover</Text>
+                    </View>
+                    <View className="phase3-effects h-36 flex-1 items-center justify-center rounded-2xl bg-amber-400">
+                      <Text className="font-bold text-black">shadow · outline · filter</Text>
+                    </View>
+                  </View>
+                  <View className="h-28 overflow-hidden rounded-2xl bg-linear-to-r from-fuchsia-600 to-cyan-500 p-4">
+                    <View className="phase3-backdrop flex-1 items-center justify-center rounded-xl bg-white/20">
+                      <Text className="font-bold text-white">native backdrop filter</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
+              {selected === 'components' ? (
+                <View className="mt-8 gap-5">
+                  <View className="rounded-2xl border border-border bg-surface p-5">
+                    <Text className="mb-3 font-bold text-foreground">TextInput</Text>
+                    <TextInput
+                      accessibilityLabel="macOS example text input"
+                      className="rounded-lg border border-border bg-card px-4 py-3 text-foreground focus-visible:border-accent"
+                      onChangeText={setInputValue}
+                      value={inputValue}
+                    />
+                  </View>
+                  <View className="flex-row items-center gap-4 rounded-2xl border border-border bg-surface p-5">
+                    <Switch
+                      accessibilityLabel="Enable native styling"
+                      onValueChange={setSwitchEnabled}
+                      value={switchEnabled}
+                    />
+                    <View className="flex-1">
+                      <Text className="font-bold text-foreground">Native styling</Text>
+                      <Text className="mt-1 text-sm text-muted">
+                        Switch {switchEnabled ? 'enabled' : 'disabled'} · AppKit control
+                      </Text>
+                    </View>
+                    <ActivityIndicator color="#8b5cf6" />
+                  </View>
+                  <ScrollView horizontal className="rounded-2xl border border-border p-4">
+                    <View className="flex-row gap-3">
+                      {['View', 'Text', 'Image', 'ScrollView', 'FlatList', 'SectionList'].map(
+                        component => (
+                          <View key={component} className="w-36 rounded-xl bg-card p-4">
+                            <Text className="font-bold text-foreground">{component}</Text>
+                            <Text className="mt-1 text-xs text-muted">wrapper ready</Text>
+                          </View>
+                        ),
+                      )}
+                    </View>
+                  </ScrollView>
+                </View>
+              ) : null}
+
+              {selected === 'interaction' ? (
+                <View className="mt-8 gap-5">
+                  <Pressable
+                    accessibilityLabel="Desktop interaction target"
+                    accessibilityRole="button"
+                    className="rounded-2xl border-2 border-transparent bg-accent p-6 hover:opacity-80 focus-visible:border-cyan-400 active:opacity-60"
+                    focusable
+                    onPress={() => setActivationCount(value => value + 1)}>
+                    <Text className="text-lg font-bold text-white">
+                      Click or press Space / Return
+                    </Text>
+                    <Text className="mt-2 text-sm text-white">
+                      Activations: {activationCount}
+                    </Text>
+                  </Pressable>
+                  <View className="flex-row gap-3">
+                    <Pressable
+                      disabled
+                      className="rounded-xl bg-card px-5 py-3 disabled:opacity-50">
+                      <Text className="font-semibold text-foreground">Disabled</Text>
+                    </Pressable>
+                    <View className="macos:bg-violet-600 native:border-violet-300 rounded-xl border px-5 py-3">
+                      <Text className="font-semibold text-white">macos: + native:</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
+              {selected === 'layout' ? (
+                <View className="mt-8 gap-5">
+                  <Text className="text-sm text-muted">
+                    Resize the window: cards change from one column to three at the
+                    responsive breakpoint without rebuilding the class registry.
+                  </Text>
+                  <View className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {['Grid', 'CSS math', 'Container state'].map((label, index) => (
+                      <View
+                        key={label}
+                        className="h-[clamp(88px,12vw,132px)] items-center justify-center rounded-2xl border border-border bg-surface">
+                        <Text className="font-bold text-foreground">{index + 1}. {label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View className="flex-row items-center justify-between rounded-xl border border-border p-4 rtl:flex-row-reverse">
+                    <Text className="font-semibold text-foreground">LTR / RTL aware</Text>
+                    <Text className="text-accent">→</Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {selected === 'recycling' ? (
+                <View className="mt-8 gap-4">
+                  {linked ? (
+                    <View className="rounded-2xl border border-border bg-surface p-6">
+                      <Text className="text-lg font-bold text-foreground">
+                        Linked Fabric view
+                      </Text>
+                      <Text className="mt-2 text-sm text-muted">
+                        Remove and restore this node to verify native registry
+                        cleanup, recycled tags, and fresh style application.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View className="rounded-2xl border border-dashed border-border p-6">
+                      <Text className="text-sm text-muted">
+                        Native view unlinked. Its registry entry should be gone.
+                      </Text>
+                    </View>
+                  )}
+                  <Pressable
+                    accessibilityRole="button"
+                    className="self-start rounded-xl bg-accent px-5 py-3"
+                    onPress={() => setLinked(value => !value)}>
+                    <Text className="font-bold text-white">
+                      {linked ? 'Unlink native view' : 'Relink native view'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          </ScrollView>
+        )}
       </View>
     </View>
   );

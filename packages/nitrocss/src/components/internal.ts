@@ -9,6 +9,7 @@ import type {
 import type { ShadowNodeHandle } from "../specs/ShadowNodeHandle.nitro";
 import { type ComponentState, type RuntimeSnapshot } from "../specs/types";
 import { getEngine, hasNativeEngine } from "../core/native";
+import { ensureNativeStylesRegistered } from "../core/registry";
 import { runtime } from "../core/runtime";
 import type { GetStylesResult } from "../core/types";
 import { NitroCssContext } from "../core/context";
@@ -205,7 +206,12 @@ export function linkNode(
   inlineStyle?: unknown,
   gridConfig?: Record<string, unknown>,
 ): LinkedNodeRegistration | undefined {
-  if (Platform.OS === "web" || !hasNativeEngine() || !instance) {
+  if (
+    Platform.OS === "web" ||
+    !ensureNativeStylesRegistered() ||
+    !hasNativeEngine() ||
+    !instance
+  ) {
     return undefined;
   }
   const engine = getEngine();
@@ -372,6 +378,8 @@ export function useLinkedRef<T>(
   gridConfig?: Record<string, unknown>,
 ): Ref<T> | undefined {
   const cleanup = useRef<(() => void) | undefined>(undefined);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const mountedNode = useRef<T | null>(null);
   const provider = useContext(NitroCssContext);
   const shouldLinkNatively =
     provider === null ||
@@ -379,22 +387,48 @@ export function useLinkedRef<T>(
 
   const nativeRef = useCallback(
     (node: T | null) => {
+      mountedNode.current = node;
+      if (retryTimer.current !== undefined) {
+        clearTimeout(retryTimer.current);
+        retryTimer.current = undefined;
+      }
       cleanup.current?.();
       cleanup.current = undefined;
       if (node && shouldLinkNatively) {
-        const registration = linkNode(
-          node,
-          className,
-          componentName,
-          resolved,
-          snapshot,
-          nativeAccents,
-          componentState,
-          inlineStyle,
-          gridConfig,
-        );
-        cleanup.current = registration?.cleanup;
-        onLinked?.(registration?.handle);
+        let attempts = 0;
+        const tryLink = () => {
+          if (mountedNode.current !== node) return;
+          const registration = linkNode(
+            node,
+            className,
+            componentName,
+            resolved,
+            snapshot,
+            nativeAccents,
+            componentState,
+            inlineStyle,
+            gridConfig,
+          );
+          if (registration) {
+            cleanup.current = registration.cleanup;
+            retryTimer.current = undefined;
+            onLinked?.(registration.handle);
+            return;
+          }
+
+          // A dev bundle can mount before NitroModules has installed its JSI
+          // objects. Keep the existing host alive and retry its registration;
+          // otherwise gradients/background images remain blank until a React
+          // remount (usually navigation or Fast Refresh) happens by accident.
+          attempts += 1;
+          if (attempts < 100) {
+            retryTimer.current = setTimeout(tryLink, 50);
+          } else {
+            retryTimer.current = undefined;
+            onLinked?.(undefined);
+          }
+        };
+        tryLink();
       } else {
         onLinked?.(undefined);
       }

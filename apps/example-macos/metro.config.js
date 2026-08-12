@@ -73,7 +73,13 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 };
 const nitrowindConfig = withNitrowindMetroConfig(config, {
   input: './global.css',
-  content: ['./App.{tsx,ts,jsx,js}'],
+  content: [
+    './App.{tsx,ts,jsx,js}',
+    './mobile-examples.{tsx,ts,jsx,js}',
+    '../example/app/**/*.{tsx,ts,jsx,js}',
+    '../example/benchmark/**/*.{tsx,ts,jsx,js}',
+    '../example/components/**/*.{tsx,ts,jsx,js}',
+  ],
 });
 
 // The community config preloads upstream React Native's InitializeCore. This
