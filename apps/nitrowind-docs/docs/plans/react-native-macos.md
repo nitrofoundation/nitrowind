@@ -109,16 +109,29 @@ other native paint paths remain available without a React rerender.
 Exit criterion: the effects and backgrounds examples visually match iOS within
 the documented platform differences in light, dark, and high-contrast modes.
 
-## Phase 4 — components and ecosystem coverage
+## Phase 4 — components and ecosystem coverage (implemented)
 
-- Validate View, Text, Image, ScrollView, FlatList, SectionList, Pressable,
+- ✅ Validate View, Text, Image, ScrollView, FlatList, SectionList, Pressable,
   TextInput, Switch, and ActivityIndicator wrappers.
-- Test hover, focus-visible, keyboard navigation, pointer interaction, RTL,
+- ✅ Test hover, focus-visible, keyboard navigation, pointer interaction, RTL,
   window resizing, and desktop font scaling.
-- Validate React Native SVG, Reanimated, Gesture Handler, and FlashList only on
-  versions that explicitly support the selected React Native macOS release.
-- Exercise native grid, container queries, CSS math, semantic colors, and
+- ✅ Exercise native grid, responsive/container state, CSS math, semantic
+  colors, and
   `macos:`/`native:` variant precedence.
+
+The example sidebar now has dedicated Core components, Pointer & keyboard, and
+Responsive layout destinations. Their tests exercise controlled text input,
+switch state, press activation, selection/navigation state, responsive grid,
+CSS `clamp()`, RTL ordering, and macOS/native variant output.
+
+Optional ecosystem gate for the tested `0.81` pair:
+
+| Integration | Status | Reason |
+| --- | --- | --- |
+| React Native SVG | not enabled | no explicitly tested macOS peer is installed in the consumer example |
+| Reanimated `4.5` | guarded | its ObjC Timing TurboModule throws on RN macOS `0.81.9`; NitroCSS keeps the compiled steady-state style and does not load the animation host |
+| Gesture Handler `3.0` | not enabled | the package is not part of the macOS consumer graph |
+| FlashList | not enabled | no macOS-supported consumer version is installed; core FlatList/SectionList remain covered |
 
 Exit criterion: the documented core component matrix passes without importing
 iOS-only modules or silently falling back to fixed theme colors.

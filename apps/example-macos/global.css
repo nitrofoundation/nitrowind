@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+@custom-variant macos (&:where([data-nitrocss-os='macos'], [data-nitrocss-os='macos'] *));
+@custom-variant native (&:where([data-nitrocss-os='native'], [data-nitrocss-os='native'] *));
+
 @theme {
   --color-surface: #f4f4f5;
   --color-card: #ffffff;

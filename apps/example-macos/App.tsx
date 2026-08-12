@@ -10,13 +10,23 @@ import {
   useNitrowind,
 } from '@nitrofoundation/nitrowind';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
+  Switch,
   Text,
+  TextInput,
   View,
 } from '@nitrofoundation/nitrowind/components';
 
-type ExampleId = 'overview' | 'runtime' | 'paint' | 'recycling';
+type ExampleId =
+  | 'overview'
+  | 'runtime'
+  | 'paint'
+  | 'components'
+  | 'interaction'
+  | 'layout'
+  | 'recycling';
 
 const EXAMPLES: ReadonlyArray<{
   id: ExampleId;
@@ -49,6 +59,30 @@ const EXAMPLES: ReadonlyArray<{
     eyebrow: 'Phase 3',
     title: 'Native paint',
     description: 'CALayer gradients, rasters, effects, borders, and clip paths.',
+  },
+  {
+    id: 'components',
+    group: 'Library',
+    symbol: '▣',
+    eyebrow: 'Phase 4',
+    title: 'Core components',
+    description: 'Desktop-safe inputs, controls, indicators, text, and scrolling.',
+  },
+  {
+    id: 'interaction',
+    group: 'Library',
+    symbol: '⌁',
+    eyebrow: 'Phase 4',
+    title: 'Pointer & keyboard',
+    description: 'Hover, focus-visible, keyboard activation, and disabled state.',
+  },
+  {
+    id: 'layout',
+    group: 'Library',
+    symbol: '⊞',
+    eyebrow: 'Phase 4',
+    title: 'Responsive layout',
+    description: 'Grid, CSS math, platform variants, RTL, and window resizing.',
   },
   {
     id: 'recycling',
@@ -87,6 +121,9 @@ function MacOSExampleBrowser() {
   const [selected, setSelected] = useState<ExampleId>('overview');
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [linked, setLinked] = useState(true);
+  const [inputValue, setInputValue] = useState('Nitrowind for macOS');
+  const [switchEnabled, setSwitchEnabled] = useState(true);
+  const [activationCount, setActivationCount] = useState(0);
   const [smokeResult, setSmokeResult] = useState<string | null>(null);
   const smokeStarted = useRef(false);
   const nitrowindRef = useRef(nitrowind);
@@ -309,6 +346,96 @@ function MacOSExampleBrowser() {
                   <View className="phase3-backdrop flex-1 items-center justify-center rounded-xl bg-white/20">
                     <Text className="font-bold text-white">native backdrop filter</Text>
                   </View>
+                </View>
+              </View>
+            ) : null}
+
+            {selected === 'components' ? (
+              <View className="mt-8 gap-5">
+                <View className="rounded-2xl border border-border bg-surface p-5">
+                  <Text className="mb-3 font-bold text-foreground">TextInput</Text>
+                  <TextInput
+                    accessibilityLabel="macOS example text input"
+                    className="rounded-lg border border-border bg-card px-4 py-3 text-foreground focus-visible:border-accent"
+                    onChangeText={setInputValue}
+                    value={inputValue}
+                  />
+                </View>
+                <View className="flex-row items-center gap-4 rounded-2xl border border-border bg-surface p-5">
+                  <Switch
+                    accessibilityLabel="Enable native styling"
+                    onValueChange={setSwitchEnabled}
+                    value={switchEnabled}
+                  />
+                  <View className="flex-1">
+                    <Text className="font-bold text-foreground">Native styling</Text>
+                    <Text className="mt-1 text-sm text-muted">
+                      Switch {switchEnabled ? 'enabled' : 'disabled'} · AppKit control
+                    </Text>
+                  </View>
+                  <ActivityIndicator color="#8b5cf6" />
+                </View>
+                <ScrollView horizontal className="rounded-2xl border border-border p-4">
+                  <View className="flex-row gap-3">
+                    {['View', 'Text', 'Image', 'ScrollView', 'FlatList', 'SectionList'].map(
+                      component => (
+                        <View key={component} className="w-36 rounded-xl bg-card p-4">
+                          <Text className="font-bold text-foreground">{component}</Text>
+                          <Text className="mt-1 text-xs text-muted">wrapper ready</Text>
+                        </View>
+                      ),
+                    )}
+                  </View>
+                </ScrollView>
+              </View>
+            ) : null}
+
+            {selected === 'interaction' ? (
+              <View className="mt-8 gap-5">
+                <Pressable
+                  accessibilityLabel="Desktop interaction target"
+                  accessibilityRole="button"
+                  className="rounded-2xl border-2 border-transparent bg-accent p-6 hover:opacity-80 focus-visible:border-cyan-400 active:opacity-60"
+                  focusable
+                  onPress={() => setActivationCount(value => value + 1)}>
+                  <Text className="text-lg font-bold text-white">
+                    Click or press Space / Return
+                  </Text>
+                  <Text className="mt-2 text-sm text-white">
+                    Activations: {activationCount}
+                  </Text>
+                </Pressable>
+                <View className="flex-row gap-3">
+                  <Pressable
+                    disabled
+                    className="rounded-xl bg-card px-5 py-3 disabled:opacity-50">
+                    <Text className="font-semibold text-foreground">Disabled</Text>
+                  </Pressable>
+                  <View className="macos:bg-violet-600 native:border-violet-300 rounded-xl border px-5 py-3">
+                    <Text className="font-semibold text-white">macos: + native:</Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {selected === 'layout' ? (
+              <View className="mt-8 gap-5">
+                <Text className="text-sm text-muted">
+                  Resize the window: cards change from one column to three at the
+                  responsive breakpoint without rebuilding the class registry.
+                </Text>
+                <View className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {['Grid', 'CSS math', 'Container state'].map((label, index) => (
+                    <View
+                      key={label}
+                      className="h-[clamp(88px,12vw,132px)] items-center justify-center rounded-2xl border border-border bg-surface">
+                      <Text className="font-bold text-foreground">{index + 1}. {label}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View className="flex-row items-center justify-between rounded-xl border border-border p-4 rtl:flex-row-reverse">
+                  <Text className="font-semibold text-foreground">LTR / RTL aware</Text>
+                  <Text className="text-accent">→</Text>
                 </View>
               </View>
             ) : null}

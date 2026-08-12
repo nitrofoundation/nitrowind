@@ -23,6 +23,9 @@ const PLATFORM_CSS = `
   .android\\:gap-3:where([data-nitrocss-os="android"], [data-nitrocss-os="android"] *) {
     gap: 12px;
   }
+  .macos\\:gap-6:where([data-nitrocss-os="macos"], [data-nitrocss-os="macos"] *) {
+    gap: 24px;
+  }
   .web\\:gap-4:where([data-nitrocss-os="web"], [data-nitrocss-os="web"] *) {
     gap: 16px;
   }
@@ -83,6 +86,7 @@ describe("platform variants · compiler", () => {
   it("tags each bucket with its platform", () => {
     expect(artifact.classes["ios:gap-2"]?.[0]?.platform).toBe("ios");
     expect(artifact.classes["android:gap-3"]?.[0]?.platform).toBe("android");
+    expect(artifact.classes["macos:gap-6"]?.[0]?.platform).toBe("macos");
     expect(artifact.classes["web:gap-4"]?.[0]?.platform).toBe("web");
     expect(artifact.classes["native:gap-5"]?.[0]?.platform).toBe("native");
   });
