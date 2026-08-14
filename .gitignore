@@ -47,6 +47,7 @@ web-build/
 *.log
 .turbo/
 coverage/
+output/
 .env*.local
 # Android SDK location (machine-specific)
 local.properties

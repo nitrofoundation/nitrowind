@@ -22,7 +22,7 @@ npx @nitrofoundation/nitrowind-skills create
 
 Skills are written to `.agents/skills` by default. Use `--path <directory>` to choose another location.
 
-The package includes setup, migration, plain CSS, adaptive theming, components and interop, interaction states, responsive layouts, container queries, safe area, background images, native effects, animations, SVG, native props, and native-engine workflows.
+The package includes setup, migration, plain CSS, adaptive theming, components and interop, interaction states, responsive layouts, container queries, safe area, background images, linear/radial/conic gradients, advanced native grid, native masks and clip paths, accessibility variants, native effects, animations, SVG, native props, and native-engine workflows.
 
 ## Safe areas and grids
 

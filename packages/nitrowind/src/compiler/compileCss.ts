@@ -9,6 +9,7 @@ import { compile as tailwindCompile } from "@tailwindcss/node";
 import { Scanner } from "@tailwindcss/oxide";
 import { PLATFORM_CSS } from "./platform";
 import { REANIMATED_CSS } from "./reanimated";
+import { ACCESSIBILITY_CSS, accessibilityBaseCandidate } from "./accessibility";
 
 /** Scan the project's source files for candidate class names. */
 export function scanCandidates(options: CompileOptions): string[] {
@@ -44,7 +45,7 @@ export async function compileCss(
   // `entering-fade-in`, `animate-wiggle`, etc. are all available without any
   // extra plugin or import.
   const compiler = await tailwindCompile(
-    `@import "./${basename(inputPath)}";\n@import "@nitrofoundation/nitrocss";\n${PLATFORM_CSS}\n${REANIMATED_CSS}`,
+    `@import "./${basename(inputPath)}";\n@import "@nitrofoundation/nitrocss";\n${PLATFORM_CSS}\n${ACCESSIBILITY_CSS}\n${REANIMATED_CSS}`,
     {
       base,
       onDependency: () => {},
@@ -59,7 +60,10 @@ export async function compileCss(
   const baseUtilities = scanned
     .map((t) => parseCustomContainerToken(t, rem)?.baseUtility)
     .filter((u): u is string => Boolean(u));
-  const allCandidates = [...scanned, ...baseUtilities];
+  const accessibilityUtilities = scanned
+    .map(accessibilityBaseCandidate)
+    .filter((u): u is string => Boolean(u));
+  const allCandidates = [...scanned, ...baseUtilities, ...accessibilityUtilities];
 
   // Tailwind v4 emits nested CSS (`&`-nesting + nested `@media`) wrapped in
   // `@layer` blocks; `flattenCss` (nitrocss) un-nests every rule so the

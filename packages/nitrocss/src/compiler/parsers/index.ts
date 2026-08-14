@@ -25,6 +25,18 @@ export {
   type BackgroundImageDescriptor,
 } from "./backgroundImage";
 export {
+  extractMask,
+  isMaskProp,
+  MASK_DESCRIPTOR_PROP,
+  MASK_MODE_PROP,
+  MASK_POSITION_PROP,
+  MASK_REPEAT_PROP,
+  MASK_SIZE_PROP,
+  MASK_SOURCE_PROP,
+  type MaskDescriptor,
+  type MaskSource,
+} from "./mask";
+export {
   BACKDROP_FILTER_PROP,
   backdropBlurRadius,
   extractFilter,

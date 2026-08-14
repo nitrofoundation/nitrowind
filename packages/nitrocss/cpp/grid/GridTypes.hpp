@@ -4,7 +4,7 @@
 
 namespace nitrocss::grid {
 
-enum class TrackType { Fr, Px, Auto };
+enum class TrackType { Fr, Px, Auto, MinContent, MaxContent };
 
 struct Track {
   TrackType type = TrackType::Fr;
@@ -16,6 +16,8 @@ struct Placement {
   int columnSpan = 1;
   int rowStart = 0; // 1-based, 0 = auto
   int rowSpan = 1;
+  double intrinsicWidth = 0.0;
+  double intrinsicHeight = 0.0;
 };
 
 struct ItemLayout {
@@ -30,6 +32,8 @@ struct GridInput {
   std::vector<Track> columns;
   std::vector<Track> rows;
   Track autoRow{TrackType::Px, 64.0};
+  bool dense = false;
+  bool masonry = false;
   double columnGap = 0.0;
   double rowGap = 0.0;
   std::vector<Placement> items;
@@ -52,6 +56,8 @@ struct GridConfig {
   std::vector<Track> columns;
   std::vector<Track> rows;
   Track autoRow{TrackType::Px, 64.0};
+  bool dense = false;
+  bool masonry = false;
   double columnGap = 0.0;
   double rowGap = 0.0;
   double paddingHorizontal = 0.0;

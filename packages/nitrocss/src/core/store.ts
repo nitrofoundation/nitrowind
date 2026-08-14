@@ -12,8 +12,11 @@ import {
   foldBackgroundImage,
   foldClipPath,
   foldGradient,
+  foldMask,
+  foldMaskTransform,
   foldGradientAngle,
   foldTransform,
+  foldFilter,
   normalizeShadow,
 } from "./normalize";
 import {
@@ -179,6 +182,20 @@ function platformApplies(platform: string | undefined): boolean {
   return os === platform;
 }
 
+function mediaApplies(
+  media: import("../compiler/types").CompiledClass["media"],
+  snapshot: RuntimeSnapshot,
+): boolean {
+  if (!media) return true;
+  if (media.minWidth !== undefined && snapshot.screen.width < media.minWidth) return false;
+  if (media.maxWidth !== undefined && snapshot.screen.width > media.maxWidth) return false;
+  if (media.orientation) {
+    const current = snapshot.orientation === 1 ? "landscape" : "portrait";
+    if (current !== media.orientation) return false;
+  }
+  return true;
+}
+
 /** Whether a compiled bucket's variant applies to the current snapshot. */
 function variantApplies(
   variant: string,
@@ -293,15 +310,16 @@ function resolveStylesUncached(
     }
   };
 
-  for (const token of tokens) {
-    const buckets = getClassBuckets(token);
-    if (!buckets) continue;
+  const orderedBuckets = tokens
+    .flatMap((token) => getClassBuckets(token) ?? [])
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-    for (const bucket of buckets) {
+  for (const bucket of orderedBuckets) {
       // Platform never changes at runtime, so non-matching buckets contribute
       // nothing — skip them before accumulating dependencies.
       if (!platformApplies(bucket.platform)) continue;
       dependencyMask |= bucket.dependencies;
+      if (!mediaApplies(bucket.media, snapshot)) continue;
 
       // This class makes its node a queryable container.
       if (bucket.containerMarker) container = bucket.containerMarker;
@@ -312,7 +330,10 @@ function resolveStylesUncached(
         const cqStyle: RNStyle = {};
         applyBucketStyle(cqStyle, bucket.style);
         foldTransform(cqStyle);
+        foldFilter(cqStyle);
         foldGradient(cqStyle);
+        foldMask(cqStyle);
+        foldMaskTransform(cqStyle);
         foldGradientAngle(cqStyle);
         foldClipPath(cqStyle);
         foldBackgroundImage(cqStyle);
@@ -334,7 +355,6 @@ function resolveStylesUncached(
 
       if (!variantApplies(bucket.variant, snapshot, state)) continue;
       applyBucketStyle(styles, bucket.style);
-    }
   }
 
   // Fold per-axis transform props (translateX, rotate, scaleX, …) into RN's
@@ -342,9 +362,18 @@ function resolveStylesUncached(
   foldTransform(styles);
   foldTransform(beforeStyle);
   foldTransform(afterStyle);
+  foldFilter(styles);
+  foldFilter(beforeStyle);
+  foldFilter(afterStyle);
   foldGradient(styles);
   foldGradient(beforeStyle);
   foldGradient(afterStyle);
+  foldMask(styles);
+  foldMask(beforeStyle);
+  foldMask(afterStyle);
+  foldMaskTransform(styles);
+  foldMaskTransform(beforeStyle);
+  foldMaskTransform(afterStyle);
   foldGradientAngle(styles);
   foldGradientAngle(beforeStyle);
   foldGradientAngle(afterStyle);

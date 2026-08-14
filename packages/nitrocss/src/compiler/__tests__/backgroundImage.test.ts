@@ -72,7 +72,7 @@ describe("extractBackgroundImage", () => {
     expect(desc.positionY).toBe(0.75);
   });
 
-  it("does NOT capture a gradient (left to the gradient parser)", () => {
+  it("clears stale raster paint when the gradient parser owns the value", () => {
     expect(
       extractBackgroundImage(
         [
@@ -83,16 +83,23 @@ describe("extractBackgroundImage", () => {
         ],
         noVars,
       ),
-    ).toBeUndefined();
+    ).toEqual({
+      [BACKGROUND_IMAGE_PROP]: { type: "none" },
+    });
   });
 
-  it("returns undefined for none / missing / non-url", () => {
+  it("retains none as an explicit native clear sentinel", () => {
     expect(
       extractBackgroundImage(
         [{ prop: "background-image", value: "none" }],
         noVars,
       ),
-    ).toBeUndefined();
+    ).toEqual({
+      [BACKGROUND_IMAGE_PROP]: { type: "none" },
+    });
+  });
+
+  it("returns undefined for missing / non-url", () => {
     expect(
       extractBackgroundImage([{ prop: "color", value: "red" }], noVars),
     ).toBeUndefined();

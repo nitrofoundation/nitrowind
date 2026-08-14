@@ -12,6 +12,8 @@ on:
           - patch
           - minor
           - major
+          - premajor-beta
+          - prerelease-beta
 
 permissions:
   contents: write
@@ -41,7 +43,26 @@ jobs:
         run: yarn install --immutable
 
       - name: Release public packages
-        run: yarn release --ci --increment=${{ inputs.increment }}
+        shell: bash
+        run: |
+          release_args=(--ci)
+
+          case "${{ inputs.increment }}" in
+            premajor-beta)
+              release_args+=(--increment=premajor --preRelease=beta)
+              export RELEASE_IT_WORKSPACES_TAG=beta
+              ;;
+            prerelease-beta)
+              release_args+=(--increment=prerelease --preRelease=beta)
+              export RELEASE_IT_WORKSPACES_TAG=beta
+              ;;
+            *)
+              release_args+=(--increment=${{ inputs.increment }})
+              export RELEASE_IT_WORKSPACES_TAG=latest
+              ;;
+          esac
+
+          yarn release "${release_args[@]}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

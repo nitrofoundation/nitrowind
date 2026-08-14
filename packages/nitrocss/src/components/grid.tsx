@@ -15,6 +15,16 @@ const GRID_COLS_TEMPLATE_RE = /(?:^|\s)grid-cols-\[([^\]]+)\](?:\s|$)/;
 const GRID_ROWS_TEMPLATE_RE = /(?:^|\s)grid-rows-\[([^\]]+)\](?:\s|$)/;
 const GRID_TEMPLATE_RE = /(?:^|\s)grid-template-\[([^\]]+)\](?:\s|$)/;
 const COL_SPAN_RE = /(?:^|\s)col-span-(\d+)(?:\s|$)/;
+const ROW_SPAN_RE = /(?:^|\s)row-span-(\d+)(?:\s|$)/;
+const COL_START_RE = /(?:^|\s)col-start-(\d+)(?:\s|$)/;
+const COL_END_RE = /(?:^|\s)col-end-(\d+)(?:\s|$)/;
+const ROW_START_RE = /(?:^|\s)row-start-(\d+)(?:\s|$)/;
+const ROW_END_RE = /(?:^|\s)row-end-(\d+)(?:\s|$)/;
+const COL_START_NAMED_RE = /(?:^|\s)col-start-\[([^\]]+)\](?:\s|$)/;
+const COL_END_NAMED_RE = /(?:^|\s)col-end-\[([^\]]+)\](?:\s|$)/;
+const ROW_START_NAMED_RE = /(?:^|\s)row-start-\[([^\]]+)\](?:\s|$)/;
+const ROW_END_NAMED_RE = /(?:^|\s)row-end-\[([^\]]+)\](?:\s|$)/;
+const GRID_FLOW_DENSE_RE = /(?:^|\s)grid-flow-(?:row-)?dense(?:\s|$)/;
 const GRID_AREA_ARBITRARY_RE =
   /(?:^|\s)(?:grid-area|area)-\[([^\]]+)\](?:\s|$)/;
 const GRID_AREA_RE = /(?:^|\s)(?:grid-area|area)-([A-Za-z][\w-]*)(?:\s|$)/;
@@ -41,12 +51,22 @@ type Track =
   | { kind: "fixed"; value: number; min?: number }
   | { kind: "percent"; value: number; min?: number }
   | { kind: "fr"; value: number; min?: number }
-  | { kind: "auto"; min?: number };
+  | { kind: "auto"; min?: number }
+  | { kind: "min-content"; min?: number }
+  | { kind: "max-content"; min?: number }
+  | { kind: "masonry"; min?: number };
+
+type ParsedTrackList = {
+  tracks: Track[];
+  lineNames: Map<string, number>;
+};
 
 type GridTemplate = {
   areas?: string[][];
   columns: Track[];
   rows: Track[];
+  columnLineNames?: Map<string, number>;
+  rowLineNames?: Map<string, number>;
 };
 
 type AreaPlacement = {
@@ -64,7 +84,7 @@ type AreaPlacement = {
  * lossy cases.
  */
 export type SerializedGridTrack = {
-  type: "fr" | "px" | "auto";
+  type: "fr" | "px" | "auto" | "min-content" | "max-content";
   value: number;
 };
 
@@ -85,6 +105,8 @@ export type SerializedGridConfig = {
   columns: SerializedGridTrack[];
   rows: SerializedGridTrack[];
   autoRow: SerializedGridTrack;
+  dense: boolean;
+  masonry: boolean;
   columnGap: number;
   rowGap: number;
   paddingHorizontal: number;
@@ -106,6 +128,23 @@ function classNameOf(props: unknown): string | undefined {
 function spanFor(className: string): number {
   const match = COL_SPAN_RE.exec(className);
   return match ? Math.max(1, Number(match[1])) : 1;
+}
+
+function rowSpanFor(className: string): number {
+  const match = ROW_SPAN_RE.exec(className);
+  return match ? Math.max(1, Number(match[1])) : 1;
+}
+
+function lineValue(
+  className: string,
+  numeric: RegExp,
+  named: RegExp,
+  names: ReadonlyMap<string, number> | undefined,
+): number {
+  const explicit = numeric.exec(className)?.[1];
+  if (explicit) return Math.max(1, Number(explicit));
+  const name = named.exec(className)?.[1];
+  return name ? names?.get(decodeArbitraryTrack(name)) ?? 0 : 0;
 }
 
 function areaFor(className: string): string | undefined {
@@ -173,13 +212,10 @@ function expandRepeatTrack(value: string): string[] | undefined {
 function parseTrack(value: string): Track | undefined {
   const trimmed = value.trim().replace(/;$/, "");
   if (!trimmed) return undefined;
-  if (
-    trimmed === "auto" ||
-    trimmed === "min-content" ||
-    trimmed === "max-content"
-  ) {
-    return { kind: "auto" };
-  }
+  if (trimmed === "auto") return { kind: "auto" };
+  if (trimmed === "min-content") return { kind: "min-content" };
+  if (trimmed === "max-content") return { kind: "max-content" };
+  if (trimmed === "masonry") return { kind: "masonry" };
   const minMax = splitMinMax(trimmed);
   if (minMax) {
     const [min, max] = minMax;
@@ -206,18 +242,46 @@ function parseTrack(value: string): Track | undefined {
 }
 
 function parseTrackList(value: string): Track[] {
-  return splitTrackList(value)
-    .flatMap((track) => expandRepeatTrack(track) ?? [track])
-    .map(parseTrack)
-    .filter((track): track is Track => Boolean(track));
+  return parseNamedTrackList(value).tracks;
 }
 
-function templateTracksFor(className: string, re: RegExp): Track[] | undefined {
-  const raw = re.exec(className)?.[1];
+function parseNamedTrackList(value: string): ParsedTrackList {
+  const tracks: Track[] = [];
+  const lineNames = new Map<string, number>();
+  for (const token of splitTrackList(value)) {
+    if (token.startsWith("[") && token.endsWith("]")) {
+      for (const name of token.slice(1, -1).trim().split(/\s+/)) {
+        if (name) lineNames.set(name, tracks.length + 1);
+      }
+      continue;
+    }
+    for (const expanded of expandRepeatTrack(token) ?? [token]) {
+      const track = parseTrack(expanded);
+      if (track) tracks.push(track);
+    }
+  }
+  return { tracks, lineNames };
+}
+
+function arbitraryTrackValue(
+  className: string,
+  prefix: "grid-cols" | "grid-rows",
+): string | undefined {
+  const token = className
+    .split(/\s+/)
+    .find((part) => part.startsWith(`${prefix}-[`) && part.endsWith("]"));
+  return token?.slice(prefix.length + 2, -1);
+}
+
+function namedTemplateTracksFor(
+  className: string,
+  prefix: "grid-cols" | "grid-rows",
+  re: RegExp,
+): ParsedTrackList | undefined {
+  const raw = arbitraryTrackValue(className, prefix) ?? re.exec(className)?.[1];
   if (!raw) return undefined;
-  const decoded = decodeArbitraryTrack(raw);
-  const parsed = parseTrackList(decoded);
-  return parsed.length > 0 ? parsed : undefined;
+  const parsed = parseNamedTrackList(decodeArbitraryTrack(raw));
+  return parsed.tracks.length > 0 ? parsed : undefined;
 }
 
 function readQuoted(value: string, start: number): { text: string; end: number } {
@@ -273,21 +337,34 @@ function gridTemplateFor(className: string): GridTemplate | undefined {
   const decoded = decodeArbitraryTrack(raw);
   const [rowsValue, columnsValue] = splitTopLevel(decoded, "/");
   const rows = parseTemplateRows(rowsValue);
-  const columns = parseTrackList(columnsValue);
-  if (rows.rows.length === 0 && columns.length === 0) return undefined;
+  const columns = parseNamedTrackList(columnsValue);
+  if (rows.rows.length === 0 && columns.tracks.length === 0) return undefined;
   return {
     areas: rows.areas,
     rows: rows.rows,
-    columns,
+    columns: columns.tracks,
+    columnLineNames: columns.lineNames,
   };
 }
 
 function columnTemplateFor(className: string): Track[] | undefined {
-  return templateTracksFor(className, GRID_COLS_TEMPLATE_RE);
+  return namedTemplateTracksFor(className, "grid-cols", GRID_COLS_TEMPLATE_RE)?.tracks;
 }
 
 function rowTemplateFor(className: string): Track[] | undefined {
-  return templateTracksFor(className, GRID_ROWS_TEMPLATE_RE);
+  return namedTemplateTracksFor(className, "grid-rows", GRID_ROWS_TEMPLATE_RE)?.tracks;
+}
+
+function columnLineNamesFor(className: string): Map<string, number> | undefined {
+  return (
+    namedTemplateTracksFor(className, "grid-cols", GRID_COLS_TEMPLATE_RE)
+      ?.lineNames ?? gridTemplateFor(className)?.columnLineNames
+  );
+}
+
+function rowLineNamesFor(className: string): Map<string, number> | undefined {
+  return namedTemplateTracksFor(className, "grid-rows", GRID_ROWS_TEMPLATE_RE)
+    ?.lineNames;
 }
 
 function gapFor(className: string): number {
@@ -326,7 +403,10 @@ function trackValueFor(
   const spacing = spacingRe.exec(className);
   if (spacing) return `${Number(spacing[1]) * SPACING_UNIT}px`;
   const keyword = keywordRe.exec(className)?.[1];
-  return keyword === "fr" ? "minmax(0,1fr)" : keyword;
+  if (keyword === "fr") return "minmax(0,1fr)";
+  if (keyword === "min") return "min-content";
+  if (keyword === "max") return "max-content";
+  return keyword;
 }
 
 function applyTrackStyle(
@@ -478,7 +558,7 @@ function fixedTrackSize(track: Track | undefined): number | undefined {
 function trackMinSize(track: Track | undefined): number | undefined {
   if (!track) return undefined;
   if (track.kind === "fixed") return track.value;
-  return track.min;
+  return "min" in track ? track.min : undefined;
 }
 
 function resolvedRowSizes(
@@ -729,6 +809,12 @@ function serializeGridTrack(
       return typeof track.min === "number"
         ? { type: "px", value: track.min }
         : { type: "auto", value: 0 };
+    case "min-content":
+      return { type: "min-content", value: 0 };
+    case "max-content":
+      return { type: "max-content", value: 0 };
+    case "masonry":
+      return axis === "row" ? { type: "auto", value: 0 } : undefined;
     case "percent":
       return axis === "column" ? undefined : { type: "auto", value: 0 };
   }
@@ -739,11 +825,7 @@ function serializeAutoRow(parentClassName: string): SerializedGridTrack {
   if (!value) return { type: "px", value: DEFAULT_AUTO_ROW };
   const track = parseTrack(value);
   const serialized = track ? serializeGridTrack(track, "row") : undefined;
-  // Implicit rows must be a concrete size — `fr`/content `auto` rows collapse to
-  // 0 natively, so fall back to the engine's default row size. `min-content`/
-  // `max-content` (`auto-rows-min`/`-max`) need item measurement the engine
-  // can't do; they degrade here too. TODO: two-pass measure for content rows.
-  if (!serialized || serialized.type !== "px") {
+  if (!serialized || serialized.type === "fr" || serialized.type === "auto") {
     return { type: "px", value: DEFAULT_AUTO_ROW };
   }
   return serialized;
@@ -755,12 +837,15 @@ function serializeGridItems(
 ): SerializedGridPlacement[] {
   const gridTemplate = gridTemplateFor(parentClassName);
   const areas = areaPlacements(gridTemplate?.areas);
+  const columnLines = columnLineNamesFor(parentClassName);
+  const rowLines = rowLineNamesFor(parentClassName);
   let autoAreaIndex = 0;
   const items: SerializedGridPlacement[] = [];
   Children.toArray(children).forEach((child) => {
     if (!isValidElement(child)) return;
     const className = classNameOf(child.props) ?? "";
     const span = spanFor(className);
+    const rowSpan = rowSpanFor(className);
     const explicitArea = areaFor(className);
     const areaName = explicitArea ?? areas.order[autoAreaIndex];
     const placement = areaName ? areas.placements.get(areaName) : undefined;
@@ -774,7 +859,40 @@ function serializeGridItems(
         rowSpan: placement.rowSpan,
       });
     } else {
-      items.push({ columnStart: 0, columnSpan: span, rowStart: 0, rowSpan: 1 });
+      const columnStart = lineValue(
+        className,
+        COL_START_RE,
+        COL_START_NAMED_RE,
+        columnLines,
+      );
+      const columnEnd = lineValue(
+        className,
+        COL_END_RE,
+        COL_END_NAMED_RE,
+        columnLines,
+      );
+      const rowStart = lineValue(
+        className,
+        ROW_START_RE,
+        ROW_START_NAMED_RE,
+        rowLines,
+      );
+      const rowEnd = lineValue(
+        className,
+        ROW_END_RE,
+        ROW_END_NAMED_RE,
+        rowLines,
+      );
+      items.push({
+        columnStart,
+        columnSpan:
+          columnStart > 0 && columnEnd > columnStart
+            ? columnEnd - columnStart
+            : span,
+        rowStart,
+        rowSpan:
+          rowStart > 0 && rowEnd > rowStart ? rowEnd - rowStart : rowSpan,
+      });
     }
   });
   return items;
@@ -843,6 +961,8 @@ export function serializeGridConfig(
     columns,
     rows,
     autoRow: serializeAutoRow(parentClassName),
+    dense: GRID_FLOW_DENSE_RE.test(parentClassName),
+    masonry: Boolean(rowTemplate?.some((track) => track.kind === "masonry")),
     columnGap: gap,
     rowGap: gap,
     paddingHorizontal,

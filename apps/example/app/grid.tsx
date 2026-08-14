@@ -26,30 +26,31 @@ const NITROWIND_GRID_SUPPORT = [
   { name: 'col-start / row-start', status: 'internal', source: 'nitro-css' },
   { name: 'col-span / row-span', status: 'internal', source: 'nitro-css' },
   { name: 'sparse auto placement', status: 'internal', source: 'nitro-css' },
+  { name: 'dense auto placement', status: 'internal', source: 'nitro-css' },
+  { name: 'named grid lines', status: 'internal', source: 'nitro-css' },
+  { name: 'min-content / max-content', status: 'internal', source: 'nitro-css' },
+  { name: 'masonry rows', status: 'internal', source: 'nitro-css' },
 ] satisfies Array<{ name: string; status: string; source: SupportSource }>;
 
 const GRID_BRIDGE_WORK = [
-  { name: 'NitrowindGridView', status: 'bridge next', source: 'bridge' },
-  { name: 'Fabric ShadowNode layout', status: 'bridge next', source: 'bridge' },
+  { name: 'NitrowindGridView', status: 'connected', source: 'nitro-css' },
+  { name: 'Fabric ShadowNode layout', status: 'connected', source: 'nitro-css' },
   {
     name: 'JS class metadata to native props',
-    status: 'bridge next',
-    source: 'bridge',
+    status: 'connected',
+    source: 'nitro-css',
   },
   {
     name: 'iOS / Android component registration',
-    status: 'bridge next',
-    source: 'bridge',
+    status: 'connected',
+    source: 'nitro-css',
   },
 ] satisfies Array<{ name: string; status: string; source: SupportSource }>;
 
 const NOT_SUPPORTED_YET = [
   { name: 'display: grid', status: 'not RN', source: 'unsupported' },
   { name: 'grid-column / grid-row', status: 'not RN', source: 'unsupported' },
-  { name: 'dense auto-placement', status: 'later', source: 'unsupported' },
-  { name: 'subgrid / masonry', status: 'later', source: 'unsupported' },
-  { name: 'named grid lines', status: 'later', source: 'unsupported' },
-  { name: 'min-content / max-content', status: 'later', source: 'unsupported' },
+  { name: 'subgrid', status: 'later', source: 'unsupported' },
 ] satisfies Array<{ name: string; status: string; source: SupportSource }>;
 
 const INTERNAL_GRID_PREVIEW = [
@@ -157,6 +158,15 @@ const CELLS = [
   { label: 'D', className: 'w-[48%] bg-rose-500' },
 ];
 
+const MASONRY_CELLS = [
+  { label: 'A · 72', className: 'h-[72px] bg-sky-500' },
+  { label: 'B · 128', className: 'h-32 bg-emerald-500' },
+  { label: 'C · 88', className: 'h-[88px] bg-fuchsia-500' },
+  { label: 'D · 144', className: 'h-36 bg-amber-500' },
+  { label: 'E · 64', className: 'h-16 bg-rose-500' },
+  { label: 'F · 104', className: 'h-[104px] bg-indigo-500' },
+];
+
 function badgeClass(source: SupportSource): string {
   switch (source) {
     case 'rn':
@@ -209,17 +219,19 @@ function AutoTrackExample({
   return (
     <View className="gap-2">
       <Text className="text-xs font-bold text-muted">{title}</Text>
-      <View className={`rounded-xl bg-surface p-2 ${className}`}>
-        {cells.map((label, index) => (
-          <View
-            key={`${title}-${label}-${index}`}
-            className={`items-center justify-center rounded-lg px-2 py-2 ${AUTO_TRACK_COLORS[index]}`}
-          >
-            <Text className="text-center text-xs font-extrabold text-white">
-              {label}
-            </Text>
-          </View>
-        ))}
+      <View className="rounded-xl bg-surface p-2">
+        <View className={className}>
+          {cells.map((label, index) => (
+            <View
+              key={`${title}-${label}-${index}`}
+              className={`items-center justify-center rounded-lg px-2 py-2 ${AUTO_TRACK_COLORS[index]}`}
+            >
+              <Text className="text-center text-xs font-extrabold text-white">
+                {label}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -237,17 +249,19 @@ function TemplateTrackExample({
   return (
     <View className="gap-2">
       <Text className="text-xs font-bold text-muted">{title}</Text>
-      <View className={`rounded-xl bg-surface p-2 ${className}`}>
-        {cells.map((cell, index) => (
-          <View
-            key={`${title}-${cell.label}-${index}`}
-            className={`items-center justify-center rounded-lg px-2 ${cell.className}`}
-          >
-            <Text className="text-center text-xs font-extrabold text-white">
-              {cell.label}
-            </Text>
-          </View>
-        ))}
+      <View className="rounded-xl bg-surface p-2">
+        <View className={className}>
+          {cells.map((cell, index) => (
+            <View
+              key={`${title}-${cell.label}-${index}`}
+              className={`items-center justify-center rounded-lg px-2 ${cell.className}`}
+            >
+              <Text className="text-center text-xs font-extrabold text-white">
+                {cell.label}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -269,6 +283,100 @@ function PageTemplateExample() {
             </Text>
           </View>
         ))}
+      </View>
+    </View>
+  );
+}
+
+function AutoPlacementExample({ dense = false }: { dense?: boolean }) {
+  const cells = [
+    { label: 'span 2', className: 'col-span-2 bg-sky-500' },
+    { label: 'span 2', className: 'col-span-2 bg-emerald-500' },
+    { label: 'fills hole', className: 'bg-fuchsia-500' },
+  ];
+  return (
+    <View className="gap-2">
+      <Text className="text-xs font-bold text-muted">
+        {dense ? 'grid-flow-dense' : 'sparse row flow'}
+      </Text>
+      <View className="rounded-xl bg-surface p-2">
+        <View
+          className={`grid grid-cols-3 auto-rows-[52px] gap-2 ${dense ? 'grid-flow-dense' : ''}`}
+        >
+          {cells.map((cell, index) => (
+            <View
+              key={`${cell.label}-${index}`}
+              className={`items-center justify-center rounded-lg ${cell.className}`}
+            >
+              <Text className="text-xs font-extrabold text-white">
+                {cell.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function NamedLinesExample() {
+  return (
+    <View className="gap-2">
+      <Text className="text-xs font-bold text-muted">named column lines</Text>
+      <View className="rounded-xl bg-surface p-2">
+        <View className="grid grid-cols-[[sidebar-start]_96px_[content-start]_1fr_[content-end]] auto-rows-[72px] gap-3">
+          <View className="col-start-[sidebar-start] col-end-[content-start] items-center justify-center rounded-lg bg-indigo-500">
+            <Text className="text-xs font-extrabold text-white">sidebar</Text>
+          </View>
+          <View className="col-start-[content-start] col-end-[content-end] items-center justify-center rounded-lg bg-cyan-500">
+            <Text className="text-xs font-extrabold text-white">content</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function ContentTracksExample() {
+  return (
+    <View className="gap-2">
+      <Text className="text-xs font-bold text-muted">
+        min-content · 1fr · max-content
+      </Text>
+      <View className="rounded-xl bg-surface p-2">
+        <View className="grid grid-cols-[min-content_1fr_max-content] auto-rows-max gap-3">
+          <View className="h-14 w-[72px] items-center justify-center rounded-lg bg-rose-500">
+            <Text className="text-xs font-extrabold text-white">min</Text>
+          </View>
+          <View className="h-20 items-center justify-center rounded-lg bg-violet-500">
+            <Text className="text-xs font-extrabold text-white">fluid 1fr</Text>
+          </View>
+          <View className="h-16 w-24 items-center justify-center rounded-lg bg-amber-500">
+            <Text className="text-xs font-extrabold text-white">max</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function MasonryExample() {
+  return (
+    <View className="gap-2">
+      <Text className="text-xs font-bold text-muted">grid-rows-[masonry]</Text>
+      <View className="rounded-xl bg-surface p-2">
+        <View className="grid grid-cols-2 grid-rows-[masonry] gap-3">
+          {MASONRY_CELLS.map(cell => (
+            <View
+              key={cell.label}
+              className={`items-center justify-center rounded-xl ${cell.className}`}
+            >
+              <Text className="text-xs font-extrabold text-white">
+                {cell.label}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -360,6 +468,43 @@ export default function GridExamples() {
       </Section>
 
       <Section
+        title="Auto placement"
+        subtitle="Sparse flow preserves the placement cursor; dense flow backfills earlier holes. Explicit col-start / row-start use the same native path."
+      >
+        <Card className="gap-4">
+          <AutoPlacementExample />
+          <AutoPlacementExample dense />
+        </Card>
+      </Section>
+
+      <Section
+        title="Named lines"
+        subtitle="Line names in grid-cols-[…] resolve col-start-[name] and col-end-[name] before the payload reaches C++."
+      >
+        <Card>
+          <NamedLinesExample />
+        </Card>
+      </Section>
+
+      <Section
+        title="Intrinsic tracks"
+        subtitle="min-content and max-content tracks use measured grid-item contributions; fr tracks receive the remaining width."
+      >
+        <Card>
+          <ContentTracksExample />
+        </Card>
+      </Section>
+
+      <Section
+        title="Masonry"
+        subtitle="Items retain their measured height and are placed into the shortest available column."
+      >
+        <Card>
+          <MasonryExample />
+        </Card>
+      </Section>
+
+      <Section
         title="Template tracks"
         subtitle="Arbitrary grid column and row templates resolve to fallback item dimensions."
       >
@@ -372,8 +517,8 @@ export default function GridExamples() {
       </Section>
 
       <Section
-        title="Bridge work"
-        subtitle="These pieces connect the internal grid engine to a real native component."
+        title="Native bridge"
+        subtitle="The grid metadata is connected to Fabric ShadowNode measurement and batched native frame commits."
       >
         <Card>
           {GRID_BRIDGE_WORK.map(item => (
@@ -394,9 +539,8 @@ export default function GridExamples() {
       </Section>
 
       <Caption>
-        Green rows come from React Native. Blue rows are implemented inside
-        Nitrowind's shared C++ grid engine. Amber rows are the remaining bridge
-        to make the grid engine drive Fabric layout.
+        Green rows come from React Native. Blue rows are resolved by Nitrowind's
+        shared C++ engine and committed to Fabric in one native batch.
       </Caption>
     </Screen>
   );

@@ -59,6 +59,8 @@ public:
     facebook::react::SurfaceId surfaceId = 0;
     double width = 0.0;
     std::vector<facebook::react::ShadowNodeFamily::Shared> childFamilies;
+    std::vector<double> childWidths;
+    std::vector<double> childHeights;
   };
 
   static NitroCssCore& shared();
@@ -182,7 +184,9 @@ private:
   void notifyDependencyListeners(uint32_t changedMask);
   folly::dynamic resolveForNode(const LinkedNode& node, const ResolveContext& ctx);
   folly::dynamic resolveAccent(const LinkedAccent& accent, const ResolveContext& ctx);
-  void commitResolvedNode(const LinkedNode& node, const ResolveContext& ctx);
+  void commitResolvedNode(const LinkedNode& node,
+                          const ResolveContext& ctx,
+                          bool immediate = false);
   /** Inject the node's container sizes into a copy of `ctx` before resolving. */
   void applyContainerSizes(ResolveContext& ctx, const LinkedNode& node) const;
   /** Inject the node's nearest group root state before resolving group variants. */

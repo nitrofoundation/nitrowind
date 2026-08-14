@@ -24,6 +24,7 @@
   --color-typography: #111827;
 
   --radius-card: 16px;
+  --hero-gradient: linear-gradient(90deg in oklab, #ef4444 0%, #8b5cf6 45%, #06b6d4 100%);
 
   /*
    * The classic web "animated gradient" animates `background-position` on an
@@ -43,6 +44,11 @@
    * rotates the CAGradientLayer's start/end points in place. Same view box.
    */
   --animate-gradient-angle-spin: gradient-angle-spin 6s linear infinite;
+  --animate-conic-clock: conic-clock 4s linear infinite;
+  --animate-apple-float-a: apple-float-a 11s ease-in-out infinite;
+  --animate-apple-float-b: apple-float-b 13s ease-in-out infinite;
+  --animate-apple-float-c: apple-float-c 15s ease-in-out infinite;
+  --animate-mask-star-rotate-pulse: mask-star-rotate-pulse 7s linear infinite;
 }
 
 @keyframes gradient-shift {
@@ -70,6 +76,65 @@
   }
   100% {
     --gradient-angle: 360deg;
+  }
+}
+
+@keyframes conic-clock {
+  0% {
+    --gradient-angle: 0deg;
+  }
+  100% {
+    --gradient-angle: 360deg;
+  }
+}
+
+@keyframes apple-float-a {
+  0%, 100% {
+    transform: translateX(-24px) translateY(-18px) scale(1.04) rotate(-5deg);
+  }
+  50% {
+    transform: translateX(54px) translateY(42px) scale(1.18) rotate(8deg);
+  }
+}
+
+@keyframes apple-float-b {
+  0%, 100% {
+    transform: translateX(42px) translateY(-26px) scale(1.14) rotate(7deg);
+  }
+  50% {
+    transform: translateX(-48px) translateY(58px) scale(0.98) rotate(-9deg);
+  }
+}
+
+@keyframes apple-float-c {
+  0%, 100% {
+    transform: translateX(-36px) translateY(36px) scale(1.08) rotate(-4deg);
+  }
+  50% {
+    transform: translateX(46px) translateY(-52px) scale(1.2) rotate(10deg);
+  }
+}
+
+@keyframes mask-star-rotate-pulse {
+  0% {
+    --mask-angle: 0deg;
+    --mask-scale: 0.92;
+  }
+  25% {
+    --mask-angle: 90deg;
+    --mask-scale: 1.04;
+  }
+  50% {
+    --mask-angle: 180deg;
+    --mask-scale: 0.92;
+  }
+  75% {
+    --mask-angle: 270deg;
+    --mask-scale: 1.04;
+  }
+  100% {
+    --mask-angle: 360deg;
+    --mask-scale: 0.92;
   }
 }
 
@@ -107,6 +172,35 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+/* --- mask-image (whole-view native CALayer / RenderEffect masks) --- */
+@utility bg-mask-photo {
+  background-image: url('https://picsum.photos/id/1015/600/400');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+@utility mask-logo-no-repeat {
+  mask-image: url('https://raw.githubusercontent.com/google/material-design-icons/master/png/action/language/materialicons/48dp/2x/baseline_language_black_48dp.png');
+  mask-repeat: no-repeat;
+}
+@utility mask-logo-center {
+  mask-image: url('https://raw.githubusercontent.com/google/material-design-icons/master/png/action/language/materialicons/48dp/2x/baseline_language_black_48dp.png');
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+@utility mask-star-stretch {
+  mask-image: url('https://raw.githubusercontent.com/google/material-design-icons/master/png/toggle/star/materialicons/48dp/2x/baseline_star_black_48dp.png');
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: 100% 100%;
+}
+@utility mask-star-outline-hires {
+  mask-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Star_Outline.svg/960px-Star_Outline.svg.png');
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
 }
 @utility bg-photo-contain {
   background-image: url('https://picsum.photos/id/1025/400/400');

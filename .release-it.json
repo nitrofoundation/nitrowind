@@ -4,7 +4,7 @@
     "requireCleanWorkingDir": true,
     "requireUpstream": true,
     "commit": true,
-    "commitMessage": "chore(release): v${version}",
+    "commitMessage": "📦 build: release v${version}",
     "tag": true,
     "tagName": "v${version}",
     "push": true

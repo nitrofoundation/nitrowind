@@ -114,6 +114,10 @@ describe("SVG_CSS_INTEROP_MAPPING resolution", () => {
       [...SVG_PAINT_PROPS].sort(),
     );
   });
+
+  it("keeps svg paint mappings on the JS conversion path", () => {
+    expect(SVG_CSS_INTEROP_MAPPING.nativePropMapping).toBe(false);
+  });
 });
 
 describe("cssInterop", () => {
@@ -159,6 +163,20 @@ describe("cssInterop", () => {
       mapping,
     );
     expect(generated.labelStyle).toMatchObject({ opacity: 0.5 });
+  });
+
+  it("keeps automatic *ClassName mapping alongside explicit mappings", () => {
+    const mapping = normalizeCssInteropMapping({
+      labelClassName: "labelStyle",
+    });
+    expect(resolveGeneratedProps(
+      { labelClassName: "opacity-50", contentClassName: "h-6" },
+      snapshot,
+      mapping,
+    )).toMatchObject({
+      labelStyle: { opacity: 0.5 },
+      contentStyle: { height: 24 },
+    });
   });
 });
 

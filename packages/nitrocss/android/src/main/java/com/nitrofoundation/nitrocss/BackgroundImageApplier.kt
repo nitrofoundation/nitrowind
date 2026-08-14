@@ -304,17 +304,39 @@ object BackgroundImageApplier {
       if (w <= 0f || h <= 0f) return
 
       if (repeating()) {
+        val bw = bmp.width.toFloat()
+        val bh = bmp.height.toFloat()
+        if (bw <= 0f || bh <= 0f) return
         if (shaderDirty) {
           val tileX = if (repeat == "repeat" || repeat == "repeat-x")
             Shader.TileMode.REPEAT else Shader.TileMode.CLAMP
           val tileY = if (repeat == "repeat" || repeat == "repeat-y")
             Shader.TileMode.REPEAT else Shader.TileMode.CLAMP
-          paint.shader = BitmapShader(bmp, tileX, tileY)
+          val shader = BitmapShader(bmp, tileX, tileY)
+          val matrix = Matrix()
+          if (repeat == "repeat-x") {
+            matrix.setTranslate(0f, (h - bh) * positionY)
+          } else if (repeat == "repeat-y") {
+            matrix.setTranslate((w - bw) * positionX, 0f)
+          }
+          shader.setLocalMatrix(matrix)
+          paint.shader = shader
           shaderDirty = false
         }
         val save = canvas.save()
         canvas.translate(b.left.toFloat(), b.top.toFloat())
-        canvas.drawRect(0f, 0f, w, h, paint)
+        canvas.clipRect(0f, 0f, w, h)
+        when (repeat) {
+          "repeat-x" -> {
+            val top = (h - bh) * positionY
+            canvas.drawRect(0f, top, w, top + bh, paint)
+          }
+          "repeat-y" -> {
+            val left = (w - bw) * positionX
+            canvas.drawRect(left, 0f, left + bw, h, paint)
+          }
+          else -> canvas.drawRect(0f, 0f, w, h, paint)
+        }
         canvas.restoreToCount(save)
         return
       }

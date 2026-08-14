@@ -53,6 +53,8 @@ export type {
 } from "./hoc/withNitroCss";
 
 export { cssInterop } from "./hoc/cssInterop";
+export { cssInteropPresets } from "./hoc/presets";
+export type { CssInteropPresetName } from "./hoc/presets";
 export type {
   CssInteropComponent,
   CssInteropMapping,
@@ -68,3 +70,11 @@ export { resolveStyles, resolveStylesForPlatform } from "./core/store";
 export type { GetStylesResult, NitroCssContextValue } from "./core/types";
 export type { RuntimeSnapshot, Dimensions, Insets } from "./specs/types";
 export { ColorScheme, Orientation, StyleDependency } from "./specs/types";
+export {
+  nativeAccessibilityEnvironment,
+  readReactNativeAccessibilitySnapshot,
+  resolveAccessibilityClassName,
+  useAccessibilityClassName,
+  useAccessibilityEnvironment,
+} from "./accessibility";
+export type { AccessibilityEnvironment, AccessibilityVariant } from "./accessibility";

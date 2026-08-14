@@ -9,6 +9,7 @@ import android.graphics.PixelFormat
 import android.graphics.RadialGradient
 import android.graphics.Rect
 import android.graphics.Shader
+import android.graphics.SweepGradient
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
@@ -24,6 +25,8 @@ import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 import kotlin.math.tan
 import org.json.JSONArray
 import org.json.JSONObject
@@ -41,7 +44,7 @@ import org.json.JSONObject
  * payload), prunes stale paint, and (re)applies to every mounted target.
  *
  * Paint: a [GradientDrawable]-style custom [Drawable] rendering a
- * Linear/Radial [Shader] (Blink `endPointsFromAngle` math; radial ellipse via
+ * Linear/Radial/Conic [Shader] (Blink `endPointsFromAngle` math; radial ellipse via
  * `setLocalMatrix`), composed with whatever background the view already has by
  * wrapping both in a [GradientBackgroundWrapper] (`LayerDrawable(existing,
  * gradient)` — gradient above the background color, below children, like the
@@ -276,11 +279,13 @@ object GradientApplier {
         result[item.getInt("tag")] = Entry(
           generation = item.optLong("generation"),
           borderRadius = item.optDouble("borderRadius", 0.0),
-          radial = descriptor.optString("gradientType") == "radial",
+          gradientType = descriptor.optString("gradientType", "linear"),
           angle = descriptor.optDouble("angle", 180.0),
           angleOverride = if (item.has("angleOverride")) item.optDouble("angleOverride") else null,
           positionX = descriptor.optDouble("positionX", 0.5).toFloat(),
           positionY = descriptor.optDouble("positionY", 0.5).toFloat(),
+          radialShape = descriptor.optString("radialShape", "ellipse"),
+          radialExtent = descriptor.optString("radialExtent", "farthest-corner"),
           colors = parseColors(rawColors),
           locations = locations,
         )
@@ -355,12 +360,14 @@ object GradientApplier {
   private class Entry(
     val generation: Long,
     val borderRadius: Double,
-    val radial: Boolean,
+    val gradientType: String,
     val angle: Double,
     /** Live per-frame animated angle from the JS driver, or null when static. */
     val angleOverride: Double?,
     val positionX: Float,
     val positionY: Float,
+    val radialShape: String,
+    val radialExtent: String,
     val colors: IntArray,
     val locations: FloatArray?,
   )
@@ -403,10 +410,12 @@ object GradientApplier {
         invalidateSelf()
       }
 
-    private var radial = false
+    private var gradientType = "linear"
     private var angleDeg = 180.0
     private var centerX = 0.5f
     private var centerY = 0.5f
+    private var radialShape = "ellipse"
+    private var radialExtent = "farthest-corner"
     private var stopColors = IntArray(0)
     private var stopLocations: FloatArray? = null
     private var cornerRadiusPx = 0f
@@ -415,10 +424,16 @@ object GradientApplier {
     private var shaderDirty = true
 
     fun update(entry: Entry, view: View) {
-      radial = entry.radial
-      angleDeg = entry.angleOverride ?: entry.angle
+      gradientType = entry.gradientType
+      angleDeg = if (entry.gradientType != "radial") {
+        entry.angleOverride ?: entry.angle
+      } else {
+        entry.angle
+      }
       centerX = entry.positionX
       centerY = entry.positionY
+      radialShape = entry.radialShape
+      radialExtent = entry.radialExtent
       stopColors = entry.colors
       stopLocations = entry.locations
       cornerRadiusPx =
@@ -468,13 +483,16 @@ object GradientApplier {
     private fun buildShader(width: Float, height: Float): Shader? {
       if (stopColors.size < 2) return null
       val positions = stopLocations
-      return if (radial) {
+      return if (gradientType == "radial") {
         // Circular shader at the farthest-corner radius, squashed into an
         // ellipse about the center via a local matrix (RN / Lynx approach).
         val cx = centerX * width
         val cy = centerY * height
-        val radiusX = max(max(cx, width - cx), 0.00001f)
-        val radiusY = max(max(cy, height - cy), 0.00001f)
+        val (resolvedRadiusX, resolvedRadiusY) = radialRadii(
+          cx, cy, width, height, radialShape, radialExtent,
+        )
+        val radiusX = max(resolvedRadiusX, 0.00001f)
+        val radiusY = max(resolvedRadiusY, 0.00001f)
         val shader = RadialGradient(
           cx, cy, radiusX, stopColors, positions, Shader.TileMode.CLAMP,
         )
@@ -484,6 +502,15 @@ object GradientApplier {
           shader.setLocalMatrix(matrix)
         }
         shader
+      } else if (gradientType == "conic") {
+        val cx = centerX * width
+        val cy = centerY * height
+        val shader = SweepGradient(cx, cy, stopColors, positions)
+        // Android's sweep starts at 3 o'clock; CSS 0deg starts at 12 o'clock.
+        val matrix = Matrix()
+        matrix.setRotate((angleDeg - 90.0).toFloat(), cx, cy)
+        shader.setLocalMatrix(matrix)
+        shader
       } else {
         val (start, end) = endPointsFromAngle(angleDeg, width, height)
         LinearGradient(
@@ -492,6 +519,70 @@ object GradientApplier {
         )
       }
     }
+
+    private fun radialRadii(
+      cx: Float,
+      cy: Float,
+      width: Float,
+      height: Float,
+      shape: String,
+      extent: String,
+    ): Pair<Float, Float> {
+      val left = cx
+      val right = width - cx
+      val top = cy
+      val bottom = height - cy
+      val nearestX = min(left, right)
+      val nearestY = min(top, bottom)
+      val farthestX = max(left, right)
+      val farthestY = max(top, bottom)
+
+      if (shape == "circle") {
+        val radius = when (extent) {
+          "closest-side" -> min(nearestX, nearestY)
+          "farthest-side" -> max(farthestX, farthestY)
+          "closest-corner" -> minOf(
+            hypot(left, top), hypot(right, top),
+            hypot(left, bottom), hypot(right, bottom),
+          )
+          else -> maxOf(
+            hypot(left, top), hypot(right, top),
+            hypot(left, bottom), hypot(right, bottom),
+          )
+        }
+        return Pair(radius, radius)
+      }
+
+      var radiusX = if (extent.startsWith("closest")) nearestX else farthestX
+      var radiusY = if (extent.startsWith("closest")) nearestY else farthestY
+      if (extent.endsWith("corner")) {
+        val safeX = max(radiusX, 0.00001f)
+        val safeY = max(radiusY, 0.00001f)
+        val factors = floatArrayOf(
+          ellipseFactor(left, top, safeX, safeY),
+          ellipseFactor(right, top, safeX, safeY),
+          ellipseFactor(left, bottom, safeX, safeY),
+          ellipseFactor(right, bottom, safeX, safeY),
+        )
+        val factor = if (extent == "closest-corner") {
+          factors.minOrNull() ?: 1f
+        } else {
+          factors.maxOrNull() ?: 1f
+        }
+        radiusX *= factor
+        radiusY *= factor
+      }
+      return Pair(radiusX, radiusY)
+    }
+
+    private fun hypot(x: Float, y: Float): Float = sqrt(x * x + y * y)
+
+    private fun ellipseFactor(
+      x: Float,
+      y: Float,
+      radiusX: Float,
+      radiusY: Float,
+    ): Float = sqrt((x / radiusX) * (x / radiusX) + (y / radiusY) * (y / radiusY))
 
     /**
      * CSS angle → gradient-line start/end points in pixels. Ported from RN's

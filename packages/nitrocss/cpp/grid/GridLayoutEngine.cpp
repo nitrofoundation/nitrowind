@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <vector>
 
 namespace nitrocss::grid {
@@ -15,9 +16,18 @@ int clampColumns(int columns) {
   return std::max(1, columns);
 }
 
-double trackBaseSize(const Track& track, double fallback) {
-  if (track.type == TrackType::Px || track.type == TrackType::Auto) {
+double trackBaseSize(const Track& track, double fallback, double content) {
+  if (track.type == TrackType::Px) {
     return std::max(0.0, track.value);
+  }
+  if (track.type == TrackType::MinContent ||
+      track.type == TrackType::MaxContent) {
+    return std::max(0.0, content);
+  }
+  if (track.type == TrackType::Auto) {
+    return std::max(0.0, content > 0.0 ? content : track.value > 0.0
+                                                ? track.value
+                                                : fallback);
   }
   return fallback;
 }
@@ -26,16 +36,19 @@ std::vector<double> resolveTracks(
     const std::vector<Track>& tracks,
     double available,
     double gap,
-    double fallback) {
+    double fallback,
+    const std::vector<double>& contentSizes = {}) {
   if (tracks.empty()) return {};
 
   double fixed = 0.0;
   double fr = 0.0;
-  for (const auto& track : tracks) {
+  for (std::size_t i = 0; i < tracks.size(); ++i) {
+    const auto& track = tracks[i];
     if (track.type == TrackType::Fr) {
       fr += std::max(0.0, track.value);
     } else {
-      fixed += trackBaseSize(track, fallback);
+      const double content = i < contentSizes.size() ? contentSizes[i] : 0.0;
+      fixed += trackBaseSize(track, fallback, content);
     }
   }
 
@@ -45,11 +58,13 @@ std::vector<double> resolveTracks(
 
   std::vector<double> out;
   out.reserve(tracks.size());
-  for (const auto& track : tracks) {
+  for (std::size_t i = 0; i < tracks.size(); ++i) {
+    const auto& track = tracks[i];
     if (track.type == TrackType::Fr) {
       out.push_back(frUnit * std::max(0.0, track.value));
     } else {
-      out.push_back(trackBaseSize(track, fallback));
+      const double content = i < contentSizes.size() ? contentSizes[i] : 0.0;
+      out.push_back(trackBaseSize(track, fallback, content));
     }
   }
   return out;
@@ -130,12 +145,15 @@ void mark(std::vector<std::vector<bool>>& occupied,
 std::pair<int, int> autoPlace(std::vector<std::vector<bool>>& occupied,
                               int rowSpan,
                               int columnSpan,
-                              int columnCount) {
-  for (int row = 0;; ++row) {
+                              int columnCount,
+                              int startRow = 0,
+                              int startColumn = 0) {
+  for (int row = startRow;; ++row) {
     while (row >= static_cast<int>(occupied.size())) {
       occupied.push_back(std::vector<bool>(static_cast<std::size_t>(columnCount), false));
     }
-    for (int column = 0; column < columnCount; ++column) {
+    const int firstColumn = row == startRow ? startColumn : 0;
+    for (int column = firstColumn; column < columnCount; ++column) {
       if (fits(occupied, row, column, rowSpan, columnSpan, columnCount)) {
         return {row, column};
       }
@@ -164,11 +182,17 @@ GridOutput GridLayoutEngine::layout(const GridInput& input) {
   if (input.columns.empty()) return output;
 
   const int columnCount = static_cast<int>(input.columns.size());
-  const auto columns = resolveTracks(
-      input.columns, output.width, input.columnGap, output.width / columnCount);
-
+  struct Positioned {
+    int row;
+    int column;
+    int rowSpan;
+    int columnSpan;
+  };
+  std::vector<Positioned> positioned;
+  positioned.reserve(input.items.size());
   std::vector<std::vector<bool>> occupied;
-  output.items.reserve(input.items.size());
+  int cursorRow = 0;
+  int cursorColumn = 0;
 
   for (const auto& item : input.items) {
     const int columnSpan = clampSpan(item.columnSpan, columnCount);
@@ -178,29 +202,100 @@ GridOutput GridLayoutEngine::layout(const GridInput& input) {
 
     if (column >= columnCount) column = columnCount - 1;
     if (column < 0 || row < 0 || !fits(occupied, row, column, rowSpan, columnSpan, columnCount)) {
-      auto placed = autoPlace(occupied, rowSpan, columnSpan, columnCount);
+      auto placed = autoPlace(
+          occupied, rowSpan, columnSpan, columnCount,
+          input.dense ? 0 : cursorRow,
+          input.dense ? 0 : cursorColumn);
       row = placed.first;
       column = placed.second;
     }
     mark(occupied, row, column, rowSpan, columnSpan, columnCount);
-
-    std::vector<Track> rows = input.rows;
-    while (static_cast<int>(rows.size()) < static_cast<int>(occupied.size())) {
-      rows.push_back(input.autoRow);
+    positioned.push_back({row, column, rowSpan, columnSpan});
+    if (!input.dense) {
+      cursorRow = row;
+      cursorColumn = column + columnSpan;
+      if (cursorColumn >= columnCount) {
+        cursorRow += 1;
+        cursorColumn = 0;
+      }
     }
-    const auto rowTracks = resolveTracks(rows, 0.0, input.rowGap, input.autoRow.value);
+  }
 
-    output.items.push_back({
-        offsetFor(columns, column, input.columnGap),
-        offsetFor(rowTracks, row, input.rowGap),
-        spanSize(columns, column, columnSpan, input.columnGap),
-        spanSize(rowTracks, row, rowSpan, input.rowGap),
-    });
+  std::vector<double> columnContent(static_cast<std::size_t>(columnCount), 0.0);
+  for (std::size_t i = 0; i < positioned.size(); ++i) {
+    const auto& p = positioned[i];
+    if (p.columnSpan == 1) {
+      columnContent[static_cast<std::size_t>(p.column)] = std::max(
+          columnContent[static_cast<std::size_t>(p.column)],
+          input.items[i].intrinsicWidth);
+    }
+  }
+  const auto columns = resolveTracks(
+      input.columns, output.width, input.columnGap, output.width / columnCount,
+      columnContent);
+
+  if (input.masonry) {
+    std::vector<double> heights(static_cast<std::size_t>(columnCount), 0.0);
+    output.items.reserve(input.items.size());
+    for (std::size_t i = 0; i < input.items.size(); ++i) {
+      const auto& item = input.items[i];
+      const int span = clampSpan(item.columnSpan, columnCount);
+      int bestColumn = 0;
+      double bestY = std::numeric_limits<double>::max();
+      for (int column = 0; column <= columnCount - span; ++column) {
+        double y = 0.0;
+        for (int c = column; c < column + span; ++c) {
+          y = std::max(y, heights[static_cast<std::size_t>(c)]);
+        }
+        if (y < bestY) {
+          bestY = y;
+          bestColumn = column;
+        }
+      }
+      const double height = std::max(
+          1.0, item.intrinsicHeight > 0.0 ? item.intrinsicHeight
+                                         : input.autoRow.value);
+      output.items.push_back({
+          offsetFor(columns, bestColumn, input.columnGap),
+          bestY,
+          spanSize(columns, bestColumn, span, input.columnGap),
+          height,
+      });
+      const double next = bestY + height + input.rowGap;
+      for (int c = bestColumn; c < bestColumn + span; ++c) {
+        heights[static_cast<std::size_t>(c)] = next;
+      }
+    }
+    for (double height : heights) output.height = std::max(output.height, height);
+    if (output.height > 0.0) output.height -= input.rowGap;
+    return output;
   }
 
   std::vector<Track> rows = input.rows;
   while (rows.size() < occupied.size()) rows.push_back(input.autoRow);
-  const auto rowTracks = resolveTracks(rows, 0.0, input.rowGap, input.autoRow.value);
+  std::vector<double> rowContent(rows.size(), 0.0);
+  for (std::size_t i = 0; i < positioned.size(); ++i) {
+    const auto& p = positioned[i];
+    if (p.rowSpan == 1 && p.row >= 0 &&
+        static_cast<std::size_t>(p.row) < rowContent.size()) {
+      rowContent[static_cast<std::size_t>(p.row)] = std::max(
+          rowContent[static_cast<std::size_t>(p.row)],
+          input.items[i].intrinsicHeight);
+    }
+  }
+  const auto rowTracks = resolveTracks(
+      rows, 0.0, input.rowGap, input.autoRow.value, rowContent);
+
+  output.items.reserve(input.items.size());
+  for (const auto& p : positioned) {
+    output.items.push_back({
+        offsetFor(columns, p.column, input.columnGap),
+        offsetFor(rowTracks, p.row, input.rowGap),
+        spanSize(columns, p.column, p.columnSpan, input.columnGap),
+        spanSize(rowTracks, p.row, p.rowSpan, input.rowGap),
+    });
+  }
+
   output.height = tracksExtent(rowTracks, input.rowGap);
   return output;
 }

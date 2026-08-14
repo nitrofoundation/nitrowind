@@ -31,6 +31,8 @@ struct RuntimeState {
     ctx.insetRight = insetRight;
     ctx.insetBottom = insetBottom;
     ctx.insetLeft = insetLeft;
+    ctx.screenWidth = screenWidth;
+    ctx.orientation = orientation;
     return ctx;
   }
 };

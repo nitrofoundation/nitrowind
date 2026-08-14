@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, type Ref } from "react";
 import { Platform, StyleSheet } from "react-native";
 import type { RNStyle } from "../compiler/types";
+import { MASK_DESCRIPTOR_PROP } from "../compiler/parsers/mask";
 import type { Accent } from "../specs/ShadowRegistry.nitro";
 import type { ShadowNodeHandle } from "../specs/ShadowNodeHandle.nitro";
 import { type ComponentState, type RuntimeSnapshot } from "../specs/types";
@@ -66,8 +67,10 @@ function requiresNativeRegistration(
     "--nitrocss-gradient" in style ||
     "--nitrocss-clip-path" in style ||
     "--nitrocss-background-image" in style ||
+    MASK_DESCRIPTOR_PROP in style ||
     "--nitrocss-backdrop-filter" in style ||
-    "--nitrocss-gradient-angle" in style
+    "--nitrocss-gradient-angle" in style ||
+    "--nitrocss-mask-transform" in style
   ) {
     return true;
   }

@@ -11,7 +11,9 @@
 #import "GradientAngleOverrides.hpp"
 #import "NitroCssClipPathApplier.h"
 #import "NitroCssBackgroundImageApplier.h"
+#import "NitroCssMaskApplier.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <cmath>
@@ -307,9 +309,12 @@ std::pair<CGPoint, CGPoint> fixedUnitPoints(CGPoint start, CGPoint end, CGSize b
 
 struct ParsedDescriptor {
   bool radial = false;
+  bool conic = false;
   double angle = 180.0;
   double positionX = 0.5;
   double positionY = 0.5;
+  std::string radialShape = "ellipse";
+  std::string radialExtent = "farthest-corner";
   std::vector<std::string> colors;
   std::vector<double> locations;
   /**
@@ -327,7 +332,9 @@ ParsedDescriptor parseDescriptor(const folly::dynamic &descriptor) {
   if (!descriptor.isObject()) return out;
   if (auto *type = descriptor.get_ptr("gradientType");
       type != nullptr && type->isString()) {
-    out.radial = type->getString() == "radial";
+    const std::string gradientType = type->getString();
+    out.radial = gradientType == "radial";
+    out.conic = gradientType == "conic";
   }
   const auto number = [&](const char *key, double fallback) -> double {
     auto *value = descriptor.get_ptr(key);
@@ -336,6 +343,14 @@ ParsedDescriptor parseDescriptor(const folly::dynamic &descriptor) {
   out.angle = number("angle", 180.0);
   out.positionX = number("positionX", 0.5);
   out.positionY = number("positionY", 0.5);
+  if (auto *shape = descriptor.get_ptr("radialShape");
+      shape != nullptr && shape->isString()) {
+    out.radialShape = shape->getString();
+  }
+  if (auto *extent = descriptor.get_ptr("radialExtent");
+      extent != nullptr && extent->isString()) {
+    out.radialExtent = extent->getString();
+  }
   if (auto *colors = descriptor.get_ptr("colors");
       colors != nullptr && colors->isArray()) {
     out.colors.reserve(colors->size());
@@ -356,6 +371,60 @@ ParsedDescriptor parseDescriptor(const folly::dynamic &descriptor) {
   }
   out.borderWidth = number("bw", 0.0);
   return out;
+}
+
+CGFloat hypot2(CGFloat x, CGFloat y) {
+  return std::sqrt(x * x + y * y);
+}
+
+CGSize radialRadii(const ParsedDescriptor &d, CGSize size) {
+  const CGFloat cx = (CGFloat)d.positionX * size.width;
+  const CGFloat cy = (CGFloat)d.positionY * size.height;
+  const CGFloat left = cx;
+  const CGFloat right = size.width - cx;
+  const CGFloat top = cy;
+  const CGFloat bottom = size.height - cy;
+  const CGFloat nearestX = std::min(left, right);
+  const CGFloat nearestY = std::min(top, bottom);
+  const CGFloat farthestX = std::max(left, right);
+  const CGFloat farthestY = std::max(top, bottom);
+
+  if (d.radialShape == "circle") {
+    CGFloat radius = 0;
+    if (d.radialExtent == "closest-side") {
+      radius = std::min(nearestX, nearestY);
+    } else if (d.radialExtent == "farthest-side") {
+      radius = std::max(farthestX, farthestY);
+    } else {
+      const CGFloat corners[] = {
+          hypot2(left, top), hypot2(right, top),
+          hypot2(left, bottom), hypot2(right, bottom)};
+      radius = d.radialExtent == "closest-corner"
+          ? *std::min_element(std::begin(corners), std::end(corners))
+          : *std::max_element(std::begin(corners), std::end(corners));
+    }
+    return CGSizeMake(radius, radius);
+  }
+
+  CGFloat rx = d.radialExtent.rfind("closest", 0) == 0 ? nearestX : farthestX;
+  CGFloat ry = d.radialExtent.rfind("closest", 0) == 0 ? nearestY : farthestY;
+  if (d.radialExtent.find("corner") != std::string::npos) {
+    const CGFloat safeX = std::max(rx, (CGFloat)0.00001);
+    const CGFloat safeY = std::max(ry, (CGFloat)0.00001);
+    const auto factor = [&](CGFloat x, CGFloat y) {
+      return std::sqrt((x / safeX) * (x / safeX) +
+                       (y / safeY) * (y / safeY));
+    };
+    const CGFloat factors[] = {
+        factor(left, top), factor(right, top),
+        factor(left, bottom), factor(right, bottom)};
+    const CGFloat scale = d.radialExtent == "closest-corner"
+        ? *std::min_element(std::begin(factors), std::end(factors))
+        : *std::max_element(std::begin(factors), std::end(factors));
+    rx *= scale;
+    ry *= scale;
+  }
+  return CGSizeMake(rx, ry);
 }
 
 CAGradientLayer *findGradientLayer(UIView *view) {
@@ -430,6 +499,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   [[NitroCssClipPathApplier shared] attachToSurfacePresenter:surfacePresenter];
   [[NitroCssBackgroundImageApplier shared]
       attachToSurfacePresenter:surfacePresenter];
+  [[NitroCssMaskApplier shared] attachToSurfacePresenter:surfacePresenter];
 }
 
 - (void)setNeedsFlush {
@@ -599,14 +669,23 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   if (size.width > 0 && size.height > 0) {
     if (d.radial) {
       layer.type = kCAGradientLayerRadial;
-      // `startPoint` = center (unit space), `endPoint` = center + radius
-      // vector. v1 approximation: `ellipse farthest-corner` (RN's default).
       const CGFloat cx = (CGFloat)d.positionX;
       const CGFloat cy = (CGFloat)d.positionY;
-      const CGFloat rx = std::max(cx, 1 - cx);
-      const CGFloat ry = std::max(cy, 1 - cy);
+      const CGSize radii = radialRadii(d, size);
+      const CGFloat rx = radii.width / size.width;
+      const CGFloat ry = radii.height / size.height;
       layer.startPoint = CGPointMake(cx, cy);
       layer.endPoint = CGPointMake(cx + rx, cy + ry);
+    } else if (d.conic) {
+      layer.type = kCAGradientLayerConic;
+      const CGFloat cx = (CGFloat)d.positionX;
+      const CGFloat cy = (CGFloat)d.positionY;
+      // For a conic layer startPoint is the center and endPoint selects the
+      // ray carrying the first stop. CSS 0deg points up and increases clockwise.
+      const CGFloat radians = (CGFloat)(effectiveAngle * M_PI / 180.0);
+      layer.startPoint = CGPointMake(cx, cy);
+      layer.endPoint = CGPointMake(cx + 0.5 * std::sin(radians),
+                                   cy - 0.5 * std::cos(radians));
     } else {
       layer.type = kCAGradientLayerAxial;
       const auto points = pointsFromAngle((CGFloat)effectiveAngle, size);

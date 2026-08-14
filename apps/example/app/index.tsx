@@ -13,6 +13,7 @@ import { ThemeToggle } from '../components/ui';
 type RootStackParamList = {
   Home: undefined;
   Animations: undefined;
+  AppleGradient: undefined;
   Benchmark: undefined;
   StyleSheetBenchmark: undefined;
   Borders: undefined;
@@ -29,6 +30,7 @@ type RootStackParamList = {
   BackgroundImage: undefined;
   Svg: undefined;
   Lists: undefined;
+  Masking: undefined;
 };
 
 type Page = {
@@ -60,6 +62,13 @@ const PAGES: Page[] = [
     subtitle: 'Entering, exiting, layout & CSS keyframes',
     icon: '\u2728',
     tile: 'bg-violet-500',
+  },
+  {
+    route: 'AppleGradient',
+    title: 'Apple-style Aurora',
+    subtitle: 'Full-screen layered native gradients animated with keyframes',
+    icon: '◉',
+    tile: 'bg-linear-45 from-cyan-400 via-violet-500 to-pink-500',
   },
   {
     route: 'Borders',
@@ -134,7 +143,7 @@ const PAGES: Page[] = [
   {
     route: 'Effects',
     title: 'Effects',
-    subtitle: 'Animated gradient angle, clip-path, background-image, text-shadow',
+    subtitle: 'Native masks, clip-path, gradients, background images & text shadows',
     icon: '✨',
     tile: 'bg-linear-45 from-fuchsia-500 to-cyan-400',
   },
@@ -144,6 +153,13 @@ const PAGES: Page[] = [
     subtitle: 'url(...) rasters — size, position & repeat, painted natively',
     icon: '🖼️',
     tile: 'bg-tile',
+  },
+  {
+    route: 'Masking',
+    title: 'Masking',
+    subtitle: 'Native gradient and image masks — position, repeat, and star border',
+    icon: '★',
+    tile: 'bg-linear-to-br from-amber-400 to-rose-500',
   },
   {
     route: 'Svg',

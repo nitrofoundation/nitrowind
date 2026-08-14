@@ -1,6 +1,12 @@
 import type { VarResolver } from "../insetValue";
-import { formatHex, formatHex8, parse as parseColor } from "culori";
+import {
+  formatHex,
+  formatHex8,
+  interpolate,
+  parse as parseColor,
+} from "culori";
 import type { RNStyle } from "../types";
+import { BACKGROUND_IMAGE_RAW_PROP } from "./backgroundImage";
 
 interface Decl {
   prop: string;
@@ -28,6 +34,10 @@ export const GRADIENT_TO_PROP = "--nw-gradient-to";
 export const GRADIENT_FROM_POSITION_PROP = "--nw-gradient-from-position";
 export const GRADIENT_VIA_POSITION_PROP = "--nw-gradient-via-position";
 export const GRADIENT_TO_POSITION_PROP = "--nw-gradient-to-position";
+/** JSON-encoded arbitrary color stops (`[{c,p?},…]`) for literal gradients. */
+export const GRADIENT_STOPS_PROP = "--nw-gradient-stops-json";
+/** Requested CSS interpolation space, retained instead of silently discarded. */
+export const GRADIENT_INTERPOLATION_PROP = "--nw-gradient-interpolation";
 
 /** Every marker prop the parser can emit — cleared by the fold once consumed. */
 export const GRADIENT_STYLE_PROPS = [
@@ -39,6 +49,8 @@ export const GRADIENT_STYLE_PROPS = [
   GRADIENT_FROM_POSITION_PROP,
   GRADIENT_VIA_POSITION_PROP,
   GRADIENT_TO_POSITION_PROP,
+  GRADIENT_STOPS_PROP,
+  GRADIENT_INTERPOLATION_PROP,
 ] as const;
 
 /** True for declarations consumed by the gradient parser. */
@@ -54,12 +66,13 @@ export const isGradientProp = (prop: string): boolean =>
   prop === "--tw-gradient-stops" ||
   prop === "--tw-gradient-via-stops";
 
-/** `linear-gradient(...)` / `radial-gradient(...)` → the RN gradient type. */
-const gradientTypeFromImage = (value: string): "linear" | "radial" | undefined => {
+/** CSS gradient function → the native gradient type. */
+const gradientTypeFromImage = (
+  value: string,
+): "linear" | "radial" | "conic" | undefined => {
   if (/\blinear-gradient\(/i.test(value)) return "linear";
   if (/\bradial-gradient\(/i.test(value)) return "radial";
-  // `conic-gradient` is intentionally unsupported: RN's native backgroundImage
-  // parser only implements linear + radial.
+  if (/\bconic-gradient\(/i.test(value)) return "conic";
   return undefined;
 };
 
@@ -71,6 +84,124 @@ const INTERPOLATION_RE =
 
 const stripInterpolation = (value: string): string =>
   value.replace(INTERPOLATION_RE, "").trim();
+
+const interpolationFrom = (value: string): string | undefined =>
+  /\bin\s+(oklab|oklch|srgb(?:-linear)?|lab|lch|hsl|hwb|xyz(?:-d50|-d65)?)/i.exec(
+    value,
+  )?.[1]?.toLowerCase();
+
+/** Split on a delimiter only when outside nested CSS functions. */
+function splitTopLevel(value: string, delimiter: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let quote = "";
+  let start = 0;
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i]!;
+    if (quote) {
+      if (ch === quote && value[i - 1] !== "\\") quote = "";
+      continue;
+    }
+    if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    else if (ch === delimiter && depth === 0) {
+      parts.push(value.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  parts.push(value.slice(start).trim());
+  return parts.filter(Boolean);
+}
+
+/** Extract Tailwind's `var(--tw-gradient-stops, <fallback>)` payload. */
+function gradientStopsFallback(value: string): string | undefined {
+  const needle = "var(--tw-gradient-stops";
+  const start = value.indexOf(needle);
+  if (start === -1) return undefined;
+  const open = value.indexOf("(", start);
+  if (open === -1) return undefined;
+  let depth = 0;
+  let comma = -1;
+  for (let index = open; index < value.length; index++) {
+    const char = value[index]!;
+    if (char === "(") depth++;
+    else if (char === ")") {
+      depth--;
+      if (depth === 0) {
+        return comma === -1
+          ? undefined
+          : value.slice(comma + 1, index).trim() || undefined;
+      }
+    } else if (char === "," && depth === 1 && comma === -1) {
+      comma = index;
+    }
+  }
+  return undefined;
+}
+
+interface LiteralStop {
+  c: string;
+  p?: string;
+}
+
+function parseLiteralStops(raw: string): LiteralStop[] | undefined {
+  // Tailwind's documented stop positions are percentages. Keep unitless
+  // fractions too for parity with the existing descriptor parser. Lightning
+  // CSS compacts adjacent equal-color stops into CSS's double-position form
+  // (`black 25% 75%`), which represents two stops and must be expanded again
+  // for the native gradient descriptor.
+  const match = /^(.+?)\s+(-?\d*\.?\d+%?)(?:\s+(-?\d*\.?\d+%?))?$/.exec(
+    raw.trim(),
+  );
+  const color = lowerColorLiteral((match?.[1] ?? raw).trim());
+  if (!color || (!color.includes("var(") && !parseColor(color))) return undefined;
+  if (!match) return [{ c: color }];
+  return match[3]
+    ? [{ c: color, p: match[2] }, { c: color, p: match[3] }]
+    : [{ c: color, p: match[2] }];
+}
+
+function parseLiteralGradient(value: string):
+  | {
+      type: "linear" | "radial" | "conic";
+      position?: string;
+      interpolation?: string;
+      stops: LiteralStop[];
+    }
+  | undefined {
+  const match = /^\s*(linear|radial|conic)-gradient\(([\s\S]*)\)\s*$/i.exec(
+    value,
+  );
+  if (!match) return undefined;
+  const type = match[1]!.toLowerCase() as "linear" | "radial" | "conic";
+  const args = splitTopLevel(match[2]!, ",");
+  if (args.length < 2) return undefined;
+
+  const first = args[0]!;
+  const withoutInterpolation = stripInterpolation(first);
+  const firstIsGeometry =
+    type === "linear"
+      ? /^to\s+/i.test(withoutInterpolation) ||
+        parseCssAngle(withoutInterpolation) !== undefined ||
+        /^in\s+/i.test(first)
+      : type === "conic"
+        ? /^(?:from|at|in)\b/i.test(first)
+        : !parseColor(withoutInterpolation);
+  const stopArgs = firstIsGeometry ? args.slice(1) : args;
+  const parsedStops = stopArgs.map(parseLiteralStops);
+  if (parsedStops.some((stop) => stop === undefined)) {
+    return undefined;
+  }
+  const stops = parsedStops.flat() as LiteralStop[];
+  if (stops.length < 2) return undefined;
+  return {
+    type,
+    position: firstIsGeometry ? withoutInterpolation : undefined,
+    interpolation: interpolationFrom(first),
+    stops: stops as LiteralStop[],
+  };
+}
 
 /**
  * Lower a literal color to a native-parseable hex form. `var(--x)` references
@@ -97,11 +228,46 @@ export function extractGradient(
   for (const d of declarations) {
     switch (d.prop) {
       case "background-image": {
+        if (d.value.trim().toLowerCase() === "none") {
+          out[GRADIENT_TYPE_PROP] = "none";
+          break;
+        }
         const type = gradientTypeFromImage(d.value);
-        if (type) out[GRADIENT_TYPE_PROP] = type;
+        if (type) {
+          out[GRADIENT_TYPE_PROP] = type;
+          const fallback = gradientStopsFallback(d.value);
+          const literal = fallback
+            ? parseLiteralGradient(`${type}-gradient(${fallback})`)
+            : d.value.includes("--tw-gradient-stops")
+              ? undefined
+              : parseLiteralGradient(d.value);
+          if (literal) {
+            if (literal.position) {
+              out[GRADIENT_POSITION_PROP] = literal.position;
+            }
+            if (literal.interpolation) {
+              out[GRADIENT_INTERPOLATION_PROP] = literal.interpolation;
+            }
+            out[GRADIENT_STOPS_PROP] = JSON.stringify(literal.stops);
+          } else if (fallback) {
+            // A custom-property fallback resolves at runtime. Once it becomes
+            // a comma-separated stop list, foldGradient parses it through the
+            // same literal-gradient path as an arbitrary value.
+            out[GRADIENT_POSITION_PROP] = fallback;
+          }
+        } else if (d.value.includes("var(")) {
+          out[BACKGROUND_IMAGE_RAW_PROP] = d.value;
+          out[GRADIENT_TYPE_PROP] = "none";
+        } else {
+          // A raster/none background declared later must clear stale gradient
+          // markers from an earlier utility in the same class set.
+          out[GRADIENT_TYPE_PROP] = "none";
+        }
         break;
       }
       case "--tw-gradient-position": {
+        const interpolation = interpolationFrom(d.value);
+        if (interpolation) out[GRADIENT_INTERPOLATION_PROP] = interpolation;
         const pos = stripInterpolation(d.value);
         if (pos) out[GRADIENT_POSITION_PROP] = pos;
         break;
@@ -135,6 +301,44 @@ const asString = (value: RNStyle[string] | undefined): string | undefined =>
 const stop = (color: string, position: string | undefined): string =>
   position ? `${color} ${position}` : color;
 
+const formatNativeColor = (value: ReturnType<typeof parseColor>): string =>
+  value && (value.alpha ?? 1) < 1 ? formatHex8(value) : formatHex(value!);
+
+/**
+ * Native gradient APIs interpolate in platform RGB spaces. Tailwind requests
+ * OKLab by default, so approximate that curve with eight native sub-stops per
+ * CSS stop interval. The same math/sample count is mirrored in C++.
+ */
+function sampleInterpolation(
+  colors: string[],
+  locations: number[],
+  interpolation: string | undefined,
+): { colors: string[]; locations: number[] } {
+  if (interpolation !== "oklab" || colors.length < 2) {
+    return { colors, locations };
+  }
+  const sampledColors: string[] = [];
+  const sampledLocations: number[] = [];
+  const subdivisions = 8;
+  for (let index = 0; index + 1 < colors.length; index++) {
+    const from = parseColor(colors[index]!);
+    const to = parseColor(colors[index + 1]!);
+    if (!from || !to) return { colors, locations };
+    const mix = interpolate([from, to], "oklab");
+    for (let step = 0; step < subdivisions; step++) {
+      const t = step / subdivisions;
+      sampledColors.push(formatNativeColor(mix(t)));
+      sampledLocations.push(
+        locations[index]! +
+          (locations[index + 1]! - locations[index]!) * t,
+      );
+    }
+  }
+  sampledColors.push(formatNativeColor(parseColor(colors.at(-1)!)!));
+  sampledLocations.push(locations.at(-1)!);
+  return { colors: sampledColors, locations: sampledLocations };
+}
+
 /**
  * The single resolved-style key carrying the folded gradient on native. The
  * value is a compact NUMERIC descriptor (no CSS-string parsing at paint time):
@@ -145,7 +349,7 @@ const stop = (color: string, position: string | undefined): string =>
 export const GRADIENT_DESCRIPTOR_PROP = "--nitrocss-gradient";
 
 export interface GradientDescriptor {
-  gradientType: "linear" | "radial";
+  gradientType: "linear" | "radial" | "conic";
   /**
    * Linear sweep angle in CSS degrees (`0` = to top, `90` = to right,
    * `180` = to bottom — the default when the utility compiler gave no direction).
@@ -159,6 +363,14 @@ export interface GradientDescriptor {
   colors: string[];
   /** Stop offsets `0..1`, monotonic, same length as `colors`. */
   locations: number[];
+  /** CSS color interpolation space requested by Tailwind. */
+  interpolation?: string;
+  radialShape?: "circle" | "ellipse";
+  radialExtent?:
+    | "closest-side"
+    | "farthest-side"
+    | "closest-corner"
+    | "farthest-corner";
 }
 
 /** Where the fold's output goes: native descriptor vs. web CSS string. */
@@ -166,6 +378,59 @@ export type GradientFoldTarget = "descriptor" | "css";
 
 const clamp01 = (value: number): number =>
   value < 0 ? 0 : value > 1 ? 1 : value;
+
+/**
+ * Parse a CSS angle, including the simple `calc(<angle> * <number>)` form
+ * emitted by Tailwind's negative gradient utilities. Returns `undefined` for
+ * expressions that cannot be reduced without layout/runtime information.
+ */
+export function parseCssAngle(raw: string): number | undefined {
+  const normalized = stripInterpolation(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+  if (!normalized) return undefined;
+
+  const calc = /^calc\((.+)\)$/.exec(normalized);
+  if (calc) {
+    const expression = calc[1]!;
+    const multiplication = /^(.+)\*(-?\d*\.?\d+)$/.exec(expression);
+    if (multiplication) {
+      const angle = parseCssAngle(multiplication[1]!);
+      return angle === undefined
+        ? undefined
+        : angle * Number.parseFloat(multiplication[2]!);
+    }
+    const division = /^(.+)\/(-?\d*\.?\d+)$/.exec(expression);
+    if (division) {
+      const divisor = Number.parseFloat(division[2]!);
+      const angle = parseCssAngle(division[1]!);
+      return angle === undefined || divisor === 0 ? undefined : angle / divisor;
+    }
+    return parseCssAngle(expression);
+  }
+
+  const match = /^(-?\d*\.?\d+)(deg|grad|rad|turn)?$/.exec(normalized);
+  if (!match) return undefined;
+  const value = Number.parseFloat(match[1]!);
+  switch (match[2] ?? "deg") {
+    case "turn":
+      return value * 360;
+    case "grad":
+      return value * 0.9;
+    case "rad":
+      return (value * 180) / Math.PI;
+    default:
+      return value;
+  }
+}
+
+const normalizedAngle = (raw: string, fallback: number): number => {
+  const parsed = parseCssAngle(raw);
+  if (parsed === undefined || !Number.isFinite(parsed)) return fallback;
+  const angle = parsed % 360;
+  return angle < 0 ? angle + 360 : angle;
+};
 
 /**
  * `"40%"` → `0.4`; bare numbers pass through (`"0.4"` → `0.4`). Falls back for
@@ -214,13 +479,7 @@ export function angleFromPosition(position: string | undefined): number {
     case "to left top":
       return 315;
   }
-  const match = /^(-?\d*\.?\d+)(deg)?$/.exec(normalized);
-  if (match) {
-    let angle = Number.parseFloat(match[1]!) % 360;
-    if (angle < 0) angle += 360;
-    return angle;
-  }
-  return 180;
+  return normalizedAngle(normalized, 180);
 }
 
 /**
@@ -258,6 +517,51 @@ export function radialCenterFromPosition(position: string | undefined): {
   return { x, y };
 }
 
+export function radialGeometryFromPosition(position: string | undefined): {
+  x: number;
+  y: number;
+  shape: "circle" | "ellipse";
+  extent:
+    | "closest-side"
+    | "farthest-side"
+    | "closest-corner"
+    | "farthest-corner";
+} {
+  const center = radialCenterFromPosition(position);
+  const normalized = stripInterpolation(position ?? "").toLowerCase();
+  const shape = /(?:^|\s)circle(?:\s|$)/.test(normalized)
+    ? "circle"
+    : "ellipse";
+  const extent =
+    /(?:^|\s)(closest-side|farthest-side|closest-corner|farthest-corner)(?:\s|$)/.exec(
+      normalized,
+    )?.[1] ?? "farthest-corner";
+  return {
+    ...center,
+    shape,
+    extent: extent as
+      | "closest-side"
+      | "farthest-side"
+      | "closest-corner"
+      | "farthest-corner",
+  };
+}
+
+/** Parse `from <angle> at <position>` from a conic-gradient prelude. */
+export function conicGeometryFromPosition(position: string | undefined): {
+  angle: number;
+  x: number;
+  y: number;
+} {
+  const center = radialCenterFromPosition(position);
+  if (!position) return { angle: 0, ...center };
+  const match = /(?:^|\s)from\s+(.+?)(?=\s+at(?:\s|$)|$)/i.exec(
+    stripInterpolation(position).trim(),
+  );
+  const angle = match ? normalizedAngle(match[1]!, 0) : 0;
+  return { angle, ...center };
+}
+
 /**
  * Assemble the merged `--nw-gradient-*` marker props and delete the markers.
  * Mutates `style` in place.
@@ -279,25 +583,71 @@ export function foldGradient(
   style: RNStyle,
   target: GradientFoldTarget = "descriptor",
 ): void {
-  const type = asString(style[GRADIENT_TYPE_PROP]);
-  const position = asString(style[GRADIENT_POSITION_PROP]);
+  let type = asString(style[GRADIENT_TYPE_PROP]);
+  let position = asString(style[GRADIENT_POSITION_PROP]);
   const from = asString(style[GRADIENT_FROM_PROP]);
   const via = asString(style[GRADIENT_VIA_PROP]);
   const to = asString(style[GRADIENT_TO_PROP]);
   const fromPosition = asString(style[GRADIENT_FROM_POSITION_PROP]);
   const viaPosition = asString(style[GRADIENT_VIA_POSITION_PROP]);
   const toPosition = asString(style[GRADIENT_TO_POSITION_PROP]);
+  let interpolation = asString(style[GRADIENT_INTERPOLATION_PROP]);
+  let literalStops = asString(style[GRADIENT_STOPS_PROP]);
+  const rawBackground = asString(style[BACKGROUND_IMAGE_RAW_PROP]);
+
+  if (rawBackground) {
+    const rawLiteral = parseLiteralGradient(rawBackground);
+    if (rawLiteral) {
+      type = rawLiteral.type;
+      position = rawLiteral.position;
+      interpolation = rawLiteral.interpolation;
+      literalStops = JSON.stringify(rawLiteral.stops);
+    }
+  }
+  if (
+    !literalStops &&
+    (type === "linear" || type === "radial" || type === "conic") &&
+    position?.includes(",")
+  ) {
+    const positionLiteral = parseLiteralGradient(
+      `${type}-gradient(${position})`,
+    );
+    if (positionLiteral) {
+      position = positionLiteral.position;
+      interpolation = positionLiteral.interpolation ?? interpolation;
+      literalStops = JSON.stringify(positionLiteral.stops);
+    }
+  }
 
   for (const prop of GRADIENT_STYLE_PROPS) delete style[prop];
 
-  if (type !== "linear" && type !== "radial") return;
+  if (type !== "linear" && type !== "radial" && type !== "conic") {
+    delete style[GRADIENT_DESCRIPTOR_PROP];
+    return;
+  }
+
+  let parsedLiteralStops: LiteralStop[] | undefined;
+  if (literalStops) {
+    try {
+      const parsed = JSON.parse(literalStops) as LiteralStop[];
+      if (Array.isArray(parsed) && parsed.length >= 2) parsedLiteralStops = parsed;
+    } catch {
+      // Invalid arbitrary gradients fail closed instead of reaching native.
+    }
+  }
 
   if (target === "css") {
-    const stops = [stop(from ?? "transparent", fromPosition ?? "0%")];
-    if (via) stops.push(stop(via, viaPosition ?? "50%"));
-    stops.push(stop(to ?? "transparent", toPosition ?? "100%"));
-    const prelude = position ? `${position}, ` : "";
-    style.backgroundImage = `${type}-gradient(${prelude}${stops.join(", ")})`;
+    const stops = parsedLiteralStops
+      ? parsedLiteralStops.map((entry) => stop(entry.c, entry.p))
+      : [stop(from ?? "transparent", fromPosition ?? "0%")];
+    if (!parsedLiteralStops) {
+      if (via) stops.push(stop(via, viaPosition ?? "50%"));
+      stops.push(stop(to ?? "transparent", toPosition ?? "100%"));
+    }
+    const prelude = [position, interpolation ? `in ${interpolation}` : undefined]
+      .filter(Boolean)
+      .join(" ");
+    style.backgroundImage = `${type}-gradient(${prelude ? `${prelude}, ` : ""}${stops.join(", ")})`;
     return;
   }
 
@@ -309,22 +659,38 @@ export function foldGradient(
     colors.push(color);
     locations.push(location < previous ? previous : location);
   };
-  push(from ?? "transparent", parseStopLocation(fromPosition, 0));
-  if (via) push(via, parseStopLocation(viaPosition, 0.5));
-  push(to ?? "transparent", parseStopLocation(toPosition, 1));
+  if (parsedLiteralStops) {
+    const count = parsedLiteralStops.length;
+    parsedLiteralStops.forEach((entry, index) => {
+      const fallback = count === 1 ? 0 : index / (count - 1);
+      push(lowerColorLiteral(entry.c), parseStopLocation(entry.p, fallback));
+    });
+  } else {
+    push(from ?? "transparent", parseStopLocation(fromPosition, 0));
+    if (via) push(via, parseStopLocation(viaPosition, 0.5));
+    push(to ?? "transparent", parseStopLocation(toPosition, 1));
+  }
 
   const isRadial = type === "radial";
+  const isConic = type === "conic";
+  const conic = isConic ? conicGeometryFromPosition(position) : undefined;
+  const radial = isRadial ? radialGeometryFromPosition(position) : undefined;
   const center = isRadial
-    ? radialCenterFromPosition(position)
-    : { x: 0.5, y: 0.5 };
+    ? radial!
+    : conic ?? { x: 0.5, y: 0.5 };
 
+  const sampled = sampleInterpolation(colors, locations, interpolation);
   const descriptor: GradientDescriptor = {
     gradientType: type,
-    angle: isRadial ? 0 : angleFromPosition(position),
+    angle: isRadial ? 0 : isConic ? conic!.angle : angleFromPosition(position),
     positionX: center.x,
     positionY: center.y,
-    colors,
-    locations,
+    colors: sampled.colors,
+    locations: sampled.locations,
+    ...(interpolation ? { interpolation } : {}),
+    ...(radial
+      ? { radialShape: radial.shape, radialExtent: radial.extent }
+      : {}),
   };
   style[GRADIENT_DESCRIPTOR_PROP] =
     descriptor as unknown as RNStyle[string];

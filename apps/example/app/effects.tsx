@@ -6,6 +6,8 @@
  *    place (native CAGradientLayer start/end points driven per frame), NOT a
  *    translated oversized layer.
  *  - clip-path: polygon / circle / inset masks via CAShapeLayer (no SVG).
+ *  - mask-image: native image/gradient masks, including mask-only keyframes
+ *    that rotate and pulse the aperture without transforming the host view.
  *  - background-image: url(...) painted as a raster layer on the view's own
  *    backing layer (async fetch + cache), with cover / contain sizing.
  *  - text-shadow: single-layer native shadow.
@@ -86,6 +88,52 @@ export default function Effects() {
           <Tile cls="bg-rose-500 clip-hexagon" label="hexagon" />
           <Tile cls="bg-emerald-500 clip-rhombus" label="rhombus" />
           <Tile cls="bg-sky-500 clip-circle" label="circle" />
+        </View>
+      </Section>
+
+      <Section
+        title="Native masks"
+        subtitle="Image and gradient masks clip the whole native view with alpha or luminance semantics. Mask keyframes animate only the aperture."
+      >
+        <View className="gap-3">
+          <View className="flex-row gap-3">
+            <View className="h-44 flex-1 items-center justify-center overflow-hidden rounded-3xl bg-sky-100">
+              <Text className="text-center text-xs font-extrabold text-sky-900">
+                transparent{`\n`}photo border
+              </Text>
+              <View className="absolute inset-0 bg-mask-photo mask-star-outline-hires" />
+            </View>
+            <View className="h-44 flex-1 items-center justify-center overflow-hidden rounded-3xl bg-sky-100">
+              <Text className="text-center text-xs font-extrabold text-sky-900">
+                stationary{`\n`}photo
+              </Text>
+              <View className="absolute inset-0 bg-mask-photo mask-star-outline-hires animate-mask-star-rotate-pulse" />
+            </View>
+          </View>
+          <Caption>
+            image mask · transparent fill · native mask-angle + mask-scale
+          </Caption>
+          <View className="h-32 items-center justify-center rounded-3xl bg-linear-to-r from-cyan-400 via-violet-500 to-pink-500 mask-[linear-gradient(to_right,transparent,black_25%,black_75%,transparent)]">
+            <Text className="text-base font-extrabold text-white">
+              alpha · linear
+            </Text>
+          </View>
+          <View className="flex-row gap-3">
+            <View className="h-36 flex-1 items-center justify-center rounded-3xl bg-amber-400 mask-[radial-gradient(circle,black_42%,transparent_76%)]">
+              <Text className="text-center text-sm font-bold text-slate-950">
+                radial{`\n`}mask
+              </Text>
+            </View>
+            <View className="h-36 flex-1 items-center justify-center rounded-3xl bg-sky-500 mask-luminance mask-[linear-gradient(to_bottom,white,black)]">
+              <Text className="text-center text-sm font-bold text-white">
+                luminance{`\n`}mask
+              </Text>
+            </View>
+          </View>
+          <Caption>
+            iOS CALayer mask · Android RenderEffect DST_IN (API 31+) · the
+            host view never rotates
+          </Caption>
         </View>
       </Section>
 

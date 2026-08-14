@@ -22,8 +22,13 @@ const resolveVars = (expr: string, resolveVar: VarResolver): string =>
  * parser into {@link GRADIENT_DESCRIPTOR_PROP}.
  */
 export const BACKGROUND_IMAGE_PROP = "--nitrocss-background-image";
+export const BACKGROUND_IMAGE_RAW_PROP = "--nw-background-image-raw";
+export const BACKGROUND_IMAGE_SIZE_PROP = "--nw-background-image-size";
+export const BACKGROUND_IMAGE_REPEAT_PROP = "--nw-background-image-repeat";
+export const BACKGROUND_IMAGE_POSITION_PROP = "--nw-background-image-position";
 
 export interface BackgroundImageDescriptor {
+  type?: "url";
   url: string;
   size: "cover" | "contain" | "stretch" | "auto";
   repeat: "no-repeat" | "repeat" | "repeat-x" | "repeat-y";
@@ -31,6 +36,10 @@ export interface BackgroundImageDescriptor {
   positionX: number;
   /** Vertical focal point as a fraction of the box (`0..1`). */
   positionY: number;
+}
+
+export interface BackgroundImageNoneDescriptor {
+  type: "none";
 }
 
 /** Extract the URL from a `url("…")` / `url(…)` token, else undefined. */
@@ -125,8 +134,9 @@ function parsePosition(raw: string | undefined): { x: number; y: number } {
  * Extract a `background-image: url(...)` (plus its companion
  * `background-size` / `background-repeat` / `background-position`
  * declarations) into the {@link BACKGROUND_IMAGE_PROP} descriptor. Returns
- * undefined when `background-image` is absent, `none`, or a gradient — the
- * gradient parser owns gradients.
+ * undefined when `background-image` is absent or a gradient — the gradient
+ * parser owns gradients. `none` is retained as an explicit sentinel so it can
+ * override an earlier image bucket and clear already-mounted native paint.
  */
 export function extractBackgroundImage(
   declarations: ReadonlyArray<Decl>,
@@ -134,11 +144,39 @@ export function extractBackgroundImage(
 ): RNStyle | undefined {
   const raw = declarations.find((d) => d.prop === "background-image")?.value;
   if (raw === undefined) return undefined;
+  if (/gradient\(/i.test(raw)) {
+    return {
+      [BACKGROUND_IMAGE_PROP]: {
+        type: "none",
+      } as unknown as RNStyle[string],
+    };
+  }
+  if (raw.includes("var(")) {
+    const size = declarations.find((d) => d.prop === "background-size")?.value;
+    const repeat = declarations.find((d) => d.prop === "background-repeat")?.value;
+    const position = declarations.find(
+      (d) => d.prop === "background-position",
+    )?.value;
+    return {
+      [BACKGROUND_IMAGE_PROP]: {
+        type: "none",
+      } as unknown as RNStyle[string],
+      [BACKGROUND_IMAGE_RAW_PROP]: raw,
+      ...(size ? { [BACKGROUND_IMAGE_SIZE_PROP]: size } : {}),
+      ...(repeat ? { [BACKGROUND_IMAGE_REPEAT_PROP]: repeat } : {}),
+      ...(position ? { [BACKGROUND_IMAGE_POSITION_PROP]: position } : {}),
+    };
+  }
   const resolved = resolveVars(raw, resolveVar).trim();
-  if (!resolved || resolved.toLowerCase() === "none") return undefined;
+  if (!resolved) return undefined;
+  if (resolved.toLowerCase() === "none") {
+    return {
+      [BACKGROUND_IMAGE_PROP]: {
+        type: "none",
+      } as unknown as RNStyle[string],
+    };
+  }
   // Gradients are handled by the gradient parser — leave them alone.
-  if (/gradient\(/i.test(resolved)) return undefined;
-
   const url = parseUrl(resolved);
   if (url === undefined) return undefined;
 

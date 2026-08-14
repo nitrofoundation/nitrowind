@@ -36,6 +36,7 @@ import {
   withChildPseudoState,
   withComponentPseudoState,
 } from "../components/pseudo";
+import { useAccessibilityClassName } from "../accessibility/native";
 
 export interface WithNitroCssProps {
   className?: string;
@@ -55,6 +56,12 @@ export type WithNitroCssPropOptions<P> = Partial<
 export interface WithNitroCssAdvancedOptions<P> {
   props?: Partial<Record<keyof P & string, NitroCssPropMapping>>;
   nativeColorProps?: Record<string, string>;
+  /**
+   * Whether explicit prop mappings may be committed directly by the native
+   * engine. Disable this for components whose JS layer transforms prop values
+   * before they reach Fabric (for example react-native-svg paint strings).
+   */
+  nativePropMapping?: boolean;
 }
 
 export type WithNitroCssOptions<P> =
@@ -178,6 +185,7 @@ export function resolveGeneratedProps<P>(
 ): Record<string, unknown> {
   const generated: Record<string, unknown> = {};
   const propOptions = propOptionsFor(options);
+  const explicitlyMappedSources = new Set<string>();
 
   // The wrapper destructures `className` off the props before delegating here,
   // so mappings that read `fromClassName: "className"` (e.g. the svg preset)
@@ -193,6 +201,7 @@ export function resolveGeneratedProps<P>(
       propOptions as Record<string, NitroCssPropMapping | undefined>,
     )) {
       if (!option) continue;
+      explicitlyMappedSources.add(option.fromClassName);
       const className = source[option.fromClassName];
       if (typeof className !== "string" || className.length === 0) continue;
 
@@ -211,11 +220,13 @@ export function resolveGeneratedProps<P>(
         generated[propName] = resolved;
       }
     }
-    return generated;
   }
 
   for (const [propName, propValue] of Object.entries(source)) {
     if (typeof propValue !== "string" || !isClassProp(propName)) continue;
+    if (propName === "className" || explicitlyMappedSources.has(propName)) {
+      continue;
+    }
 
     if (isColorClassProp(propName)) {
       const colorProp = classToColorProp(propName);
@@ -256,6 +267,14 @@ function resolveNativeAccents<P>(
 ): NativeAccentDescriptor[] {
   const accents: NativeAccentDescriptor[] = [];
   const propOptions = propOptionsFor(options);
+
+  if (
+    native &&
+    isAdvancedOptions(options) &&
+    options.nativePropMapping === false
+  ) {
+    return accents;
+  }
 
   if (native && propOptions) {
     for (const [propName, option] of Object.entries(
@@ -340,9 +359,10 @@ export function withNitroCss<P extends { style?: StyleProp<unknown> }>(
     };
 
   const Wrapped = forwardRef<unknown, WrappedProps>(function NitroCssComponent(
-    { className = "", style, __nitrocssPseudoState, children, ...rest },
+    { className: requestedClassName = "", style, __nitrocssPseudoState, children, ...rest },
     forwardedRef,
   ) {
+    const className = useAccessibilityClassName(requestedClassName);
     const snapshot = useReactiveSnapshot();
     const isWeb = Platform.OS === "web";
     const native = !isWeb && hasNativeEngine();

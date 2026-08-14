@@ -99,10 +99,7 @@
     "react-native",
     "tailwind",
     "tailwindcss",
-    "tailwind-v4",
-    "nativewind",
-    "uniwind",
-    "nitrowind",
+    "nitro",
     "nitro-modules",
     "fabric",
     "shadowtree",
@@ -167,16 +164,5 @@
       ],
       "typescript"
     ]
-  },
-  "keywords": [
-    "react-native",
-    "tailwind",
-    "tailwindcss",
-    "nitro",
-    "nitro-modules",
-    "fabric",
-    "shadowtree",
-    "styling",
-    "theme"
-  ]
+  }
 }

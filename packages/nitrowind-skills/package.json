@@ -8,7 +8,7 @@
     "url": "git+https://github.com/nitrofoundation/nitrowind.git",
     "directory": "packages/nitrowind-skills"
   },
-  "homepage": "https://nitrowind.dev/skills",
+  "homepage": "https://nitrowind.dev/",
   "bugs": {
     "url": "https://github.com/nitrofoundation/nitrowind/issues"
   },

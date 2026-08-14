@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
   angleFromPosition,
+  conicGeometryFromPosition,
+  extractGradient,
   foldGradient,
+  parseCssAngle,
   parseStopLocation,
   radialCenterFromPosition,
+  radialGeometryFromPosition,
   GRADIENT_DESCRIPTOR_PROP,
   GRADIENT_FROM_PROP,
   GRADIENT_FROM_POSITION_PROP,
+  GRADIENT_INTERPOLATION_PROP,
   GRADIENT_POSITION_PROP,
   GRADIENT_STYLE_PROPS,
+  GRADIENT_STOPS_PROP,
   GRADIENT_TO_PROP,
   GRADIENT_TO_POSITION_PROP,
   GRADIENT_TYPE_PROP,
@@ -87,6 +93,74 @@ describe("foldGradient (descriptor target)", () => {
     expect(descriptorOf(style).angle).toBe(270);
   });
 
+  it("evaluates Tailwind negative calc angles and CSS angle units", () => {
+    const linear: RNStyle = {
+      [GRADIENT_TYPE_PROP]: "linear",
+      [GRADIENT_POSITION_PROP]: "calc(45deg * -1) in oklab",
+      [GRADIENT_FROM_PROP]: "#000000",
+      [GRADIENT_TO_PROP]: "#ffffff",
+    };
+    foldGradient(linear);
+    expect(descriptorOf(linear).angle).toBe(315);
+
+    const conic: RNStyle = {
+      [GRADIENT_TYPE_PROP]: "conic",
+      [GRADIENT_POSITION_PROP]: "from calc(0.25turn * -1) in oklab",
+      [GRADIENT_FROM_PROP]: "#000000",
+      [GRADIENT_TO_PROP]: "#ffffff",
+    };
+    foldGradient(conic);
+    expect(descriptorOf(conic).angle).toBe(270);
+  });
+
+  it("samples Tailwind OKLab interpolation into native RGB stops", () => {
+    const style: RNStyle = {
+      [GRADIENT_TYPE_PROP]: "linear",
+      [GRADIENT_INTERPOLATION_PROP]: "oklab",
+      [GRADIENT_FROM_PROP]: "#ff0000",
+      [GRADIENT_TO_PROP]: "#0000ff",
+    };
+    foldGradient(style);
+    const descriptor = descriptorOf(style);
+    expect(descriptor.interpolation).toBe("oklab");
+    expect(descriptor.colors).toHaveLength(9);
+    expect(descriptor.locations).toHaveLength(9);
+    expect(descriptor.colors[0]).toBe("#ff0000");
+    expect(descriptor.colors.at(-1)).toBe("#0000ff");
+  });
+
+  it("extracts arbitrary literal gradients with more than three stops", () => {
+    const markers = extractGradient(
+      [
+        {
+          prop: "background-image",
+          value:
+            "linear-gradient(45deg in oklab, red 0%, #00ff00 40%, blue 75%, white 100%)",
+        },
+      ],
+      () => undefined,
+    )!;
+    expect(markers[GRADIENT_TYPE_PROP]).toBe("linear");
+    expect(markers[GRADIENT_POSITION_PROP]).toBe("45deg");
+    expect(markers[GRADIENT_INTERPOLATION_PROP]).toBe("oklab");
+    expect(JSON.parse(markers[GRADIENT_STOPS_PROP] as string)).toHaveLength(4);
+    foldGradient(markers);
+    expect(descriptorOf(markers).colors).toHaveLength(25);
+    expect(descriptorOf(markers).locations.at(-1)).toBe(1);
+  });
+
+  it("treats arbitrary/custom gradient-position stop lists as stops", () => {
+    const style: RNStyle = {
+      [GRADIENT_TYPE_PROP]: "linear",
+      [GRADIENT_POSITION_PROP]: "red 10%, lime 45%, blue 90%",
+    };
+    foldGradient(style);
+    expect(descriptorOf(style)).toMatchObject({
+      colors: ["#ff0000", "#00ff00", "#0000ff"],
+      locations: [0.1, 0.45, 0.9],
+    });
+  });
+
   it("resolves radial center from the `at` clause", () => {
     const style: RNStyle = {
       [GRADIENT_TYPE_PROP]: "radial",
@@ -121,6 +195,42 @@ describe("foldGradient (descriptor target)", () => {
     foldGradient(cornered);
     expect(descriptorOf(cornered).positionX).toBe(0);
     expect(descriptorOf(cornered).positionY).toBe(0);
+  });
+
+  it("retains radial shape and extent for native radius calculation", () => {
+    const style: RNStyle = {
+      [GRADIENT_TYPE_PROP]: "radial",
+      [GRADIENT_POSITION_PROP]: "circle closest-side at 20% 70%",
+      [GRADIENT_FROM_PROP]: "#ffffff",
+      [GRADIENT_TO_PROP]: "#000000",
+    };
+    foldGradient(style);
+    expect(descriptorOf(style)).toMatchObject({
+      gradientType: "radial",
+      positionX: 0.2,
+      positionY: 0.7,
+      radialShape: "circle",
+      radialExtent: "closest-side",
+    });
+  });
+
+  it("emits conic geometry from the gradient prelude", () => {
+    const style: RNStyle = {
+      [GRADIENT_TYPE_PROP]: "conic",
+      [GRADIENT_POSITION_PROP]: "from -45deg at 25% 75%",
+      [GRADIENT_FROM_PROP]: "#f43f5e",
+      [GRADIENT_VIA_PROP]: "#8b5cf6",
+      [GRADIENT_TO_PROP]: "#06b6d4",
+    };
+    foldGradient(style);
+    expect(descriptorOf(style)).toEqual({
+      gradientType: "conic",
+      angle: 315,
+      positionX: 0.25,
+      positionY: 0.75,
+      colors: ["#f43f5e", "#8b5cf6", "#06b6d4"],
+      locations: [0, 0.5, 1],
+    });
   });
 
   it("substitutes transparent for missing from/to colors", () => {
@@ -174,6 +284,15 @@ describe("foldGradient (css target — web)", () => {
 });
 
 describe("gradient fold helpers (mirrored in C++)", () => {
+  it("parseCssAngle handles native units and reducible calc expressions", () => {
+    expect(parseCssAngle("45deg")).toBe(45);
+    expect(parseCssAngle("0.25turn")).toBe(90);
+    expect(parseCssAngle("100grad")).toBe(90);
+    expect(parseCssAngle(`${Math.PI}rad`)).toBeCloseTo(180);
+    expect(parseCssAngle("calc(45deg * -1) in oklab")).toBe(-45);
+    expect(parseCssAngle("var(--angle)")).toBeUndefined();
+  });
+
   it("angleFromPosition matches the keyword table", () => {
     expect(angleFromPosition(undefined)).toBe(180);
     expect(angleFromPosition("to top")).toBe(0);
@@ -206,5 +325,29 @@ describe("gradient fold helpers (mirrored in C++)", () => {
     });
     expect(radialCenterFromPosition("circle")).toEqual({ x: 0.5, y: 0.5 });
     expect(radialCenterFromPosition(undefined)).toEqual({ x: 0.5, y: 0.5 });
+  });
+
+  it("radialGeometryFromPosition resolves shape and extent", () => {
+    expect(
+      radialGeometryFromPosition("ellipse closest-corner at bottom right"),
+    ).toEqual({
+      x: 1,
+      y: 1,
+      shape: "ellipse",
+      extent: "closest-corner",
+    });
+  });
+
+  it("conicGeometryFromPosition resolves angle and center", () => {
+    expect(conicGeometryFromPosition("from 90deg at top left")).toEqual({
+      angle: 90,
+      x: 0,
+      y: 0,
+    });
+    expect(conicGeometryFromPosition(undefined)).toEqual({
+      angle: 0,
+      x: 0.5,
+      y: 0.5,
+    });
   });
 });
