@@ -4,8 +4,15 @@
   "description": "Core native CSS engine for React Native — compiles plain CSS to native styles and commits them through a C++ ShadowTree engine.",
   "license": "MIT",
   "author": "NitroFoundation contributors",
-  "repository": "https://github.com/nitrofoundation/nitrocss",
-  "homepage": "https://github.com/nitrofoundation/nitrocss",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nitrofoundation/nitrowind.git",
+    "directory": "packages/nitrocss"
+  },
+  "homepage": "https://nitrowind.dev/",
+  "bugs": {
+    "url": "https://github.com/nitrofoundation/nitrowind/issues"
+  },
   "type": "module",
   "source": "./src/index.ts",
   "main": "./lib/commonjs/index.js",
