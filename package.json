@@ -29,6 +29,7 @@
     "docs:docker:logs": "docker compose -f apps/nitrowind-docs/compose.yaml logs -f",
     "docs:docker:down": "docker compose -f apps/nitrowind-docs/compose.yaml down",
     "docs:deploy": "bash scripts/deploy-docs.sh",
+    "x:link": "node scripts/x-link.mjs",
     "release": "release-it",
     "release:dry-run": "release-it --dry-run",
     "typecheck": "turbo run typecheck",

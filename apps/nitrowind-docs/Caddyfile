@@ -19,6 +19,11 @@
   @search path /search /search.html
   header @search X-Robots-Tag "noindex, follow"
 
+  # Reusable X campaign links. The slug becomes utm_content, so new posts do
+  # not require a page or redirect to be added here.
+  @xPost path_regexp xPost ^/x/([a-z0-9]([a-z0-9-]*[a-z0-9])?)/?$
+  redir @xPost "/?utm_source=x&utm_medium=social&utm_campaign=feature_posts&utm_content={re.xPost.1}" 302
+
   try_files {path} {path}.html {path}/
   file_server
 }
