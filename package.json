@@ -1,6 +1,6 @@
 {
   "name": "nitrowind-monorepo",
-  "version": "0.1.0",
+  "version": "1.0.0-beta.0",
   "private": true,
   "description": "Nitrowind — fully open-source, fastest Tailwind bindings for React Native (native C++ ShadowTree engine, free for everyone)",
   "license": "MIT",
