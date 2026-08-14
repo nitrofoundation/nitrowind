@@ -22,6 +22,7 @@ import {
   extractGradient,
   extractGradientAngleTrack,
   extractKeyframes,
+  extractMask,
   extractReanimatedVars,
   extractTextShadow,
   extractTransform,
@@ -35,6 +36,7 @@ import {
   isFilterProp,
   isFontVariantProp,
   isGradientProp,
+  isMaskProp,
   isTextShadowProp,
   isTransitionProp,
   isTransformProp,
@@ -294,6 +296,24 @@ const variantFromContext = (atRules: string[], selector: string): string => {
   return "base";
 };
 
+const mediaFromContext = (
+  atRules: string[],
+  rem: number,
+): CompiledClass["media"] | undefined => {
+  const text = atRules.filter((a) => /^@media\b/i.test(a)).join(" ");
+  if (!text) return undefined;
+  const length = (raw: string, unit: string | undefined) =>
+    Number.parseFloat(raw) * (unit?.toLowerCase() === "rem" ? rem : 1);
+  const out: NonNullable<CompiledClass["media"]> = {};
+  const min = /(?:min-width\s*:\s*|width\s*>=\s*)([\d.]+)(px|rem)?/i.exec(text);
+  const max = /(?:max-width\s*:\s*|width\s*<=\s*)([\d.]+)(px|rem)?/i.exec(text);
+  const orientation = /orientation\s*:\s*(portrait|landscape)/i.exec(text);
+  if (min) out.minWidth = length(min[1]!, min[2]);
+  if (max) out.maxWidth = length(max[1]!, max[2]);
+  if (orientation) out.orientation = orientation[1]!.toLowerCase() as "portrait" | "landscape";
+  return Object.keys(out).length > 0 ? out : undefined;
+};
+
 const rnPropsForSelector = (selector: string, cssProp: string): string[] => {
   if (/::placeholder\b|:placeholder\b/.test(selector) && cssProp === "color") {
     return ["placeholderTextColor"];
@@ -339,6 +359,7 @@ const isParsedProp = (prop: string): boolean =>
   isGradientProp(prop) ||
   isBackgroundImageProp(prop) ||
   isClipPathProp(prop) ||
+  isMaskProp(prop) ||
   isTextShadowProp(prop) ||
   isFontVariantProp(prop) ||
   isAnimationProp(prop) ||
@@ -360,12 +381,14 @@ export function parseStyles(
   resolveVar: VarResolver = defaultResolveVar,
 ): Pick<CompiledArtifact, "classes"> {
   const classes: Record<string, CompiledClass[]> = {};
+  let sourceOrder = 0;
 
   // `@keyframes` blocks are pulled out once up front so the `animation`
   // shorthand on any rule can be folded into an inline `animationName` object.
   const keyframes = extractKeyframes(css, rem);
 
   for (const rule of walkRules(css)) {
+    const order = sourceOrder++;
     const token = classTokenFromSelector(rule.selector);
     if (!token) continue;
     if (isCustomContainerToken(token)) continue;
@@ -412,6 +435,8 @@ export function parseStyles(
     if (backgroundImage !== undefined) Object.assign(style, backgroundImage);
     const clipPath = extractClipPath(rule.declarations, ruleResolve);
     if (clipPath !== undefined) Object.assign(style, clipPath);
+    const maskStyle = extractMask(rule.declarations, ruleResolve);
+    if (maskStyle !== undefined) Object.assign(style, maskStyle);
     const textShadow = extractTextShadow(rule.declarations, ruleResolve);
     if (textShadow) Object.assign(style, textShadow);
     const fontVariant = extractFontVariant(rule.declarations, ruleResolve);
@@ -435,11 +460,14 @@ export function parseStyles(
       const shorthand = resolveVarsInValue(animationDecl.value, ruleResolve);
       const folded = foldAnimation(shorthand, keyframes);
       if (folded) Object.assign(style, folded);
-      // A linear gradient whose angle is driven by an angle-bearing keyframe var
+      // A linear or conic gradient whose angle is driven by an angle-bearing keyframe var
       // gets a runtime-only angle track. Guard on the gradient TYPE marker
       // (the descriptor itself is folded later, in core/normalize.ts) so the
-      // track only attaches to linear gradients — per the effects contract.
-      if (style[GRADIENT_TYPE_PROP] === "linear") {
+      // track only attaches to gradient types whose native paint has an angle.
+      if (
+        style[GRADIENT_TYPE_PROP] === "linear" ||
+        style[GRADIENT_TYPE_PROP] === "conic"
+      ) {
         const angleTrack = extractGradientAngleTrack(shorthand, keyframes);
         if (angleTrack) {
           Object.assign(style, {
@@ -521,11 +549,14 @@ export function parseStyles(
     // dark/responsive variant, so they live in their own field. Absent means the
     // bucket applies on every platform.
     const platform = platformFromSelector(rule.selector);
+    const media = mediaFromContext(rule.atRules, rem);
     const bucket: CompiledClass = {
+      order,
       style,
       dependencies: mask,
       variant: variantFromContext(rule.atRules, rule.selector),
       ...(platform ? { platform } : {}),
+      ...(media ? { media } : {}),
       ...(container ? { container } : {}),
       ...(containerMarker ? { containerMarker } : {}),
     };

@@ -5,7 +5,7 @@ PODS:
   - hermes-engine (250829098.0.14):
     - hermes-engine/Pre-built (= 250829098.0.14)
   - hermes-engine/Pre-built (250829098.0.14)
-  - NitroCss (0.1.0):
+  - NitroCss (0.2.0-beta.2):
     - hermes-engine
     - NitroModules
     - RCTRequired
@@ -2254,7 +2254,7 @@ DEPENDENCIES:
   - BVLinearGradient (from `../../../node_modules/react-native-linear-gradient`)
   - FBLazyVector (from `../../../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../../../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
-  - "NitroCss (from `../../../node_modules/nitrocss`)"
+  - "NitroCss (from `../../../node_modules/@nitrofoundation/nitrocss`)"
   - NitroModules (from `../../../node_modules/react-native-nitro-modules`)
   - RCTDeprecation (from `../../../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../../../node_modules/react-native/Libraries/Required`)
@@ -2347,7 +2347,7 @@ EXTERNAL SOURCES:
     :podspec: "../../../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v250829098.0.14
   NitroCss:
-    :path: "../../../node_modules/nitrocss"
+    :path: "../../../node_modules/@nitrofoundation/nitrocss"
   NitroModules:
     :path: "../../../node_modules/react-native-nitro-modules"
   RCTDeprecation:
@@ -2515,7 +2515,7 @@ SPEC CHECKSUMS:
   BVLinearGradient: 880f91a7854faff2df62518f0281afb1c60d49a3
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
   hermes-engine: ee405e16f7a2f5c41805cce74e41f4a48bf34bf3
-  NitroCss: 4e52928ca0ee39db32a70811aa0092c659a05a52
+  NitroCss: 7c50b742975d2c03ecb2af466f8f1ea70b52db36
   NitroModules: 65b53212caf01270656501155b718dfd2e0db185
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
   RCTRequired: 30451112e6fef4e6f31b4e7eee0845156e35e4b0

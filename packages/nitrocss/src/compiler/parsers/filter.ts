@@ -33,6 +33,21 @@ function normalizeFilter(value: string): string | undefined {
 
 const FILTER_RE = /([a-z-]+)\(([^)]*)\)/g;
 
+/** Compact ordered filter IR consumed by both JS first paint and C++ commits. */
+export const FILTER_DESCRIPTOR_PROP = "--nitrocss-filter";
+
+export type FilterDescriptorEntry =
+  | [0, number] // blur
+  | [1, number] // brightness
+  | [2, number] // contrast
+  | [3, number] // grayscale
+  | [4, number] // hue rotate (degrees)
+  | [5, number] // invert
+  | [6, number] // opacity
+  | [7, number] // saturate
+  | [8, number] // sepia
+  | [9, number, number, number, string]; // drop shadow
+
 const parseNumberOrPercent = (raw: string): number | undefined => {
   const value = raw.trim();
   if (!value) return undefined;
@@ -69,8 +84,8 @@ function parseDropShadow(raw: string): Record<string, unknown> | undefined {
   return { offsetX, offsetY, standardDeviation, color };
 }
 
-function parseFilterList(filter: string): RNStyle["filter"] | undefined {
-  const out: Array<Record<string, unknown>> = [];
+function parseFilterList(filter: string): FilterDescriptorEntry[] | undefined {
+  const out: FilterDescriptorEntry[] = [];
   let match: RegExpExecArray | null;
   FILTER_RE.lastIndex = 0;
   while ((match = FILTER_RE.exec(filter)) !== null) {
@@ -79,7 +94,7 @@ function parseFilterList(filter: string): RNStyle["filter"] | undefined {
     switch (name) {
       case "blur": {
         const value = parseLength(raw);
-        if (value !== undefined) out.push({ blur: value });
+        if (value !== undefined) out.push([0, value]);
         break;
       }
       case "brightness":
@@ -90,17 +105,36 @@ function parseFilterList(filter: string): RNStyle["filter"] | undefined {
       case "saturate":
       case "sepia": {
         const value = parseNumberOrPercent(raw);
-        if (value !== undefined) out.push({ [name]: value });
+        if (value !== undefined) {
+          const opcode = {
+            brightness: 1,
+            contrast: 2,
+            grayscale: 3,
+            invert: 5,
+            opacity: 6,
+            saturate: 7,
+            sepia: 8,
+          }[name] as 1 | 2 | 3 | 5 | 6 | 7 | 8;
+          out.push([opcode, value]);
+        }
         break;
       }
       case "hue-rotate": {
         const value = parseAngleDegrees(raw);
-        if (value !== undefined) out.push({ hueRotate: value });
+        if (value !== undefined) out.push([4, value]);
         break;
       }
       case "drop-shadow": {
         const value = parseDropShadow(raw);
-        if (value !== undefined) out.push({ dropShadow: value });
+        if (value !== undefined) {
+          out.push([
+            9,
+            value.offsetX as number,
+            value.offsetY as number,
+            value.standardDeviation as number,
+            value.color as string,
+          ]);
+        }
         break;
       }
     }
@@ -139,8 +173,13 @@ export function backdropBlurRadius(filters: unknown): number {
   if (!Array.isArray(filters)) return 0;
   let sumOfSquares = 0;
   for (const fn of filters) {
-    if (fn === null || typeof fn !== "object") continue;
-    const radius = (fn as Record<string, unknown>).blur;
+    const radius = Array.isArray(fn)
+      ? fn[0] === 0
+        ? fn[1]
+        : undefined
+      : fn && typeof fn === "object"
+        ? (fn as Record<string, unknown>).blur
+        : undefined;
     if (typeof radius === "number" && radius > 0) {
       sumOfSquares += radius * radius;
     }
@@ -175,7 +214,7 @@ export function extractFilter(
   if (rawFilter !== undefined) {
     const filter = normalizeFilter(resolveVars(rawFilter, resolveVar));
     const parsed = filter ? parseFilterList(filter) : undefined;
-    if (parsed) out.filter = parsed;
+    if (parsed) out[FILTER_DESCRIPTOR_PROP] = parsed as unknown as RNStyle[string];
   }
 
   const rawBackdrop = declarations.find(
@@ -184,7 +223,7 @@ export function extractFilter(
   if (rawBackdrop !== undefined) {
     const backdrop = normalizeFilter(resolveVars(rawBackdrop, resolveVar));
     const parsed = backdrop ? parseFilterList(backdrop) : undefined;
-    if (parsed) out[BACKDROP_FILTER_PROP] = parsed;
+    if (parsed) out[BACKDROP_FILTER_PROP] = parsed as unknown as RNStyle[string];
   }
 
   return Object.keys(out).length > 0 ? out : undefined;

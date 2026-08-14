@@ -20,4 +20,4 @@ rootProject.name = 'NitrowindExampleCli'
 
 include ':app'
 include ':nitrocss'
-project(':nitrocss').projectDir = new File(rootProject.projectDir, '../../packages/nitro-css/android')
+project(':nitrocss').projectDir = new File(rootProject.projectDir, '../../../packages/nitrocss/android')

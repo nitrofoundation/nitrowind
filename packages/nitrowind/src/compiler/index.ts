@@ -15,6 +15,7 @@ import {
   type CompiledArtifact,
 } from "@nitrofoundation/nitrocss/compiler";
 import { compileCss, scanCandidates } from "./compileCss";
+import { accessibilityBaseCandidate } from "./accessibility";
 
 export * from "@nitrofoundation/nitrocss/compiler";
 export { compileCss, scanCandidates } from "./compileCss";
@@ -36,5 +37,13 @@ export async function compile(
   // Materialize the custom container syntax (`[parent-w>230px]:hidden`) by
   // cloning each base utility's compiled style under a container-gated bucket.
   applyCustomContainerTokens(artifact, candidates, rem);
+  for (const candidate of candidates) {
+    const base = accessibilityBaseCandidate(candidate);
+    if (!base || artifact.classes[candidate] || !artifact.classes[base]) continue;
+    artifact.classes[candidate] = artifact.classes[base].map((bucket) => ({
+      ...bucket,
+      style: { ...bucket.style },
+    }));
+  }
   return artifact;
 }

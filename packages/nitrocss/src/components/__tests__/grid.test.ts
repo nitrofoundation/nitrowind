@@ -357,6 +357,54 @@ describe("serializeGridConfig (native grid payload)", () => {
     ]);
   });
 
+  it("serializes explicit numeric auto-placement starts and spans", () => {
+    const config = serializeGridConfig(
+      "grid grid-cols-3 auto-rows-[48px]",
+      [
+        cell("col-start-2 row-start-2 col-span-2 row-span-2"),
+        cell(""),
+      ],
+    );
+    expect(config?.items).toEqual([
+      { columnStart: 2, columnSpan: 2, rowStart: 2, rowSpan: 2 },
+      { columnStart: 0, columnSpan: 1, rowStart: 0, rowSpan: 1 },
+    ]);
+  });
+
+  it("resolves named grid lines to native start/end placements", () => {
+    const config = serializeGridConfig(
+      "grid grid-cols-[[sidebar-start]_96px_[content-start]_1fr_[content-end]]",
+      [
+        cell("col-start-[sidebar-start] col-end-[content-start]"),
+        cell("col-start-[content-start] col-end-[content-end]"),
+      ],
+    );
+    expect(config?.items).toEqual([
+      { columnStart: 1, columnSpan: 1, rowStart: 0, rowSpan: 1 },
+      { columnStart: 2, columnSpan: 1, rowStart: 0, rowSpan: 1 },
+    ]);
+  });
+
+  it("preserves content-sized tracks, dense flow, and masonry metadata", () => {
+    const content = serializeGridConfig(
+      "grid grid-cols-[min-content_1fr_max-content] auto-rows-max grid-flow-dense",
+      [cell(""), cell(""), cell("")],
+    );
+    expect(content?.columns).toEqual([
+      { type: "min-content", value: 0 },
+      { type: "fr", value: 1 },
+      { type: "max-content", value: 0 },
+    ]);
+    expect(content?.autoRow).toEqual({ type: "max-content", value: 0 });
+    expect(content?.dense).toBe(true);
+
+    const masonry = serializeGridConfig(
+      "grid grid-cols-3 grid-rows-[masonry] gap-3",
+      [cell(""), cell("")],
+    );
+    expect(masonry?.masonry).toBe(true);
+  });
+
   it("disables the native path for percent columns (JS fallback owns it)", () => {
     expect(canNativeGridLayout("grid grid-cols-[50%_50%] gap-2")).toBe(false);
     expect(

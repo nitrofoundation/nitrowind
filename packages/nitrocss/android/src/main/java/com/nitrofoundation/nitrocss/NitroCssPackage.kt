@@ -27,6 +27,7 @@ class NitroCssPackage : ReactPackage {
     GradientApplier.install(reactContext)
     ClipPathApplier.install(reactContext)
     BackgroundImageApplier.install(reactContext)
+    MaskApplier.install(reactContext)
     return listOf(NitroCssInstallerModule(reactContext))
   }
 

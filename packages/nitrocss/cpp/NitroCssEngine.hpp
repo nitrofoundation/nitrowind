@@ -74,16 +74,24 @@ struct ResolveContext {
   bool isGroupFocused = false;
   bool isGroupHovered = false;
   bool isGroupDisabled = false;
+  double screenWidth = 0.0;
+  int orientation = 0; // 0 portrait, 1 landscape
 };
 
 /** A single compiled variant of a class. */
 struct CompiledBucket {
+  uint64_t order = 0;
   folly::dynamic style = folly::dynamic::object();
   uint32_t dependencies = 0;
   std::string variant = "base";
   // Platform variant (`ios`, `android`, `web`, `native`, …). Empty applies to
   // every platform. The platform is fixed for the lifetime of the process.
   std::string platform;
+  bool hasMinWidth = false;
+  bool hasMaxWidth = false;
+  double minWidth = 0.0;
+  double maxWidth = 0.0;
+  int mediaOrientation = -1;
   // Container-query condition gating this bucket (when `present`).
   ContainerCondition container;
   // Set when this class turns its node into a queryable container.
@@ -134,6 +142,7 @@ private:
   static bool variantApplies(const std::string& variant, const ResolveContext& ctx);
   /** Whether a bucket's platform variant applies on this build's OS. */
   static bool platformApplies(const std::string& platform);
+  static bool mediaApplies(const CompiledBucket& bucket, const ResolveContext& ctx);
   /** Evaluate a container condition against the measured size in `ctx`. */
   static bool containerMatches(const ContainerCondition& condition,
                                const ResolveContext& ctx);

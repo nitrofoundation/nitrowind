@@ -138,4 +138,17 @@ describe("text-shadow keyframe lowering", () => {
     `);
     expect(keyframes.mixed!["0%"]).toEqual({ opacity: 0 });
   });
+
+  it("preserves native mask scale alongside mask angle", () => {
+    const keyframes = extractKeyframes(`
+      @keyframes mask-motion {
+        from { --mask-angle: 0deg; --mask-scale: .92; }
+        to { --mask-angle: 360deg; --mask-scale: 1.04; }
+      }
+    `);
+    expect(keyframes["mask-motion"]).toEqual({
+      from: { "--mask-angle": 0, "--mask-scale": 0.92 },
+      to: { "--mask-angle": 360, "--mask-scale": 1.04 },
+    });
+  });
 });

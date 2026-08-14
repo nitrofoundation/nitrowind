@@ -84,6 +84,60 @@ int main() {
     check("c4 col2.x", out.items[2].x, 180);    // 96 + 12 + 60 + 12
   }
 
+  // Case 5: intrinsic min/max-content tracks reserve measured child widths.
+  {
+    GridInput in;
+    in.width = 200;
+    in.columns = {{TrackType::MinContent, 0}, {TrackType::Fr, 1},
+                  {TrackType::MaxContent, 0}};
+    in.columnGap = 10;
+    in.autoRow = {TrackType::MaxContent, 0};
+    in.items = {
+        {1, 1, 0, 1, 40, 20},
+        {2, 1, 0, 1, 10, 30},
+        {3, 1, 0, 1, 60, 25},
+    };
+    auto out = GridLayoutEngine::layout(in);
+    check("c5 min-content.w", out.items[0].width, 40);
+    check("c5 fr.w", out.items[1].width, 80);
+    check("c5 max-content.w", out.items[2].width, 60);
+    check("c5 content row height", out.height, 30);
+  }
+
+  // Case 6: sparse flow keeps its cursor; dense flow backfills the first hole.
+  {
+    GridInput sparse;
+    sparse.width = 300;
+    sparse.columns = {{TrackType::Fr, 1}, {TrackType::Fr, 1}, {TrackType::Fr, 1}};
+    sparse.autoRow = {TrackType::Px, 20};
+    sparse.items = {{0, 2, 0, 1}, {0, 2, 0, 1}, {0, 1, 0, 1}};
+    auto sparseOut = GridLayoutEngine::layout(sparse);
+    check("c6 sparse third.y", sparseOut.items[2].y, 20);
+    sparse.dense = true;
+    auto denseOut = GridLayoutEngine::layout(sparse);
+    check("c6 dense third.y", denseOut.items[2].y, 0);
+    check("c6 dense third.x", denseOut.items[2].x, 200);
+  }
+
+  // Case 7: masonry places each item in the currently shortest column.
+  {
+    GridInput in;
+    in.width = 210;
+    in.columns = {{TrackType::Fr, 1}, {TrackType::Fr, 1}};
+    in.columnGap = 10;
+    in.rowGap = 10;
+    in.masonry = true;
+    in.items = {
+        {0, 1, 0, 1, 0, 100},
+        {0, 1, 0, 1, 0, 40},
+        {0, 1, 0, 1, 0, 50},
+    };
+    auto out = GridLayoutEngine::layout(in);
+    check("c7 third.x", out.items[2].x, 110);
+    check("c7 third.y", out.items[2].y, 50);
+    check("c7 height", out.height, 100);
+  }
+
   if (failures == 0) std::printf("\nALL PASS\n");
   else std::printf("\n%d FAILURES\n", failures);
   return failures == 0 ? 0 : 1;

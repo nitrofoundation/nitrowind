@@ -28,7 +28,7 @@ using nitrocss::ClipPathTargets;
 
 struct JClipPathApplier : facebook::jni::JavaClass<JClipPathApplier> {
   static constexpr auto kJavaDescriptor =
-      "Lcom/nitrofoundation/nitro-css/ClipPathApplier;";
+      "Lcom/nitrofoundation/nitrocss/ClipPathApplier;";
 
   static void onNativeInvalidate() {
     static const auto method =

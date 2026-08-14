@@ -77,6 +77,18 @@ describe("toRNValue", () => {
     expect(toRNValue("width", "50%", { rem: 16 })).toBe("50%");
   });
 
+  it("clamps Tailwind rounded-full to a native-safe finite radius", () => {
+    expect(toRNValue("borderRadius", "3.402823669209385e38px", { rem: 16 })).toBe(
+      1_000_000,
+    );
+    expect(
+      toRNValue("borderTopLeftRadius", "3.402823669209385e38px", {
+        rem: 16,
+      }),
+    ).toBe(1_000_000);
+    expect(toRNValue("borderRadius", "24px", { rem: 16 })).toBe(24);
+  });
+
   it("normalizes colors to native-safe hex", () => {
     expect(toRNValue("backgroundColor", "#ff0000", { rem: 16 })).toBe(
       "#ff0000",
@@ -121,6 +133,107 @@ describe("classTokenFromSelector", () => {
 });
 
 describe("compileFromCss", () => {
+  it("attaches a native angle track to conic gradients", () => {
+    const artifact = compileFromCss(`
+      @keyframes conic-clock {
+        from { --gradient-angle: 0deg; }
+        to { --gradient-angle: 360deg; }
+      }
+      .conic-clock {
+        background-image: conic-gradient(from 0deg, #22d3ee, #8b5cf6, #ec4899);
+        animation: conic-clock 4s linear infinite;
+      }
+    `);
+    expect(artifact.classes["conic-clock"]?.[0]?.style).toMatchObject({
+      "--nw-gradient-type": "conic",
+      "--nitrocss-gradient-angle": {
+        durationMs: 4000,
+        iterations: -1,
+        keyframes: [
+          { at: 0, angle: 0 },
+          { at: 1, angle: 360 },
+        ],
+      },
+    });
+  });
+
+  it("applies flattened CSS source order instead of className token order", () => {
+    const artifact = compileFromCss(`
+      .gradient {
+        --tw-gradient-from: #ef4444;
+        --tw-gradient-to: #3b82f6;
+        background-image: linear-gradient(var(--tw-gradient-stops));
+      }
+      .none { background-image: none; }
+    `);
+    expect(artifact.classes.gradient?.[0]?.order).toBeLessThan(
+      artifact.classes.none?.[0]?.order ?? 0,
+    );
+    registerStyles(artifact);
+    expect(resolveStyles("none gradient", makeSnapshot()).styles).toEqual({});
+  });
+
+  it("resolves variable-backed raster and gradient images at runtime", () => {
+    registerStyles(
+      compileFromCss(`
+        @theme {
+          --hero-image: url("https://example.test/light.png");
+          --hero-gradient: linear-gradient(0.25turn in oklab, red, blue);
+        }
+        [data-theme="ocean"] {
+          --hero-image: url("https://example.test/ocean.png");
+          --hero-gradient: conic-gradient(from -90deg, red, lime, blue);
+        }
+        .image-variable { background-image: var(--hero-image); }
+        .gradient-variable { background-image: var(--hero-gradient); }
+      `),
+    );
+
+    expect(
+      resolveStyles("image-variable", makeSnapshot()).styles,
+    ).toMatchObject({
+      "--nitrocss-background-image": {
+        url: "https://example.test/light.png",
+      },
+    });
+    expect(
+      resolveStyles(
+        "gradient-variable",
+        makeSnapshot({ currentThemeName: "ocean" }),
+      ).styles,
+    ).toMatchObject({
+      "--nitrocss-gradient": {
+        gradientType: "conic",
+        angle: 270,
+        colors: ["#ff0000", "#00ff00", "#0000ff"],
+      },
+    });
+  });
+
+  it("compiles conic gradients into native geometry descriptors", () => {
+    registerStyles(
+      compileFromCss(`
+        .conic-demo {
+          --tw-gradient-position: from 135deg at 25% 75%;
+          --tw-gradient-from: #f43f5e;
+          --tw-gradient-via: #8b5cf6;
+          --tw-gradient-to: #06b6d4;
+          background-image: conic-gradient(var(--tw-gradient-stops));
+        }
+      `),
+    );
+    expect(resolveStyles("conic-demo", makeSnapshot()).styles).toMatchObject({
+      "--nitrocss-gradient": {
+        gradientType: "conic",
+        angle: 135,
+        positionX: 0.25,
+        positionY: 0.75,
+        colors: ["#f43f5e", "#8b5cf6", "#06b6d4"],
+        locations: [0, 0.5, 1],
+      },
+    });
+  });
+
   it("resolves the default border style", () => {
     const artifact = compileFromCss(
       `.border { border-style: var(--tw-border-style); border-width: 1px; }`,
@@ -250,26 +363,26 @@ describe("compileFromCss", () => {
     // render the native BackdropLayer (the C++ engine still strips it from
     // committed RN props at its resolve() tail).
     expect(artifact.classes["backdrop-blur-sm"]?.[0]?.style).toEqual({
-      "--nitrocss-backdrop-filter": [{ blur: 8 }],
+      "--nitrocss-backdrop-filter": [[0, 8]],
     });
     expect(artifact.classes["backdrop-brightness-125"]?.[0]?.style).toEqual({
-      "--nitrocss-backdrop-filter": [{ brightness: 1.25 }],
+      "--nitrocss-backdrop-filter": [[1, 1.25]],
     });
     expect(resolveStyles("backdrop-blur-sm", makeSnapshot()).styles).toEqual({
-      "--nitrocss-backdrop-filter": [{ blur: 8 }],
+      "--nitrocss-backdrop-filter": [[0, 8]],
     });
     expect(
       resolveStyles("backdrop-brightness-125", makeSnapshot()).styles,
-    ).toEqual({ "--nitrocss-backdrop-filter": [{ brightness: 1.25 }] });
+    ).toEqual({ "--nitrocss-backdrop-filter": [[1, 1.25]] });
     // A rule carrying both keeps `filter` intact and routes backdrop-filter to
     // the marker.
     expect(artifact.classes["frosted"]?.[0]?.style).toEqual({
-      filter: [{ blur: 4 }],
-      "--nitrocss-backdrop-filter": [{ blur: 8 }],
+      "--nitrocss-filter": [[0, 4]],
+      "--nitrocss-backdrop-filter": [[0, 8]],
     });
     expect(resolveStyles("frosted", makeSnapshot()).styles).toEqual({
       filter: [{ blur: 4 }],
-      "--nitrocss-backdrop-filter": [{ blur: 8 }],
+      "--nitrocss-backdrop-filter": [[0, 8]],
     });
   });
 
@@ -292,10 +405,10 @@ describe("compileFromCss", () => {
     registerStyles(artifact);
 
     expect(artifact.classes["backdrop-blur-md"]?.[0]?.style).toEqual({
-      "--nitrocss-backdrop-filter": [{ blur: 12 }],
+      "--nitrocss-backdrop-filter": [[0, 12]],
     });
     expect(resolveStyles("backdrop-blur-md", makeSnapshot()).styles).toEqual({
-      "--nitrocss-backdrop-filter": [{ blur: 12 }],
+      "--nitrocss-backdrop-filter": [[0, 12]],
     });
   });
 

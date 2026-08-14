@@ -63,6 +63,19 @@ const UNITLESS = new Set([
 // number is safe to pass through as a plain number.
 const LENGTH_RE = /^(-?\d*\.?\d+(?:e[+-]?\d+)?)(px|rem|em|pt)?$/i;
 const PERCENT_RE = /^-?\d*\.?\d+%$/;
+// Tailwind's `rounded-full` uses the CSS float maximum (~3.4e38px). That is
+// finite as a JS double but can overflow RN's native float conversion to
+// infinity, causing Fabric to reject the radius. Any value comfortably larger
+// than a real view produces the same CSS pill/circle after radius fixup.
+const MAX_NATIVE_BORDER_RADIUS = 1_000_000;
+
+const clampNativeBorderRadius = (
+  rnProperty: string,
+  value: number,
+): number =>
+  rnProperty.endsWith("Radius") && value > MAX_NATIVE_BORDER_RADIUS
+    ? MAX_NATIVE_BORDER_RADIUS
+    : value;
 
 function matchingParen(value: string, openIndex: number): number {
   let depth = 0;
@@ -159,7 +172,7 @@ export const toRNValue = (
 
   if (!STRING_VALUED.has(rnProperty)) {
     const px = lengthToPx(value, ctx.resolveVar ?? (() => undefined), ctx.rem);
-    if (px !== undefined) return px;
+    if (px !== undefined) return clampNativeBorderRadius(rnProperty, px);
   }
 
   const length = LENGTH_RE.exec(value);
@@ -173,7 +186,7 @@ export const toRNValue = (
       return num * ctx.rem;
     }
     // px, pt and unitless lengths collapse to the number.
-    return num;
+    return clampNativeBorderRadius(rnProperty, num);
   }
 
   if (UNITLESS.has(rnProperty) && !Number.isNaN(Number(value))) {

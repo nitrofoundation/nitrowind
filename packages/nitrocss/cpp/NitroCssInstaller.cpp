@@ -1,6 +1,8 @@
 #include "NitroCssInstaller.hpp"
 
 #include "bgimage/BackgroundImageTargets.hpp"
+#include "mask/MaskTargets.hpp"
+#include "mask/MaskTransformOverrides.hpp"
 #include "clippath/ClipPathTargets.hpp"
 #include "fabric/LayoutObserver.hpp"
 #include "gradient/GradientAngleOverrides.hpp"
@@ -89,6 +91,37 @@ void installGradientAngleHostFunctions(jsi::Runtime& runtime) {
         return jsi::Value::undefined();
       });
   global.setProperty(runtime, "__nitrocssClearGradientAngle", clearAngle);
+
+  auto setMaskTransform = jsi::Function::createFromHostFunction(
+      runtime,
+      jsi::PropNameID::forAscii(runtime, "__nitrocssSetMaskTransform"),
+      3,
+      [](jsi::Runtime& rt, const jsi::Value& /*thisVal*/, const jsi::Value* args,
+         size_t count) -> jsi::Value {
+        if (count >= 3 && args[0].isNumber() && args[1].isNumber() &&
+            args[2].isNumber()) {
+          MaskTransformOverrides::shared().setTransform(
+              static_cast<int32_t>(args[0].asNumber()),
+              args[1].asNumber(),
+              args[2].asNumber());
+        }
+        return jsi::Value::undefined();
+      });
+  global.setProperty(runtime, "__nitrocssSetMaskTransform", setMaskTransform);
+
+  auto clearMaskTransform = jsi::Function::createFromHostFunction(
+      runtime,
+      jsi::PropNameID::forAscii(runtime, "__nitrocssClearMaskTransform"),
+      1,
+      [](jsi::Runtime& rt, const jsi::Value& /*thisVal*/, const jsi::Value* args,
+         size_t count) -> jsi::Value {
+        if (count >= 1 && args[0].isNumber()) {
+          MaskTransformOverrides::shared().clearTransform(
+              static_cast<int32_t>(args[0].asNumber()));
+        }
+        return jsi::Value::undefined();
+      });
+  global.setProperty(runtime, "__nitrocssClearMaskTransform", clearMaskTransform);
 }
 
 } // namespace
@@ -141,7 +174,9 @@ void NitroCssInstaller::captureFromRuntime(jsi::Runtime& runtime) {
     GradientTargets::shared().resetForNewInstance();
     ClipPathTargets::shared().resetForNewInstance();
     BackgroundImageTargets::shared().resetForNewInstance();
+    MaskTargets::shared().resetForNewInstance();
     GradientAngleOverrides::shared().resetForNewInstance();
+    MaskTransformOverrides::shared().resetForNewInstance();
   }
 
   // Register the Fabric layout observer that drives native container queries

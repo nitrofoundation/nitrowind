@@ -234,6 +234,7 @@ constexpr const char* kGradientProps[] = {
     "--nw-gradient-from",          "--nw-gradient-via",
     "--nw-gradient-to",            "--nw-gradient-from-position",
     "--nw-gradient-via-position",  "--nw-gradient-to-position",
+    "--nw-gradient-stops-json",    "--nw-gradient-interpolation",
 };
 
 double clamp01(double value) {
@@ -259,6 +260,98 @@ std::string normalizeKeywordString(const std::string& raw) {
   return out;
 }
 
+std::vector<std::string> splitTopLevelCommas(const std::string& value) {
+  std::vector<std::string> parts;
+  int depth = 0;
+  char quote = 0;
+  size_t start = 0;
+  auto trim = [](std::string part) {
+    const size_t first = part.find_first_not_of(" \t\n\r");
+    if (first == std::string::npos) return std::string();
+    const size_t last = part.find_last_not_of(" \t\n\r");
+    return part.substr(first, last - first + 1);
+  };
+  for (size_t index = 0; index < value.size(); index++) {
+    const char ch = value[index];
+    if (quote != 0) {
+      if (ch == quote && (index == 0 || value[index - 1] != '\\')) quote = 0;
+      continue;
+    }
+    if (ch == '\'' || ch == '"') quote = ch;
+    else if (ch == '(') depth++;
+    else if (ch == ')') depth = std::max(0, depth - 1);
+    else if (ch == ',' && depth == 0) {
+      parts.push_back(trim(value.substr(start, index - start)));
+      start = index + 1;
+    }
+  }
+  parts.push_back(trim(value.substr(start)));
+  return parts;
+}
+
+struct LiteralGradient {
+  std::string type;
+  std::string position;
+  std::string interpolation;
+  folly::dynamic stops = folly::dynamic::array;
+};
+
+bool parseCssAngle(const std::string& raw, double& out);
+
+bool parseLiteralGradient(const std::string& raw, LiteralGradient& out) {
+  static const std::regex wrapper(
+      R"(^\s*(linear|radial|conic)-gradient\(([\s\S]*)\)\s*$)",
+      std::regex::icase);
+  std::smatch match;
+  if (!std::regex_match(raw, match, wrapper)) return false;
+  out.type = normalizeKeywordString(match[1].str());
+  auto args = splitTopLevelCommas(match[2].str());
+  if (args.size() < 2) return false;
+
+  std::string first = args.front();
+  static const std::regex interpolationPattern(
+      R"(\bin\s+(oklab|oklch|srgb(?:-linear)?|lab|lch|hsl|hwb|xyz(?:-d50|-d65)?)\b)",
+      std::regex::icase);
+  std::smatch interpolationMatch;
+  if (std::regex_search(first, interpolationMatch, interpolationPattern)) {
+    out.interpolation = normalizeKeywordString(interpolationMatch[1].str());
+    first = std::regex_replace(first, interpolationPattern, "");
+    first = normalizeKeywordString(first);
+  }
+
+  double parsedAngle = 0.0;
+  const bool firstIsGeometry = out.type == "linear"
+      ? first.rfind("to ", 0) == 0 || parseCssAngle(first, parsedAngle) ||
+          normalizeKeywordString(args.front()).rfind("in ", 0) == 0
+      : out.type == "conic"
+          ? first.rfind("from ", 0) == 0 || first.rfind("at ", 0) == 0 ||
+              normalizeKeywordString(args.front()).rfind("in ", 0) == 0
+          : !css::parseColor(first).has_value();
+  size_t stopStart = 0;
+  if (firstIsGeometry) {
+    out.position = first;
+    stopStart = 1;
+  }
+
+  static const std::regex stopWithPosition(
+      R"(^(.*\S)\s+(-?\d*\.?\d+%?)$)");
+  for (size_t index = stopStart; index < args.size(); index++) {
+    std::string color = args[index];
+    std::string position;
+    std::smatch stopMatch;
+    if (std::regex_match(color, stopMatch, stopWithPosition)) {
+      color = stopMatch[1].str();
+      position = stopMatch[2].str();
+    }
+    auto parsedColor = css::parseColor(color);
+    if (!parsedColor) return false;
+    folly::dynamic stop = folly::dynamic::object("c", css::toHexString(*parsedColor));
+    if (!position.empty()) stop["p"] = position;
+    out.stops.push_back(std::move(stop));
+  }
+  return out.stops.size() >= 2;
+}
+
 /**
  * `"40%"` → `0.4`; bare numbers pass through (`"0.4"` → `0.4`). Mirrors the JS
  * `parseStopLocation` in `src/compiler/parsers/gradient.ts` byte-for-byte.
@@ -272,6 +365,65 @@ double parseStopLocation(const std::string& raw, double fallback) {
   const double num = std::strtod(trimmed.c_str(), &end);
   if (end == trimmed.c_str()) return fallback;
   return clamp01(isPercent ? num / 100.0 : num);
+}
+
+/** CSS angle parser mirrored by `parseCssAngle` in gradient.ts. */
+bool parseCssAngle(const std::string& raw, double& out) {
+  std::string value;
+  value.reserve(raw.size());
+  for (char ch : normalizeKeywordString(raw)) {
+    if (!std::isspace(static_cast<unsigned char>(ch))) value.push_back(ch);
+  }
+  if (value.empty()) return false;
+
+  if (value.size() > 6 && value.rfind("calc(", 0) == 0 && value.back() == ')') {
+    const std::string expression = value.substr(5, value.size() - 6);
+    const size_t multiply = expression.rfind('*');
+    const size_t divide = expression.rfind('/');
+    if (multiply != std::string::npos || divide != std::string::npos) {
+      const bool isMultiply = multiply != std::string::npos;
+      const size_t op = isMultiply ? multiply : divide;
+      double angle = 0.0;
+      if (!parseCssAngle(expression.substr(0, op), angle)) return false;
+      const std::string scalarRaw = expression.substr(op + 1);
+      char* end = nullptr;
+      const double scalar = std::strtod(scalarRaw.c_str(), &end);
+      if (end == scalarRaw.c_str() || *end != '\0' || (!isMultiply && scalar == 0.0)) {
+        return false;
+      }
+      out = isMultiply ? angle * scalar : angle / scalar;
+      return true;
+    }
+    return parseCssAngle(expression, out);
+  }
+
+  double multiplier = 1.0;
+  size_t unitLength = 0;
+  if (value.size() >= 4 && value.compare(value.size() - 4, 4, "turn") == 0) {
+    multiplier = 360.0;
+    unitLength = 4;
+  } else if (value.size() >= 4 && value.compare(value.size() - 4, 4, "grad") == 0) {
+    multiplier = 0.9;
+    unitLength = 4;
+  } else if (value.size() >= 3 && value.compare(value.size() - 3, 3, "rad") == 0) {
+    multiplier = 180.0 / std::acos(-1.0);
+    unitLength = 3;
+  } else if (value.size() >= 3 && value.compare(value.size() - 3, 3, "deg") == 0) {
+    unitLength = 3;
+  }
+  const std::string numeric = value.substr(0, value.size() - unitLength);
+  char* end = nullptr;
+  const double number = std::strtod(numeric.c_str(), &end);
+  if (end == numeric.c_str() || *end != '\0') return false;
+  out = number * multiplier;
+  return true;
+}
+
+double normalizeAngle(const std::string& raw, double fallback) {
+  double parsed = 0.0;
+  if (!parseCssAngle(raw, parsed) || !std::isfinite(parsed)) return fallback;
+  double angle = std::fmod(parsed, 360.0);
+  return angle < 0.0 ? angle + 360.0 : angle;
 }
 
 /**
@@ -290,17 +442,7 @@ double angleFromPosition(const std::string& position) {
   if (normalized == "to bottom left" || normalized == "to left bottom") return 225.0;
   if (normalized == "to left") return 270.0;
   if (normalized == "to top left" || normalized == "to left top") return 315.0;
-  // `45deg` / bare number, mirroring JS `/^(-?\d*\.?\d+)(deg)?$/`.
-  std::string numeric = normalized;
-  if (numeric.size() > 3 && numeric.compare(numeric.size() - 3, 3, "deg") == 0) {
-    numeric = numeric.substr(0, numeric.size() - 3);
-  }
-  char* end = nullptr;
-  const double num = std::strtod(numeric.c_str(), &end);
-  if (end == nullptr || *end != '\0' || end == numeric.c_str()) return 180.0;
-  double angle = std::fmod(num, 360.0);
-  if (angle < 0.0) angle += 360.0;
-  return angle;
+  return normalizeAngle(normalized, 180.0);
 }
 
 /**
@@ -343,6 +485,111 @@ void radialCenterFromPosition(const std::string& position,
   }
 }
 
+/** CONIC `from <angle> at <position>` geometry. Mirrors the JS helper. */
+double conicAngleFromPosition(const std::string& position) {
+  if (position.empty()) return 0.0;
+  const std::string normalized = normalizeKeywordString(position);
+  static const std::regex pattern(
+      R"((?:^|\s)from\s+(.+?)(?=\s+at(?:\s|$)|$))",
+      std::regex::icase);
+  std::smatch match;
+  if (!std::regex_search(normalized, match, pattern)) return 0.0;
+  return normalizeAngle(match[1].str(), 0.0);
+}
+
+struct OklabColor {
+  double l;
+  double a;
+  double b;
+  double alpha;
+};
+
+double srgbToLinear(double value) {
+  return value <= 0.04045
+      ? value / 12.92
+      : std::pow((value + 0.055) / 1.055, 2.4);
+}
+
+double linearToSrgb(double value) {
+  return value <= 0.0031308
+      ? value * 12.92
+      : 1.055 * std::pow(value, 1.0 / 2.4) - 0.055;
+}
+
+OklabColor rgbaToOklab(const css::Rgba& color) {
+  const double r = srgbToLinear(color.r / 255.0);
+  const double g = srgbToLinear(color.g / 255.0);
+  const double b = srgbToLinear(color.b / 255.0);
+  const double l = std::cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const double m = std::cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const double s = std::cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return {
+      0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+      1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+      0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+      color.a / 255.0,
+  };
+}
+
+uint8_t byteFromUnit(double value) {
+  value = std::max(0.0, std::min(1.0, value));
+  return static_cast<uint8_t>(std::round(value * 255.0));
+}
+
+css::Rgba oklabToRgba(const OklabColor& color) {
+  const double l_ = color.l + 0.3963377774 * color.a + 0.2158037573 * color.b;
+  const double m_ = color.l - 0.1055613458 * color.a - 0.0638541728 * color.b;
+  const double s_ = color.l - 0.0894841775 * color.a - 1.2914855480 * color.b;
+  const double l = l_ * l_ * l_;
+  const double m = m_ * m_ * m_;
+  const double s = s_ * s_ * s_;
+  return {
+      byteFromUnit(linearToSrgb(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s)),
+      byteFromUnit(linearToSrgb(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s)),
+      byteFromUnit(linearToSrgb(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)),
+      byteFromUnit(color.alpha),
+  };
+}
+
+/** Expand OKLab intervals into painter-ready native RGB stops. */
+void sampleOklabStops(folly::dynamic& colors, folly::dynamic& locations) {
+  if (!colors.isArray() || !locations.isArray() || colors.size() < 2 ||
+      colors.size() != locations.size()) {
+    return;
+  }
+  folly::dynamic sampledColors = folly::dynamic::array;
+  folly::dynamic sampledLocations = folly::dynamic::array;
+  constexpr int subdivisions = 8;
+  for (size_t index = 0; index + 1 < colors.size(); index++) {
+    if (!colors[index].isString() || !colors[index + 1].isString() ||
+        !locations[index].isNumber() || !locations[index + 1].isNumber()) {
+      return;
+    }
+    auto fromRgba = css::parseColor(colors[index].getString());
+    auto toRgba = css::parseColor(colors[index + 1].getString());
+    if (!fromRgba || !toRgba) return;
+    const OklabColor from = rgbaToOklab(*fromRgba);
+    const OklabColor to = rgbaToOklab(*toRgba);
+    const double fromLocation = locations[index].asDouble();
+    const double toLocation = locations[index + 1].asDouble();
+    for (int step = 0; step < subdivisions; step++) {
+      const double t = static_cast<double>(step) / subdivisions;
+      const OklabColor mixed = {
+          from.l + (to.l - from.l) * t,
+          from.a + (to.a - from.a) * t,
+          from.b + (to.b - from.b) * t,
+          from.alpha + (to.alpha - from.alpha) * t,
+      };
+      sampledColors.push_back(css::toHexString(oklabToRgba(mixed)));
+      sampledLocations.push_back(fromLocation + (toLocation - fromLocation) * t);
+    }
+  }
+  sampledColors.push_back(colors[colors.size() - 1]);
+  sampledLocations.push_back(locations[locations.size() - 1]);
+  colors = std::move(sampledColors);
+  locations = std::move(sampledLocations);
+}
+
 /**
  * Assemble the merged `--nw-gradient-*` marker props into the compact numeric
  * gradient descriptor under `--nitrocss-gradient` and erase the markers.
@@ -359,18 +606,54 @@ void foldGradient(folly::dynamic& style) {
     auto* v = style.get_ptr(key);
     return (v != nullptr && v->isString()) ? v->getString() : std::string();
   };
-  const std::string type = get("--nw-gradient-type");
-  const std::string position = get("--nw-gradient-position");
+  std::string type = get("--nw-gradient-type");
+  std::string position = get("--nw-gradient-position");
   const std::string from = get("--nw-gradient-from");
   const std::string via = get("--nw-gradient-via");
   const std::string to = get("--nw-gradient-to");
   const std::string fromPos = get("--nw-gradient-from-position");
   const std::string viaPos = get("--nw-gradient-via-position");
   const std::string toPos = get("--nw-gradient-to-position");
+  const std::string literalStopsJson = get("--nw-gradient-stops-json");
+  std::string interpolation = get("--nw-gradient-interpolation");
+  const std::string rawBackground = get("--nw-background-image-raw");
+
+  folly::dynamic literalStops = nullptr;
+  if (!rawBackground.empty()) {
+    LiteralGradient rawLiteral;
+    if (parseLiteralGradient(rawBackground, rawLiteral)) {
+      type = rawLiteral.type;
+      position = rawLiteral.position;
+      interpolation = rawLiteral.interpolation;
+      literalStops = std::move(rawLiteral.stops);
+    }
+  }
+  if (literalStopsJson.empty() && !literalStops.isArray() &&
+      (type == "linear" || type == "radial" || type == "conic") &&
+      position.find(',') != std::string::npos) {
+    LiteralGradient positionLiteral;
+    if (parseLiteralGradient(
+            type + "-gradient(" + position + ")", positionLiteral)) {
+      position = positionLiteral.position;
+      if (!positionLiteral.interpolation.empty()) {
+        interpolation = positionLiteral.interpolation;
+      }
+      literalStops = std::move(positionLiteral.stops);
+    }
+  }
 
   for (const char* key : kGradientProps) style.erase(key);
 
-  if (type != "linear" && type != "radial") return;
+  if (type != "linear" && type != "radial" && type != "conic") return;
+
+  if (!literalStops.isArray() && !literalStopsJson.empty()) {
+    try {
+      auto parsed = folly::parseJson(literalStopsJson);
+      if (parsed.isArray() && parsed.size() >= 2) literalStops = std::move(parsed);
+    } catch (const std::exception&) {
+      // Invalid arbitrary values fail closed and fall back to utility stops.
+    }
+  }
 
   folly::dynamic colors = folly::dynamic::array;
   folly::dynamic locations = folly::dynamic::array;
@@ -382,23 +665,193 @@ void foldGradient(folly::dynamic& style) {
     colors.push_back(color);
     locations.push_back(location);
   };
-  push(from.empty() ? "transparent" : from, parseStopLocation(fromPos, 0.0));
-  if (!via.empty()) push(via, parseStopLocation(viaPos, 0.5));
-  push(to.empty() ? "transparent" : to, parseStopLocation(toPos, 1.0));
+  auto lowerStopColor = [](const std::string& value) {
+    if (css::looksLikeColorFunction(value)) {
+      if (auto hex = css::parseColorToHex(value)) return *hex;
+    }
+    return value;
+  };
+  if (literalStops.isArray()) {
+    const size_t count = literalStops.size();
+    for (size_t index = 0; index < count; index++) {
+      const auto& entry = literalStops[index];
+      if (!entry.isObject()) continue;
+      auto* color = entry.get_ptr("c");
+      if (color == nullptr || !color->isString()) continue;
+      auto* positionValue = entry.get_ptr("p");
+      const std::string stopPosition =
+          positionValue != nullptr && positionValue->isString()
+          ? positionValue->getString()
+          : std::string();
+      const double fallback = count <= 1
+          ? 0.0
+          : static_cast<double>(index) / static_cast<double>(count - 1);
+      push(lowerStopColor(color->getString()),
+           parseStopLocation(stopPosition, fallback));
+    }
+  } else {
+    push(from.empty() ? "transparent" : from, parseStopLocation(fromPos, 0.0));
+    if (!via.empty()) push(via, parseStopLocation(viaPos, 0.5));
+    push(to.empty() ? "transparent" : to, parseStopLocation(toPos, 1.0));
+  }
+  if (interpolation == "oklab") sampleOklabStops(colors, locations);
 
   const bool isRadial = type == "radial";
+  const bool isConic = type == "conic";
   double centerX = 0.5;
   double centerY = 0.5;
-  if (isRadial) radialCenterFromPosition(position, centerX, centerY);
+  if (isRadial || isConic) {
+    radialCenterFromPosition(position, centerX, centerY);
+  }
 
   folly::dynamic descriptor = folly::dynamic::object();
   descriptor["gradientType"] = type;
-  descriptor["angle"] = isRadial ? 0.0 : angleFromPosition(position);
+  descriptor["angle"] = isRadial
+      ? 0.0
+      : isConic ? conicAngleFromPosition(position)
+                : angleFromPosition(position);
   descriptor["positionX"] = centerX;
   descriptor["positionY"] = centerY;
   descriptor["colors"] = std::move(colors);
   descriptor["locations"] = std::move(locations);
+  if (!interpolation.empty()) descriptor["interpolation"] = interpolation;
+  if (isRadial) {
+    const std::string normalized = normalizeKeywordString(position);
+    const bool circle = std::regex_search(
+        normalized, std::regex(R"((?:^|\s)circle(?:\s|$))"));
+    descriptor["radialShape"] = circle ? "circle" : "ellipse";
+    std::string extent = "farthest-corner";
+    for (const char* candidate : {
+             "closest-side", "farthest-side",
+             "closest-corner", "farthest-corner"}) {
+      if (normalized.find(candidate) != std::string::npos) {
+        extent = candidate;
+        break;
+      }
+    }
+    descriptor["radialExtent"] = extent;
+  }
   style["--nitrocss-gradient"] = std::move(descriptor);
+}
+
+void foldBackgroundImage(folly::dynamic& style) {
+  if (!style.isObject()) return;
+  auto get = [&](const char* key) -> std::string {
+    auto* value = style.get_ptr(key);
+    return value != nullptr && value->isString()
+        ? value->getString()
+        : std::string();
+  };
+  const std::string raw = get("--nw-background-image-raw");
+  const std::string size = get("--nw-background-image-size");
+  const std::string repeat = get("--nw-background-image-repeat");
+  const std::string position = get("--nw-background-image-position");
+  style.erase("--nw-background-image-raw");
+  style.erase("--nw-background-image-size");
+  style.erase("--nw-background-image-repeat");
+  style.erase("--nw-background-image-position");
+  if (raw.empty()) return;
+
+  static const std::regex urlPattern(
+      R"(^\s*url\(\s*(['"]?)([^'")]*)\1\s*\)\s*$)",
+      std::regex::icase);
+  std::smatch match;
+  if (!std::regex_match(raw, match, urlPattern)) return;
+
+  auto axis = [](const std::string& token, double fallback) {
+    if (token == "left" || token == "top") return 0.0;
+    if (token == "right" || token == "bottom") return 1.0;
+    if (token == "center") return 0.5;
+    if (!token.empty() && token.back() == '%') {
+      char* end = nullptr;
+      const double value = std::strtod(token.c_str(), &end);
+      if (end != token.c_str()) return clamp01(value / 100.0);
+    }
+    return fallback;
+  };
+  std::istringstream positionStream(normalizeKeywordString(position));
+  std::string xToken;
+  std::string yToken;
+  positionStream >> xToken >> yToken;
+
+  folly::dynamic descriptor = folly::dynamic::object();
+  descriptor["url"] = match[2].str();
+  descriptor["size"] =
+      size == "cover" || size == "contain" || size == "stretch"
+      ? size
+      : "auto";
+  descriptor["repeat"] =
+      repeat == "repeat" || repeat == "repeat-x" || repeat == "repeat-y"
+      ? repeat
+      : "no-repeat";
+  descriptor["positionX"] = axis(xToken, 0.5);
+  descriptor["positionY"] = axis(yToken, 0.5);
+  style["--nitrocss-background-image"] = std::move(descriptor);
+}
+
+void foldMask(folly::dynamic& style) {
+  if (!style.isObject()) return;
+  auto* source = style.get_ptr("--nw-mask-source");
+  folly::dynamic sourceCopy =
+      source != nullptr && source->isObject() ? *source : folly::dynamic(nullptr);
+  auto get = [&](const char* key) -> std::string {
+    auto* value = style.get_ptr(key);
+    return value != nullptr && value->isString() ? value->getString() : std::string();
+  };
+  const std::string mode = get("--nw-mask-mode");
+  const std::string size = get("--nw-mask-size");
+  const std::string repeat = get("--nw-mask-repeat");
+  const std::string position = normalizeKeywordString(get("--nw-mask-position"));
+  style.erase("--nw-mask-source");
+  style.erase("--nw-mask-mode");
+  style.erase("--nw-mask-size");
+  style.erase("--nw-mask-repeat");
+  style.erase("--nw-mask-position");
+  if (!sourceCopy.isObject()) return;
+
+  double x = 0.0;
+  double y = 0.0;
+  std::vector<std::string> positionTokens;
+  std::istringstream tokens(position);
+  std::string token;
+  int freeAxis = 0;
+  while (tokens >> token) {
+    positionTokens.push_back(token);
+    if (token == "left") x = 0.0;
+    else if (token == "right") x = 1.0;
+    else if (token == "top") y = 0.0;
+    else if (token == "bottom") y = 1.0;
+    else if (token == "center") {
+      if (freeAxis++ == 0) x = 0.5;
+      else y = 0.5;
+    } else if (!token.empty() && token.back() == '%') {
+      char* end = nullptr;
+      const double value = std::strtod(token.c_str(), &end);
+      if (end != token.c_str()) {
+        if (freeAxis++ == 0) x = clamp01(value / 100.0);
+        else y = clamp01(value / 100.0);
+      }
+    }
+  }
+  if (positionTokens.size() == 1) {
+    const auto& only = positionTokens.front();
+    if (only == "center") x = y = 0.5;
+    else if (only == "left" || only == "right") y = 0.5;
+    else if (only == "top" || only == "bottom") x = 0.5;
+    else y = 0.5;
+  }
+  folly::dynamic descriptor = folly::dynamic::object();
+  descriptor["source"] = std::move(sourceCopy);
+  descriptor["mode"] = mode == "alpha" || mode == "luminance" ? mode : "match-source";
+  descriptor["size"] = size == "cover" || size == "contain"
+      ? size
+      : size == "100% 100%" ? "stretch" : "auto";
+  descriptor["repeat"] = repeat == "repeat" || repeat == "repeat-x" || repeat == "repeat-y"
+      ? repeat
+      : "no-repeat";
+  descriptor["positionX"] = x;
+  descriptor["positionY"] = y;
+  style["--nitrocss-mask"] = std::move(descriptor);
 }
 
 /** Parse a compiled `container` descriptor (`{ axis, op, value, name? }`). */
@@ -441,6 +894,9 @@ void NitroCssEngine::setCompiledStyles(const std::string& json) {
         if (entry.second.isArray()) {
           for (const auto& raw : entry.second) {
             CompiledBucket bucket;
+            if (auto* order = raw.get_ptr("order"); order && order->isInt()) {
+              bucket.order = static_cast<uint64_t>(order->getInt());
+            }
             if (auto* style = raw.get_ptr("style")) bucket.style = *style;
             if (auto* deps = raw.get_ptr("dependencies"); deps && deps->isInt()) {
               bucket.dependencies = static_cast<uint32_t>(deps->getInt());
@@ -450,6 +906,19 @@ void NitroCssEngine::setCompiledStyles(const std::string& json) {
             }
             if (auto* platform = raw.get_ptr("platform"); platform && platform->isString()) {
               bucket.platform = platform->getString();
+            }
+            if (auto* media = raw.get_ptr("media"); media && media->isObject()) {
+              if (auto* minWidth = media->get_ptr("minWidth"); minWidth && minWidth->isNumber()) {
+                bucket.hasMinWidth = true;
+                bucket.minWidth = minWidth->asDouble();
+              }
+              if (auto* maxWidth = media->get_ptr("maxWidth"); maxWidth && maxWidth->isNumber()) {
+                bucket.hasMaxWidth = true;
+                bucket.maxWidth = maxWidth->asDouble();
+              }
+              if (auto* orientation = media->get_ptr("orientation"); orientation && orientation->isString()) {
+                bucket.mediaOrientation = orientation->getString() == "landscape" ? 1 : 0;
+              }
             }
             if (auto* container = raw.get_ptr("container");
                 container && container->isObject()) {
@@ -597,6 +1066,8 @@ bool NitroCssEngine::platformApplies(const std::string& platform) {
   if (platform.empty()) return true;
 #if defined(__ANDROID__)
   constexpr const char* kOS = "android";
+#elif defined(__APPLE__) && TARGET_OS_TV
+  constexpr const char* kOS = "tvos";
 #elif defined(__APPLE__) && TARGET_OS_OSX
   constexpr const char* kOS = "macos";
 #elif defined(__APPLE__)
@@ -608,6 +1079,16 @@ bool NitroCssEngine::platformApplies(const std::string& platform) {
   if (platform == "web") return false;
   if (platform == "native") return true;
   return platform == kOS;
+}
+
+bool NitroCssEngine::mediaApplies(const CompiledBucket& bucket,
+                                  const ResolveContext& ctx) {
+  if (bucket.hasMinWidth && ctx.screenWidth < bucket.minWidth) return false;
+  if (bucket.hasMaxWidth && ctx.screenWidth > bucket.maxWidth) return false;
+  if (bucket.mediaOrientation >= 0 && ctx.orientation != bucket.mediaOrientation) {
+    return false;
+  }
+  return true;
 }
 
 bool NitroCssEngine::containerMatches(const ContainerCondition& condition,
@@ -674,12 +1155,22 @@ folly::dynamic NitroCssEngine::resolve(const std::string& className,
 
   const folly::dynamic vars = effectiveVars(ctx);
 
+  std::vector<const CompiledBucket*> orderedBuckets;
   for (const auto& token : tokens) {
     auto it = classes_.find(token);
     if (it == classes_.end()) continue;
+    for (const auto& bucket : it->second) orderedBuckets.push_back(&bucket);
+  }
+  std::stable_sort(
+      orderedBuckets.begin(), orderedBuckets.end(),
+      [](const CompiledBucket* a, const CompiledBucket* b) {
+        return a->order < b->order;
+      });
 
-    for (const auto& bucket : it->second) {
+  for (const CompiledBucket* bucketPtr : orderedBuckets) {
+      const auto& bucket = *bucketPtr;
       if (!platformApplies(bucket.platform)) continue;
+      if (!mediaApplies(bucket, ctx)) continue;
       outMask |= bucket.dependencies;
       if (!variantApplies(bucket.variant, ctx)) continue;
       if (bucket.container.present && !containerMatches(bucket.container, ctx)) {
@@ -712,11 +1203,12 @@ folly::dynamic NitroCssEngine::resolve(const std::string& className,
         }
         style[pair.first] = value;
       }
-    }
   }
 
   foldTransform(style);
   foldGradient(style);
+  foldBackgroundImage(style);
+  foldMask(style);
   normalizeShadow(style);
   // `backdrop-filter` compiles to this marker (src/compiler/parsers/filter.ts)
   // so it never pollutes RN's `filter` prop. The JS side consumes it: `View`

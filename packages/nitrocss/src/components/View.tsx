@@ -18,11 +18,16 @@ import {
   BACKGROUND_IMAGE_PROP,
   CLIP_PATH_PROP,
   GRADIENT_ANGLE_PROP,
+  MASK_TRANSFORM_PROP,
 } from "../core/normalize";
 import {
   startGradientAngleDriver,
   type GradientAngleTrack,
 } from "../core/gradientAngle";
+import {
+  startMaskTransformDriver,
+  type MaskTransformTrack,
+} from "../core/maskTransform";
 import type { ReanimatedAnimation } from "../core/reanimated";
 import { getAnimatedView } from "./animated";
 import {
@@ -31,10 +36,12 @@ import {
   backdropBlurRadius,
 } from "./backdrop";
 import { GRADIENT_DESCRIPTOR_PROP } from "../compiler/parsers/gradient";
+import { MASK_DESCRIPTOR_PROP } from "../compiler/parsers/mask";
 import { ContainerProvider, useContainer } from "./containerContext";
 import { serializeGridConfig, useGridFallback } from "./grid";
 import { assignRef, useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
+import { useAccessibilityClassName } from "../accessibility/native";
 
 export interface NitroCssViewProps extends ViewProps, PseudoStateProp {
   /** Class names resolved by the nitrocss engine. */
@@ -57,7 +64,7 @@ interface AnimationIdentity {
  */
 export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   {
-    className = "",
+    className: requestedClassName = "",
     style,
     onLayout,
     children,
@@ -66,6 +73,7 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   },
   forwardedRef,
 ) {
+  const className = useAccessibilityClassName(requestedClassName);
   const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
@@ -124,15 +132,24 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
     : ((resolved.styles as Record<string, unknown>)[GRADIENT_ANGLE_PROP] as
         | GradientAngleTrack
         | undefined);
+  const maskTransformTrack = isWeb
+    ? undefined
+    : ((resolved.styles as Record<string, unknown>)[MASK_TRANSFORM_PROP] as
+        | MaskTransformTrack
+        | undefined);
   const composedRef = useMemo(() => {
     // A plain provider-managed View has no native registration and no caller
     // ref, so passing a ref callback would be pure mount/unmount overhead.
-    if (!ref && gradientAngleTrack === undefined) return undefined;
+    if (
+      !ref &&
+      gradientAngleTrack === undefined &&
+      maskTransformTrack === undefined
+    ) return undefined;
     return (node: RNViewType | null) => {
       nodeRef.current = node;
       assignRef(ref, node);
     };
-  }, [ref, gradientAngleTrack]);
+  }, [ref, gradientAngleTrack, maskTransformTrack]);
   // These extra visual-effect markers (clip-path/background-image) are already
   // routed by normalize (→ real CSS on web, deleted on native). Belt-and-braces:
   // strip the MARKER names here too so RN never warns on an unknown prop. On web
@@ -141,7 +158,9 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   const hasNewEffectMarker =
     !isWeb &&
     (gradientAngleTrack !== undefined ||
+      maskTransformTrack !== undefined ||
       CLIP_PATH_PROP in (resolved.styles as object) ||
+      MASK_DESCRIPTOR_PROP in (resolved.styles as object) ||
       BACKGROUND_IMAGE_PROP in (resolved.styles as object));
   const { viewStyles, layerBorderRadius, backdropRadius } = useMemo(() => {
     if (!hasGradient && backdropFilter === undefined && !hasNewEffectMarker) {
@@ -155,7 +174,9 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
       [GRADIENT_DESCRIPTOR_PROP]: _descriptor,
       [BACKDROP_FILTER_PROP]: _backdrop,
       [GRADIENT_ANGLE_PROP]: _angle,
+      [MASK_TRANSFORM_PROP]: _maskTransform,
       [CLIP_PATH_PROP]: _clipPath,
+      [MASK_DESCRIPTOR_PROP]: _mask,
       [BACKGROUND_IMAGE_PROP]: _bgImage,
       ...restStyles
     } = resolved.styles as Record<string, unknown>;
@@ -267,6 +288,27 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWeb, angleKey]);
 
+  // Mask geometry animation (native only). This updates the platform mask
+  // layer's affine transform; the host view and its background photo remain
+  // fixed in place.
+  const maskTrackRef = useRef<MaskTransformTrack | undefined>(undefined);
+  maskTrackRef.current = maskTransformTrack;
+  const maskTrackKey =
+    maskTransformTrack === undefined
+      ? ""
+      : __nitrocssPseudoState
+        ? `${className}|${JSON.stringify(__nitrocssPseudoState)}`
+        : className;
+  useEffect(() => {
+    if (isWeb || !maskTrackKey) return;
+    const track = maskTrackRef.current;
+    if (!track) return;
+    const tag = findNodeHandle(nodeRef.current);
+    if (typeof tag !== "number") return;
+    return startMaskTransformDriver(tag, track);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWeb, maskTrackKey]);
+
   const webProps: Record<string, unknown> =
     isWeb && className ? { className } : {};
 
@@ -278,7 +320,7 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
     !isWeb &&
     (hasGradient ||
       backdropFilter !== undefined ||
-      gradientAngleTrack !== undefined);
+      hasNewEffectMarker);
 
   const node = (
     <Base

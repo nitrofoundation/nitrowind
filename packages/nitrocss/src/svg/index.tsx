@@ -64,6 +64,10 @@ type SvgHostProps = { style?: StyleProp<unknown>; [prop: string]: unknown };
  */
 export const SVG_CSS_INTEROP_MAPPING: WithNitroCssAdvancedOptions<SvgHostProps> =
   {
+    // react-native-svg converts CSS color strings into its custom paint arrays
+    // in JS. A direct Fabric prop commit bypasses that conversion and crashes
+    // Android's RenderableView when it receives an incomplete paint array.
+    nativePropMapping: false,
     props: Object.fromEntries(
       SVG_PAINT_PROPS.map((prop) => [
         prop,

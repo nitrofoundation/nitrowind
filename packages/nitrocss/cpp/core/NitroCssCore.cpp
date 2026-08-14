@@ -4,8 +4,11 @@
 #include "../clippath/ClipPathTargets.hpp"
 #include "../fabric/LayoutObserver.hpp"
 #include "../fabric/ShadowTreeMutator.hpp"
+#include "../fabric/CommitBatcher.hpp"
 #include "../gradient/GradientAngleOverrides.hpp"
+#include "../mask/MaskTransformOverrides.hpp"
 #include "../gradient/GradientTargets.hpp"
+#include "../mask/MaskTargets.hpp"
 #include "../grid/GridLayoutEngine.hpp"
 
 #include <cstdint>
@@ -137,8 +140,37 @@ void processFilterColors(folly::dynamic& value) {
   }
 }
 
+void foldFilterDescriptor(folly::dynamic& style) {
+  auto* descriptor = style.get_ptr("--nitrocss-filter");
+  if (descriptor == nullptr) return;
+  folly::dynamic filters = folly::dynamic::array();
+  static constexpr const char* names[] = {
+      "blur", "brightness", "contrast", "grayscale", "hueRotate",
+      "invert", "opacity", "saturate", "sepia"};
+  if (descriptor->isArray()) {
+    for (const auto& entry : *descriptor) {
+      if (!entry.isArray() || entry.size() < 2 || !entry[0].isInt()) continue;
+      const auto opcode = entry[0].getInt();
+      if (opcode >= 0 && opcode <= 8 && entry[1].isNumber()) {
+        filters.push_back(folly::dynamic::object(names[opcode], entry[1]));
+      } else if (opcode == 9 && entry.size() >= 5) {
+        filters.push_back(folly::dynamic::object(
+            "dropShadow",
+            folly::dynamic::object
+                ("offsetX", entry[1])
+                ("offsetY", entry[2])
+                ("standardDeviation", entry[3])
+                ("color", entry[4])));
+      }
+    }
+  }
+  style.erase("--nitrocss-filter");
+  if (!filters.empty()) style["filter"] = std::move(filters);
+}
+
 void processColorProps(folly::dynamic& style) {
   if (!style.isObject()) return;
+  foldFilterDescriptor(style);
   std::vector<folly::dynamic> unsupportedColorKeys;
   for (const auto& pair : style.items()) {
     if (pair.first.isString() && pair.first.getString() == "filter") {
@@ -177,6 +209,8 @@ grid::Track parseGridTrack(const folly::dynamic& value, const grid::Track& fallb
     if (t == "fr") track.type = grid::TrackType::Fr;
     else if (t == "px") track.type = grid::TrackType::Px;
     else if (t == "auto") track.type = grid::TrackType::Auto;
+    else if (t == "min-content") track.type = grid::TrackType::MinContent;
+    else if (t == "max-content") track.type = grid::TrackType::MaxContent;
   }
   if (auto* v = value.get_ptr("value"); v != nullptr) {
     track.value = numberOr(*v, track.value);
@@ -214,6 +248,13 @@ grid::GridConfig parseGridConfig(const folly::dynamic& value) {
   }
   if (auto* autoRow = value.get_ptr("autoRow"); autoRow != nullptr) {
     config.autoRow = parseGridTrack(*autoRow, config.autoRow);
+  }
+  if (auto* dense = value.get_ptr("dense"); dense != nullptr && dense->isBool()) {
+    config.dense = dense->getBool();
+  }
+  if (auto* masonry = value.get_ptr("masonry");
+      masonry != nullptr && masonry->isBool()) {
+    config.masonry = masonry->getBool();
   }
   if (auto* columnGap = value.get_ptr("columnGap"); columnGap != nullptr) {
     config.columnGap = numberOr(*columnGap, 0.0);
@@ -318,6 +359,7 @@ void NitroCssCore::link(Tag tag,
   // if it is itself an animated gradient, its JS driver re-sets the override
   // right after mount (useEffect runs post-link).
   GradientAngleOverrides::shared().clearAngle(tag);
+  MaskTransformOverrides::shared().clearTransform(tag);
 
   LinkedNode node;
   node.tag = tag;
@@ -413,7 +455,7 @@ void NitroCssCore::link(Tag tag,
   if (node.accents.empty()) {
     (void)resolveForNode(node, initialContext);
   } else {
-    commitResolvedNode(node, initialContext);
+    commitResolvedNode(node, initialContext, true);
   }
 }
 
@@ -422,7 +464,9 @@ void NitroCssCore::unlink(Tag tag) {
   GradientTargets::shared().clearDescriptor(tag);
   ClipPathTargets::shared().clearDescriptor(tag);
   BackgroundImageTargets::shared().clearDescriptor(tag);
+  MaskTargets::shared().clearDescriptor(tag);
   GradientAngleOverrides::shared().clearAngle(tag);
+  MaskTransformOverrides::shared().clearTransform(tag);
   {
     std::lock_guard<std::mutex> lock(containerMutex_);
     auto it = containerTags_.find(tag);
@@ -622,6 +666,8 @@ void NitroCssCore::syncGrids(const std::vector<GridMeasurement>& measurements,
     input.columns = config.columns;
     input.rows = config.rows;
     input.autoRow = config.autoRow;
+    input.dense = config.dense;
+    input.masonry = config.masonry;
     input.columnGap = config.columnGap;
     input.rowGap = config.rowGap;
     input.items = config.items;
@@ -629,6 +675,14 @@ void NitroCssCore::syncGrids(const std::vector<GridMeasurement>& measurements,
     // out more items than there are children to receive them.
     if (input.items.size() > m.childFamilies.size()) {
       input.items.resize(m.childFamilies.size());
+    }
+    for (std::size_t i = 0; i < input.items.size(); ++i) {
+      if (i < m.childWidths.size()) {
+        input.items[i].intrinsicWidth = m.childWidths[i];
+      }
+      if (i < m.childHeights.size()) {
+        input.items[i].intrinsicHeight = m.childHeights[i];
+      }
     }
 
     const auto output = grid::GridLayoutEngine::layout(input);
@@ -657,7 +711,7 @@ void NitroCssCore::syncGrids(const std::vector<GridMeasurement>& measurements,
   }
 
   if (!batch.empty()) {
-    ShadowTreeMutator::commit(batch);
+    CommitBatcher::shared().enqueue(std::move(batch));
   }
 }
 
@@ -814,18 +868,39 @@ folly::dynamic NitroCssCore::resolveForNode(const LinkedNode& node,
   // image layer on the view's own backing layer, mirroring the gradient path.
   if (auto* bgImage = style.get_ptr("--nitrocss-background-image");
       bgImage != nullptr && bgImage->isObject()) {
-    if (node.tag != 0) {
+    const auto* type = bgImage->get_ptr("type");
+    const bool isNone = type != nullptr && type->isString() &&
+        type->getString() == "none";
+    if (node.tag != 0 && isNone) {
+      BackgroundImageTargets::shared().clearDescriptor(node.tag);
+    } else if (node.tag != 0) {
       BackgroundImageTargets::shared().setDescriptor(node.tag, *bgImage);
     }
     style.erase("--nitrocss-background-image");
   } else if (node.tag != 0) {
     BackgroundImageTargets::shared().clearDescriptor(node.tag);
   }
+  if (auto* mask = style.get_ptr("--nitrocss-mask");
+      mask != nullptr && mask->isObject()) {
+    const auto* source = mask->get_ptr("source");
+    const auto* type = source != nullptr && source->isObject()
+        ? source->get_ptr("type")
+        : nullptr;
+    const bool isNone = type != nullptr && type->isString() && type->getString() == "none";
+    if (node.tag != 0 && isNone) MaskTargets::shared().clearDescriptor(node.tag);
+    else if (node.tag != 0) MaskTargets::shared().setDescriptor(node.tag, *mask);
+    style.erase("--nitrocss-mask");
+  } else if (node.tag != 0) {
+    MaskTargets::shared().clearDescriptor(node.tag);
+  }
   // Animated gradient angle is a RUNTIME-ONLY track: the JS driver pushes each
   // frame's angle through GradientAngleOverrides via the JSI channel. The marker
   // must never reach RN or the native paint registry — strip it unconditionally.
   if (style.get_ptr("--nitrocss-gradient-angle") != nullptr) {
     style.erase("--nitrocss-gradient-angle");
+  }
+  if (style.get_ptr("--nitrocss-mask-transform") != nullptr) {
+    style.erase("--nitrocss-mask-transform");
   }
   return style;
 }
@@ -851,7 +926,7 @@ void NitroCssCore::recompute(uint32_t changedMask) {
   });
 
   if (!batch.empty()) {
-    ShadowTreeMutator::commit(batch);
+    CommitBatcher::shared().enqueue(std::move(batch));
   }
 }
 
@@ -872,12 +947,13 @@ void NitroCssCore::recomputeAll() {
   });
 
   if (!batch.empty()) {
-    ShadowTreeMutator::commit(batch);
+    CommitBatcher::shared().enqueue(std::move(batch));
   }
 }
 
 void NitroCssCore::commitResolvedNode(const LinkedNode& node,
-                                       const ResolveContext& ctx) {
+                                       const ResolveContext& ctx,
+                                       bool immediate) {
   if (node.family == nullptr) return;
   folly::dynamic props = resolveForNode(node, ctx);
   for (const auto& accent : node.accents) {
@@ -887,7 +963,13 @@ void NitroCssCore::commitResolvedNode(const LinkedNode& node,
       props[pair.first] = pair.second;
     }
   }
-  ShadowTreeMutator::commit({{node.family, node.surfaceId, std::move(props)}});
+  std::vector<NodeMutation> batch;
+  batch.push_back({node.family, node.surfaceId, std::move(props)});
+  if (immediate) {
+    CommitBatcher::shared().commitNow(std::move(batch));
+  } else {
+    CommitBatcher::shared().enqueue(std::move(batch));
+  }
 }
 
 // --- Listeners -------------------------------------------------------------

@@ -258,9 +258,14 @@ function parseKeyframeStep(body: string, rem: number): KeyframeStep {
       // Custom props are normally dropped (toRNValue can't type them), but an
       // angle-bearing var (`--gradient-angle: 120deg`) must survive so the
       // gradient-angle track can read it. Keep it as a normalized degrees
-      // number; drop non-angle custom props as before.
+      // number. Mask scale is the one additional numeric custom property
+      // consumed by the native mask-geometry animation track.
       const degrees = parseAngleToDegrees(value);
       if (degrees !== undefined) step[prop] = degrees;
+      else if (prop === "--mask-scale") {
+        const scale = Number(value);
+        if (Number.isFinite(scale)) step[prop] = scale;
+      }
       continue;
     }
     const rn = toRNValue(prop, value, { rem });

@@ -17,6 +17,7 @@ export const PLATFORMS = [
   "native",
   "macos",
   "windows",
+  "tvos",
 ] as const;
 
 export type PlatformName = (typeof PLATFORMS)[number];

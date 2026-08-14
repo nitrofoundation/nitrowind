@@ -137,6 +137,23 @@ describe("@layer theme extraction", () => {
   });
 });
 
+describe("runtime media variants", () => {
+  it("retains width and orientation gates for JS/native parity", () => {
+    const artifact = compileFromCss(`
+      @media (width >= 640px) { .md\\:gap-4 { gap: 16px; } }
+      @media (orientation: landscape) { .landscape\\:gap-8 { gap: 32px; } }
+    `, 16);
+    registerStyles(artifact);
+    expect(resolveStyles("md:gap-4", makeSnapshot()).styles.gap).toBeUndefined();
+    expect(resolveStyles("md:gap-4", {
+      ...makeSnapshot(), screen: { width: 800, height: 600 }, orientation: Orientation.Landscape,
+    }).styles.gap).toBe(16);
+    expect(resolveStyles("landscape:gap-8", {
+      ...makeSnapshot(), screen: { width: 800, height: 600 }, orientation: Orientation.Landscape,
+    }).styles.gap).toBe(32);
+  });
+});
+
 describe("resolveStyles · platform filter", () => {
   const original = Platform.OS;
   afterEach(() => {

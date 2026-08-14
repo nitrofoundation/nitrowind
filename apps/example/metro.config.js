@@ -1,6 +1,6 @@
 const { getDefaultConfig } = require('@react-native/metro-config');
 const path = require('path');
-const { withNitrowindMetroConfig } = require("@nitrofoundation/nitrowind/metro');
+const { withNitrowindMetroConfig } = require('@nitrofoundation/nitrowind/metro');
 const { withRozenite } = require('@rozenite/metro');
 
 /** @type {import('metro-config').MetroConfig} */

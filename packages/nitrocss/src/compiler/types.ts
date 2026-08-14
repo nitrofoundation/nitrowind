@@ -88,6 +88,8 @@ export type DependencyMask = number;
 
 /** A single compiled class: its style, the variant it belongs to, and deps. */
 export interface CompiledClass {
+  /** Source order in the flattened stylesheet; higher declarations win. */
+  order?: number;
   /** The RN style props this class contributes. */
   style: RNStyle;
   /** Which runtime values this class reads. */
@@ -105,6 +107,12 @@ export interface CompiledClass {
    * buckets at resolve time.
    */
   platform?: string;
+  /** Runtime media gate retained from an enclosing @media rule. */
+  media?: {
+    minWidth?: number;
+    maxWidth?: number;
+    orientation?: "portrait" | "landscape";
+  };
   /**
    * Container-query condition gating this bucket. When present the bucket only
    * applies while the nearest (or named) container satisfies the condition.
@@ -142,4 +150,3 @@ export interface CompileOptions {
   /** Override the default rem (16). */
   rem?: number;
 }
-

@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NitrowindProvider } from '@nitrofoundation/nitrowind';
 
 import AnimationsScreen from './app/animations';
+import AppleGradientScreen from './app/apple-gradient';
 import BackgroundImageScreen from './app/background-image';
 import BackgroundsScreen from './app/backgrounds';
 import BenchmarkScreen from './app/benchmark';
@@ -20,6 +21,7 @@ import GridScreen from './app/grid';
 import HomeScreen from './app/index';
 import LayoutScreen from './app/layout';
 import ListsScreen from './app/lists';
+import MaskingScreen from './app/masking';
 import PseudoScreen from './app/pseudo';
 import SvgScreen from './app/svg';
 import ThemingScreen from './app/theming';
@@ -29,6 +31,7 @@ import TypographyScreen from './app/typography';
 type RootStackParamList = {
   Home: undefined;
   Animations: undefined;
+  AppleGradient: undefined;
   Borders: undefined;
   Backgrounds: undefined;
   Benchmark: undefined;
@@ -45,6 +48,7 @@ type RootStackParamList = {
   BackgroundImage: undefined;
   Svg: undefined;
   Lists: undefined;
+  Masking: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -87,6 +91,11 @@ export default function App() {
               name="Animations"
               component={AnimationsScreen}
               options={{ title: 'Animations' }}
+            />
+            <Stack.Screen
+              name="AppleGradient"
+              component={AppleGradientScreen}
+              options={{ headerShown: false, animation: 'fade' }}
             />
             <Stack.Screen
               name="Borders"
@@ -157,6 +166,11 @@ export default function App() {
               name="BackgroundImage"
               component={BackgroundImageScreen}
               options={{ title: 'Background Image' }}
+            />
+            <Stack.Screen
+              name="Masking"
+              component={MaskingScreen}
+              options={{ title: 'Masking' }}
             />
             <Stack.Screen
               name="Svg"

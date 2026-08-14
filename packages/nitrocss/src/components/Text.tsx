@@ -9,6 +9,7 @@ import { resolveStylesForPlatform } from "../core/store";
 import { getAnimatedText } from "./animated";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
+import { useAccessibilityClassName } from "../accessibility/native";
 
 export interface NitroCssTextProps extends TextProps, PseudoStateProp {
   /** Class names resolved by the nitrocss engine. */
@@ -76,9 +77,10 @@ const BOLD_STYLE = { fontWeight: "700" as const };
  * host so browser CSS owns styling directly.
  */
 export const Text = forwardRef<RNTextType, NitroCssTextProps>(function Text(
-  { className = "", style, children, __nitrocssPseudoState, ...rest },
+  { className: requestedClassName = "", style, children, __nitrocssPseudoState, ...rest },
   forwardedRef,
 ) {
+  const className = useAccessibilityClassName(requestedClassName);
   const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(

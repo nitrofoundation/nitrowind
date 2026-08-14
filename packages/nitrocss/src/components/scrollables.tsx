@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import { resolveStylesForPlatform } from "../core/store";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
+import { useAccessibilityClassName } from "../accessibility/native";
 
 export interface NitroCssScrollViewProps extends ScrollViewProps {
   /** Class names for the scroll view itself. */
@@ -47,14 +48,16 @@ function webScrollableProps(
 export const ScrollView = forwardRef<RNScrollView, NitroCssScrollViewProps>(
   function ScrollView(
     {
-      className = "",
-      contentContainerClassName,
+      className: requestedClassName = "",
+      contentContainerClassName: requestedContentClassName,
       style,
       contentContainerStyle,
       ...rest
     },
     forwardedRef,
   ) {
+    const className = useAccessibilityClassName(requestedClassName);
+    const contentContainerClassName = useAccessibilityClassName(requestedContentClassName ?? "");
     const isWeb = Platform.OS === "web";
     const snapshot = useReactiveSnapshot();
     const resolved = useMemo(
@@ -106,14 +109,16 @@ export interface NitroCssFlatListProps<ItemT> extends FlatListProps<ItemT> {
 
 function FlatListInner<ItemT>(
   {
-    className = "",
-    contentContainerClassName,
+    className: requestedClassName = "",
+    contentContainerClassName: requestedContentClassName,
     style,
     contentContainerStyle,
     ...rest
   }: NitroCssFlatListProps<ItemT>,
   forwardedRef: ForwardedRef<RNFlatList<ItemT>>,
 ) {
+  const className = useAccessibilityClassName(requestedClassName);
+  const contentContainerClassName = useAccessibilityClassName(requestedContentClassName ?? "");
   const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
@@ -177,14 +182,16 @@ export interface NitroCssSectionListProps<
 
 function SectionListInner<ItemT, SectionT>(
   {
-    className = "",
-    contentContainerClassName,
+    className: requestedClassName = "",
+    contentContainerClassName: requestedContentClassName,
     style,
     contentContainerStyle,
     ...rest
   }: NitroCssSectionListProps<ItemT, SectionT>,
   forwardedRef: ForwardedRef<RNSectionList<ItemT, SectionT>>,
 ) {
+  const className = useAccessibilityClassName(requestedClassName);
+  const contentContainerClassName = useAccessibilityClassName(requestedContentClassName ?? "");
   const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
