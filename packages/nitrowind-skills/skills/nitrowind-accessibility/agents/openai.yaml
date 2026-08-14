@@ -1,0 +1,4 @@
+interface:
+  display_name: "Accessibility Variants"
+  short_description: "Adapt styles to reduced motion, increased contrast, reduced transparency, bold text, screen readers, and font scale."
+  default_prompt: "Help me with nitrowind accessibility in my Nitrowind app."

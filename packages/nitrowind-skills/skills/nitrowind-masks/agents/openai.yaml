@@ -1,0 +1,4 @@
+interface:
+  display_name: "Native Masks and Clip Paths"
+  short_description: "Apply native image masks and clip paths on iOS and Android, including positioned masks, transparent fills, borders, and keyframe animation."
+  default_prompt: "Help me with nitrowind masks in my Nitrowind app."

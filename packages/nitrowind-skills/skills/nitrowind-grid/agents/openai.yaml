@@ -1,0 +1,4 @@
+interface:
+  display_name: "Native Grid Layout"
+  short_description: "Create native grids with intrinsic tracks, auto and dense placement, named lines, spans, template areas, and masonry rows."
+  default_prompt: "Help me with nitrowind grid in my Nitrowind app."

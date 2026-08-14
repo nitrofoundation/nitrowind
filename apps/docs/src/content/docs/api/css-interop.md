@@ -39,3 +39,19 @@ const StyledIcon = cssInterop(Icon, {
 Explicit props win over generated props.
 
 `withNitroCss` is the lower-level wrapper behind `cssInterop`.
+
+## Common presets
+
+Nitrowind exports dependency-free mappings for common component shapes:
+
+```tsx
+import { cssInterop, cssInteropPresets } from "@nitrofoundation/nitrowind";
+
+const StyledList = cssInterop(ThirdPartyList, cssInteropPresets.scrollable);
+const StyledSheet = cssInterop(BottomSheet, cssInteropPresets.bottomSheet);
+const StyledIcon = cssInterop(Icon, cssInteropPresets.icon);
+```
+
+Available presets are `safeArea`, `scrollable`, `bottomSheet`, `icon`, and
+`navigation`. Explicit mappings and automatically inferred `*ClassName` props
+can be used together; user-supplied target props always win.

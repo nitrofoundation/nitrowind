@@ -1,0 +1,4 @@
+interface:
+  display_name: "Native Gradients"
+  short_description: "Build native linear, radial, and conic gradients with arbitrary values, runtime variables, positioned stops, and animated angles."
+  default_prompt: "Help me with nitrowind gradients in my Nitrowind app."
