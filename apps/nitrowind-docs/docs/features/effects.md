@@ -5,6 +5,8 @@ description: Shadows, filters, native masks, clip paths, transforms, and font va
 
 # Effects
 
+import FeaturePlayground from "@site/src/components/FeaturePlayground";
+
 Nitrocss has dedicated parsers for React Native effect shapes.
 
 ## Supported effect families
@@ -46,3 +48,5 @@ should define the visible region instead.
 
 Mask animation updates the mask transform or opacity track. It does not rotate
 the underlying photo, gradient view, or outer border.
+
+<FeaturePlayground feature="mask" />

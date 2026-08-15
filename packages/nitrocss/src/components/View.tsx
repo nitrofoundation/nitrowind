@@ -11,6 +11,7 @@ import {
   View as RNView,
   type View as RNViewType,
   type ViewProps,
+  type ViewStyle,
 } from "react-native";
 import type { RNStyle } from "../compiler/types";
 import { resolveStylesForPlatform } from "../core/store";
@@ -37,11 +38,17 @@ import {
 } from "./backdrop";
 import { GRADIENT_DESCRIPTOR_PROP } from "../compiler/parsers/gradient";
 import { MASK_DESCRIPTOR_PROP } from "../compiler/parsers/mask";
+import {
+  SCROLL_TIMELINE_ANIMATION_PROP,
+  SCROLL_TIMELINE_SOURCE_PROP,
+} from "../compiler/parsers/scrollTimeline";
 import { ContainerProvider, useContainer } from "./containerContext";
 import { serializeGridConfig, useGridFallback } from "./grid";
 import { assignRef, useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
 import { useAccessibilityClassName } from "../accessibility/native";
+import { withoutNativeStickyPosition } from "./stickyHeader";
+import { webClassNameStyle } from "./webClassName";
 
 export interface NitroCssViewProps extends ViewProps, PseudoStateProp {
   /** Class names resolved by the nitrocss engine. */
@@ -130,13 +137,11 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
   const gradientAngleTrack = isWeb
     ? undefined
     : ((resolved.styles as Record<string, unknown>)[GRADIENT_ANGLE_PROP] as
-        | GradientAngleTrack
-        | undefined);
+        GradientAngleTrack | undefined);
   const maskTransformTrack = isWeb
     ? undefined
     : ((resolved.styles as Record<string, unknown>)[MASK_TRANSFORM_PROP] as
-        | MaskTransformTrack
-        | undefined);
+        MaskTransformTrack | undefined);
   const composedRef = useMemo(() => {
     // A plain provider-managed View has no native registration and no caller
     // ref, so passing a ref callback would be pure mount/unmount overhead.
@@ -144,7 +149,8 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
       !ref &&
       gradientAngleTrack === undefined &&
       maskTransformTrack === undefined
-    ) return undefined;
+    )
+      return undefined;
     return (node: RNViewType | null) => {
       nodeRef.current = node;
       assignRef(ref, node);
@@ -161,9 +167,18 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
       maskTransformTrack !== undefined ||
       CLIP_PATH_PROP in (resolved.styles as object) ||
       MASK_DESCRIPTOR_PROP in (resolved.styles as object) ||
-      BACKGROUND_IMAGE_PROP in (resolved.styles as object));
+      BACKGROUND_IMAGE_PROP in (resolved.styles as object) ||
+      SCROLL_TIMELINE_SOURCE_PROP in (resolved.styles as object) ||
+      SCROLL_TIMELINE_ANIMATION_PROP in (resolved.styles as object));
+  const hasNativeStickyPosition =
+    !isWeb && (resolved.styles as RNStyle).position === "sticky";
   const { viewStyles, layerBorderRadius, backdropRadius } = useMemo(() => {
-    if (!hasGradient && backdropFilter === undefined && !hasNewEffectMarker) {
+    if (
+      !hasGradient &&
+      backdropFilter === undefined &&
+      !hasNewEffectMarker &&
+      !hasNativeStickyPosition
+    ) {
       return {
         viewStyles: resolved.styles,
         layerBorderRadius: 0,
@@ -178,9 +193,11 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
       [CLIP_PATH_PROP]: _clipPath,
       [MASK_DESCRIPTOR_PROP]: _mask,
       [BACKGROUND_IMAGE_PROP]: _bgImage,
+      [SCROLL_TIMELINE_SOURCE_PROP]: _scrollTimelineSource,
+      [SCROLL_TIMELINE_ANIMATION_PROP]: _scrollTimelineAnimation,
       ...restStyles
     } = resolved.styles as Record<string, unknown>;
-    const stripped = restStyles as RNStyle;
+    const stripped = withoutNativeStickyPosition(restStyles as RNStyle);
     if (backdropFilter === undefined) {
       // Gradient-only: the native layer corner-clips itself (mirrors the
       // view's radius, RN shapeLayerToMatchView-style) — no overflow forcing.
@@ -195,7 +212,13 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
       // (documented TODO in parsers/filter.ts `backdropBlurRadius`).
       backdropRadius: backdropBlurRadius(backdropFilter),
     };
-  }, [resolved.styles, hasGradient, backdropFilter, hasNewEffectMarker]);
+  }, [
+    resolved.styles,
+    hasGradient,
+    backdropFilter,
+    hasNewEffectMarker,
+    hasNativeStickyPosition,
+  ]);
 
   // `useContainer` returns a single `onLayout` that already merges the container
   // size reporter (JS fallback) with the caller's own handler.
@@ -309,24 +332,20 @@ export const View = forwardRef<RNViewType, NitroCssViewProps>(function View(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWeb, maskTrackKey]);
 
-  const webProps: Record<string, unknown> =
-    isWeb && className ? { className } : {};
-
   // A gradient/backdrop host must stay in the mounted hierarchy: after the
   // marker is stripped its committed props can look layout-only, and Fabric's
   // view flattening would then remove the view entirely — leaving the native
   // gradient applier's `tag → mounted view` lookup with nothing to paint on.
   const preventFlattening =
     !isWeb &&
-    (hasGradient ||
-      backdropFilter !== undefined ||
-      hasNewEffectMarker);
+    (hasGradient || backdropFilter !== undefined || hasNewEffectMarker);
 
   const node = (
     <Base
       ref={composedRef}
-      {...webProps}
-      style={isWeb ? style : composedStyle}
+      style={
+        isWeb ? [webClassNameStyle<ViewStyle>(className), style] : composedStyle
+      }
       onLayout={gridFallback.onLayout}
       {...animationProps}
       {...rest}

@@ -16,18 +16,24 @@ import com.facebook.react.turbomodule.core.CallInvokerHolderImpl
 class NitroCssInstallerModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
 
+  private val lifecycleLock = Any()
+  private var nativeRuntimeEpoch = 0L
+  private var invalidated = false
+
+  private val lifecycleListener = object : LifecycleEventListener {
+    override fun onHostResume() {
+      NitroCssContextHolder.currentActivity = reactApplicationContext.currentActivity
+    }
+
+    override fun onHostPause() {}
+
+    override fun onHostDestroy() {}
+  }
+
   init {
     NitroCssContextHolder.appContext = reactContext.applicationContext
     NitroCssContextHolder.currentActivity = reactContext.currentActivity
-    reactContext.addLifecycleEventListener(object : LifecycleEventListener {
-      override fun onHostResume() {
-        NitroCssContextHolder.currentActivity = reactContext.currentActivity
-      }
-
-      override fun onHostPause() {}
-
-      override fun onHostDestroy() {}
-    })
+    reactContext.addLifecycleEventListener(lifecycleListener)
   }
 
   override fun getName(): String = NAME
@@ -35,6 +41,22 @@ class NitroCssInstallerModule(reactContext: ReactApplicationContext) :
   override fun initialize() {
     super.initialize()
     installEngine()
+  }
+
+  override fun invalidate() {
+    val context = reactApplicationContext
+    context.removeLifecycleEventListener(lifecycleListener)
+    val runtimeEpoch = synchronized(lifecycleLock) {
+      invalidated = true
+      nativeRuntimeEpoch.also { nativeRuntimeEpoch = 0L }
+    }
+    if (runtimeEpoch > 0L) NitroCssNative.invalidate(runtimeEpoch)
+    GradientApplier.invalidate(context)
+    ClipPathApplier.invalidate(context)
+    BackgroundImageApplier.invalidate(context)
+    MaskApplier.invalidate(context)
+    ScrollTimelineApplier.invalidate(context)
+    super.invalidate()
   }
 
   private fun installEngine() {
@@ -52,9 +74,20 @@ class NitroCssInstallerModule(reactContext: ReactApplicationContext) :
         return
       }
 
-      val installed = NitroCssNative.install(runtimePtr, holder)
-      if (!installed) {
-        Log.w(NAME, "Native install returned false.")
+      val runtimeEpoch = NitroCssNative.install(runtimePtr, holder)
+      if (runtimeEpoch <= 0L) {
+        Log.w(NAME, "Native install did not return a runtime epoch.")
+      } else {
+        val retiringEpoch = synchronized(lifecycleLock) {
+          if (invalidated) {
+            runtimeEpoch
+          } else {
+            nativeRuntimeEpoch.also { nativeRuntimeEpoch = runtimeEpoch }
+          }
+        }
+        // initialize() and invalidate() are normally serialized by RN, but an
+        // exact token hand-off keeps teardown safe even if a host overlaps them.
+        if (retiringEpoch > 0L) NitroCssNative.invalidate(retiringEpoch)
       }
     } catch (t: Throwable) {
       Log.e(NAME, "Failed to install the NitroCss engine.", t)

@@ -116,6 +116,7 @@
       "source": "./src/metro/pipeline.ts",
       "default": "./lib/commonjs/metro/pipeline.js"
     },
+    "./safe-area.css": "./safe-area.css",
     "./package.json": "./package.json"
   },
   "files": [

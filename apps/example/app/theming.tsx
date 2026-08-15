@@ -4,10 +4,10 @@
  * tree restyles without a React re-render. `dark:` variants are also resolved
  * natively.
  */
-import { Text, View } from "@nitrofoundation/nitrowind";
-import { runtime } from "@nitrofoundation/nitrowind";
+import { Pressable, Text, View } from '@nitrofoundation/nitrowind';
 
-import { Caption, Card, Screen, Section } from "../components/ui";
+import { Caption, Card, Screen, Section } from '../components/ui';
+import { setExampleColorScheme, setExampleTheme } from '../platform/theme';
 
 function Token({ cls, label }: { cls: string; label: string }) {
   return (
@@ -19,16 +19,16 @@ function Token({ cls, label }: { cls: string; label: string }) {
 }
 
 const COLOR_SCHEMES = [
-  { label: "Light", value: "light" },
-  { label: "Dark", value: "dark" },
-  { label: "Auto", value: "system" },
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+  { label: 'Auto', value: 'system' },
 ] as const;
 
 const THEMES = [
-  { label: "Base", value: "light", swatch: "bg-primary" },
-  { label: "Ocean", value: "ocean", swatch: "bg-primary" },
-  { label: "Ember", value: "ember", swatch: "bg-warning" },
-  { label: "Graphite", value: "graphite", swatch: "bg-accent" },
+  { label: 'Base', value: 'light', swatch: 'bg-primary' },
+  { label: 'Ocean', value: 'ocean', swatch: 'bg-primary' },
+  { label: 'Ember', value: 'ember', swatch: 'bg-warning' },
+  { label: 'Graphite', value: 'graphite', swatch: 'bg-accent' },
 ] as const;
 
 export default function Theming() {
@@ -36,41 +36,41 @@ export default function Theming() {
     <Screen>
       <Section
         title="Adaptive scheme"
-        subtitle="Light, dark, and system all push color changes through the native engine."
+        subtitle="Light, dark, and system update the same runtime tokens on every platform."
       >
         <View className="flex-row flex-wrap gap-2">
-          {COLOR_SCHEMES.map((scheme) => (
-            <View
+          {COLOR_SCHEMES.map(scheme => (
+            <Pressable
               key={scheme.value}
               accessibilityRole="button"
-              onTouchEnd={() => runtime.setColorScheme(scheme.value)}
+              onPress={() => setExampleColorScheme(scheme.value)}
               className="rounded-full border border-border bg-surface-elevated px-4 py-2"
             >
               <Text className="text-sm font-semibold text-on-surface">
                 {scheme.label}
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       </Section>
 
       <Section
         title="Adaptive themes"
-        subtitle="Named palettes update semantic tokens natively."
+        subtitle="Named palettes update semantic tokens without changing component code."
       >
         <View className="flex-row flex-wrap gap-2">
-          {THEMES.map((theme) => (
-            <View
+          {THEMES.map(theme => (
+            <Pressable
               key={theme.value}
               accessibilityRole="button"
-              onTouchEnd={() => runtime.setTheme(theme.value)}
+              onPress={() => setExampleTheme(theme.value)}
               className="flex-row items-center gap-2 rounded-full border border-border bg-surface-elevated px-4 py-2"
             >
               <View className={`h-3 w-3 rounded-full ${theme.swatch}`} />
               <Text className="text-sm font-semibold text-on-surface">
                 {theme.label}
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
 
@@ -81,7 +81,7 @@ export default function Theming() {
             <View className="h-16 flex-1 rounded-xl bg-warning" />
           </View>
           <Text className="text-sm font-semibold text-on-surface">
-            These swatches and this card restyle through native theme commits.
+            These swatches and this card restyle from the shared theme runtime.
           </Text>
         </Card>
       </Section>

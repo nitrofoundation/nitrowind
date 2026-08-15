@@ -1,0 +1,39 @@
+---
+title: Metro Configuration
+description: Configure the Nitrowind Metro plugin and understand its options.
+---
+
+# Metro Configuration
+
+`withNitrowindMetroConfig` wraps Metro with the Tailwind build pipeline and the `nitrocss` transformer.
+
+```js title="metro.config.js"
+const { getDefaultConfig } = require('@react-native/metro-config');
+const { withNitrowindMetroConfig } = require('@nitrofoundation/nitrowind/metro');
+
+module.exports = withNitrowindMetroConfig(getDefaultConfig(__dirname), {
+  input: './global.css',
+  content: ['./App.{js,jsx,ts,tsx}', './src/**/*.{js,jsx,ts,tsx}'],
+  rem: 16,
+});
+```
+
+## Options
+
+| Option                      | Default                                   | Description                                                      |
+| --------------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| `input`                     | Required                                  | Path to the entry CSS file.                                      |
+| `content`                   | App, `app`, `src`, and `components` globs | Files scanned for className candidates.                          |
+| `rem`                       | `16`                                      | Root rem size used when CSS lengths become React Native numbers. |
+| `cwd`                       | `process.cwd()`                           | Project root for resolving paths.                                |
+| `rewriteReactNativeImports` | `true`                                    | Rewrites host component imports to className-aware wrappers.     |
+
+## What the plugin appends
+
+Nitrowind appends generated Tailwind v4 CSS before compilation:
+
+- Platform variants such as `ios:` and `android:`.
+- Safe-area utilities such as `pt-safe` and `h-screen-safe`.
+- Reanimated and CSS animation utilities such as `entering-fade-in` and `animate-wiggle`.
+
+The compiled CSS is flattened and converted into a compact artifact that the runtime and native engine can resolve.

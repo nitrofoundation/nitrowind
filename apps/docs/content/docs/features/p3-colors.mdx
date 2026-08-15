@@ -1,0 +1,29 @@
+---
+title: P3 & Native Colors
+description: Wide-gamut semantic color tokens and native color updates.
+---
+
+# P3 & Native Colors
+
+Nitrowind keeps authored color tokens intact through compilation, then moves dependent color updates into the native runtime rather than resolving styles on the JavaScript thread. Use Tailwind's semantic color workflow for app surfaces, text, borders, and gradients.
+
+```css
+@theme {
+  --color-brand: color(display-p3 0.18 0.78 0.95);
+  --color-surface: #f7fafc;
+}
+```
+
+```tsx
+<View className="bg-brand rounded-2xl p-5">
+  <Text className="text-surface">Wide-gamut native color</Text>
+</View>
+```
+
+## Native behavior
+
+- Semantic tokens update with the active named theme or color scheme at the native runtime.
+- Colors can be used in native backgrounds, text, borders, gradients, and effects.
+- iOS can display wide-gamut values on compatible displays; other platforms use their supported color spaces.
+
+See [Theming](../core-concepts/theming) for named and adaptive themes.

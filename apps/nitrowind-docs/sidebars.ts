@@ -22,11 +22,22 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         "core-concepts/how-it-works",
+        "core-concepts/supported-features",
         "core-concepts/runtime-state",
         "core-concepts/theming",
         "core-concepts/adaptive-theming",
         "core-concepts/platforms",
         "core-concepts/compatibility",
+      ],
+    },
+    {
+      type: "category",
+      label: "Layout & Flexbox",
+      collapsed: false,
+      items: [
+        "tailwind/layout/flex-direction",
+        "tailwind/layout/box-sizing",
+        "tailwind/layout/display",
       ],
     },
     {

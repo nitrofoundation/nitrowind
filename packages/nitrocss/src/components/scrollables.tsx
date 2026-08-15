@@ -21,27 +21,21 @@ import {
   type FlatListProps,
   type ScrollViewProps,
   type SectionListProps,
+  type ViewStyle,
 } from "react-native";
 import { resolveStylesForPlatform } from "../core/store";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 import { useAccessibilityClassName } from "../accessibility/native";
+import { SCROLL_TIMELINE_SOURCE_PROP } from "../compiler/parsers/scrollTimeline";
+import { NativeCssStickyHeader } from "./NativeCssStickyHeader";
+import { prepareStickyChildren } from "./stickyHeader";
+import { webClassNameStyle } from "./webClassName";
 
 export interface NitroCssScrollViewProps extends ScrollViewProps {
   /** Class names for the scroll view itself. */
   className?: string;
   /** Class names for the inner content container. */
   contentContainerClassName?: string;
-}
-
-function webScrollableProps(
-  className: string,
-  contentContainerClassName: string | undefined,
-): Record<string, unknown> {
-  if (Platform.OS !== "web") return {};
-  return {
-    ...(className ? { className } : {}),
-    ...(contentContainerClassName ? { contentContainerClassName } : {}),
-  };
 }
 
 /** Drop-in replacement for RN's `ScrollView` that accepts `className`. */
@@ -52,12 +46,17 @@ export const ScrollView = forwardRef<RNScrollView, NitroCssScrollViewProps>(
       contentContainerClassName: requestedContentClassName,
       style,
       contentContainerStyle,
+      children,
+      stickyHeaderIndices,
+      StickyHeaderComponent,
       ...rest
     },
     forwardedRef,
   ) {
     const className = useAccessibilityClassName(requestedClassName);
-    const contentContainerClassName = useAccessibilityClassName(requestedContentClassName ?? "");
+    const contentContainerClassName = useAccessibilityClassName(
+      requestedContentClassName ?? "",
+    );
     const isWeb = Platform.OS === "web";
     const snapshot = useReactiveSnapshot();
     const resolved = useMemo(
@@ -82,20 +81,46 @@ export const ScrollView = forwardRef<RNScrollView, NitroCssScrollViewProps>(
       undefined,
       style,
     );
+    const { [SCROLL_TIMELINE_SOURCE_PROP]: _scrollTimeline, ...outerStyles } =
+      resolved.styles as Record<string, unknown>;
+    const preparedSticky = useMemo(
+      () =>
+        isWeb
+          ? {
+              children,
+              indices: stickyHeaderIndices,
+              hasCssSticky: false,
+            }
+          : prepareStickyChildren(children, stickyHeaderIndices, snapshot),
+      [children, isWeb, snapshot, stickyHeaderIndices],
+    );
     return (
       <RNScrollView
         ref={ref}
-        {...webScrollableProps(className, contentContainerClassName)}
-        style={isWeb ? style : [resolved.styles, style]}
+        style={
+          isWeb
+            ? [webClassNameStyle<ViewStyle>(className), style]
+            : [outerStyles, style]
+        }
         contentContainerStyle={
           isWeb
-            ? contentContainerStyle
+            ? [
+                webClassNameStyle<ViewStyle>(contentContainerClassName),
+                contentContainerStyle,
+              ]
             : content
               ? [content.styles, contentContainerStyle]
               : contentContainerStyle
         }
+        stickyHeaderIndices={preparedSticky.indices}
+        StickyHeaderComponent={
+          StickyHeaderComponent ??
+          (preparedSticky.hasCssSticky ? NativeCssStickyHeader : undefined)
+        }
         {...rest}
-      />
+      >
+        {preparedSticky.children}
+      </RNScrollView>
     );
   },
 );
@@ -118,7 +143,9 @@ function FlatListInner<ItemT>(
   forwardedRef: ForwardedRef<RNFlatList<ItemT>>,
 ) {
   const className = useAccessibilityClassName(requestedClassName);
-  const contentContainerClassName = useAccessibilityClassName(requestedContentClassName ?? "");
+  const contentContainerClassName = useAccessibilityClassName(
+    requestedContentClassName ?? "",
+  );
   const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
@@ -146,11 +173,17 @@ function FlatListInner<ItemT>(
   return (
     <RNFlatList<ItemT>
       ref={ref}
-      {...webScrollableProps(className, contentContainerClassName)}
-      style={isWeb ? style : [resolved.styles, style]}
+      style={
+        isWeb
+          ? [webClassNameStyle<ViewStyle>(className), style]
+          : [resolved.styles, style]
+      }
       contentContainerStyle={
         isWeb
-          ? contentContainerStyle
+          ? [
+              webClassNameStyle<ViewStyle>(contentContainerClassName),
+              contentContainerStyle,
+            ]
           : content
             ? [content.styles, contentContainerStyle]
             : contentContainerStyle
@@ -191,7 +224,9 @@ function SectionListInner<ItemT, SectionT>(
   forwardedRef: ForwardedRef<RNSectionList<ItemT, SectionT>>,
 ) {
   const className = useAccessibilityClassName(requestedClassName);
-  const contentContainerClassName = useAccessibilityClassName(requestedContentClassName ?? "");
+  const contentContainerClassName = useAccessibilityClassName(
+    requestedContentClassName ?? "",
+  );
   const isWeb = Platform.OS === "web";
   const snapshot = useReactiveSnapshot();
   const resolved = useMemo(
@@ -219,11 +254,17 @@ function SectionListInner<ItemT, SectionT>(
   return (
     <RNSectionList<ItemT, SectionT>
       ref={ref}
-      {...webScrollableProps(className, contentContainerClassName)}
-      style={isWeb ? style : [resolved.styles, style]}
+      style={
+        isWeb
+          ? [webClassNameStyle<ViewStyle>(className), style]
+          : [resolved.styles, style]
+      }
       contentContainerStyle={
         isWeb
-          ? contentContainerStyle
+          ? [
+              webClassNameStyle<ViewStyle>(contentContainerClassName),
+              contentContainerStyle,
+            ]
           : content
             ? [content.styles, contentContainerStyle]
             : contentContainerStyle

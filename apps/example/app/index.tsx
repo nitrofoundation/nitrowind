@@ -5,36 +5,14 @@
  * nitrowind `FlatList`, so both the scroll host and its content container are
  * styled with class names (`className` / `contentContainerClassName`).
  */
-import { useNavigation } from '@react-navigation/native';
+import { StackActions, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FlatList, Pressable, Text, View } from '@nitrofoundation/nitrowind';
 import { ThemeToggle } from '../components/ui';
-
-type RootStackParamList = {
-  Home: undefined;
-  Animations: undefined;
-  AppleGradient: undefined;
-  Benchmark: undefined;
-  StyleSheetBenchmark: undefined;
-  Borders: undefined;
-  Backgrounds: undefined;
-  Transforms: undefined;
-  Containers: undefined;
-  Typography: undefined;
-  Theming: undefined;
-  Layout: undefined;
-  Pseudo: undefined;
-  Grid: undefined;
-  Gradients: undefined;
-  Effects: undefined;
-  BackgroundImage: undefined;
-  Svg: undefined;
-  Lists: undefined;
-  Masking: undefined;
-};
+import type { RootStackParamList } from '../navigation';
 
 type Page = {
-  route: keyof RootStackParamList;
+  route: Exclude<keyof RootStackParamList, 'ScrollEffect'>;
   title: string;
   subtitle: string;
   icon: string;
@@ -64,9 +42,16 @@ const PAGES: Page[] = [
     tile: 'bg-violet-500',
   },
   {
+    route: 'ScrollAnimations',
+    title: 'Scroll-driven Animations',
+    subtitle: 'CSS timelines on web and native timelines on iOS & Android',
+    icon: '↕',
+    tile: 'bg-linear-to-br from-cyan-400 to-violet-600',
+  },
+  {
     route: 'AppleGradient',
     title: 'Apple-style Aurora',
-    subtitle: 'Full-screen layered native gradients animated with keyframes',
+    subtitle: 'Full-screen layered gradients animated with keyframes',
     icon: '◉',
     tile: 'bg-linear-45 from-cyan-400 via-violet-500 to-pink-500',
   },
@@ -94,7 +79,7 @@ const PAGES: Page[] = [
   {
     route: 'Containers',
     title: 'Container Queries',
-    subtitle: 'Native size-aware styling \u2014 no re-render',
+    subtitle: 'Standard browser queries plus native size-aware styling',
     icon: '\uD83D\uDCD0',
     tile: 'bg-emerald-500',
   },
@@ -115,14 +100,14 @@ const PAGES: Page[] = [
   {
     route: 'Layout',
     title: 'Layout & Platform',
-    subtitle: 'Flex, gap, safe-area, ios / android',
+    subtitle: 'Flex, gap, safe-area, iOS / Android / web',
     icon: '\uD83E\uDDF1',
     tile: 'bg-teal-500',
   },
   {
     route: 'Pseudo',
     title: 'Pseudo Selectors',
-    subtitle: 'Native states, placeholder, and DOM selector limits',
+    subtitle: 'Interactive states, placeholders, and platform selectors',
     icon: '*',
     tile: 'bg-lime-500',
   },
@@ -136,28 +121,28 @@ const PAGES: Page[] = [
   {
     route: 'Gradients',
     title: 'Gradients',
-    subtitle: 'Native linear, radial & animated gradients',
+    subtitle: 'Linear, radial & animated gradients',
     icon: '🌈',
     tile: 'bg-linear-to-br from-fuchsia-500 to-cyan-400',
   },
   {
     route: 'Effects',
     title: 'Effects',
-    subtitle: 'Native masks, clip-path, gradients, background images & text shadows',
+    subtitle: 'Masks, clip paths, gradients, images & text shadows',
     icon: '✨',
     tile: 'bg-linear-45 from-fuchsia-500 to-cyan-400',
   },
   {
     route: 'BackgroundImage',
     title: 'Background Image',
-    subtitle: 'url(...) rasters — size, position & repeat, painted natively',
+    subtitle: 'url(...) rasters — size, position & repeat',
     icon: '🖼️',
     tile: 'bg-tile',
   },
   {
     route: 'Masking',
     title: 'Masking',
-    subtitle: 'Native gradient and image masks — position, repeat, and star border',
+    subtitle: 'Gradient and image masks — position, repeat, and star border',
     icon: '★',
     tile: 'bg-linear-to-br from-amber-400 to-rose-500',
   },
@@ -211,7 +196,7 @@ export default function Home() {
         <Pressable
           className="flex-row self-stretch items-center gap-4 rounded-2xl border border-border bg-surface-elevated p-4"
           accessibilityRole="button"
-          onPress={() => navigation.push(item.route)}
+          onPress={() => navigation.dispatch(StackActions.push(item.route))}
         >
           {/* `entering-fade-in-up` plays as each row mounts (needs Reanimated). */}
           <View

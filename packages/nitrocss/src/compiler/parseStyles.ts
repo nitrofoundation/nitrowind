@@ -37,10 +37,15 @@ import {
   isFontVariantProp,
   isGradientProp,
   isMaskProp,
+  isScrollTimelineProp,
   isTextShadowProp,
   isTransitionProp,
   isTransformProp,
   GRADIENT_TYPE_PROP,
+  extractScrollTimelineAnimation,
+  extractScrollTimelineSource,
+  SCROLL_TIMELINE_ANIMATION_PROP,
+  SCROLL_TIMELINE_SOURCE_PROP,
 } from "./parsers";
 import { platformFromSelector } from "./platform";
 import { resolveVarsInValue, toRNProperties, toRNValue } from "./toRNValue";
@@ -364,6 +369,7 @@ const isParsedProp = (prop: string): boolean =>
   isFontVariantProp(prop) ||
   isAnimationProp(prop) ||
   isTransitionProp(prop) ||
+  isScrollTimelineProp(prop) ||
   CONTAINER_DECL_PROPS.has(prop) ||
   prop === "backdrop-filter" ||
   prop === "-webkit-backdrop-filter";
@@ -452,6 +458,7 @@ export function parseStyles(
     const animationDecl = rule.declarations.find((d) =>
       isAnimationProp(d.prop),
     );
+    let animationStyle: RNStyle | undefined;
     if (animationDecl) {
       // The compiler's `--animate-*` theme tokens emit `animation: var(--animate-x)`;
       // resolve the reference to its shorthand (`x 8s linear infinite`) so the
@@ -459,7 +466,10 @@ export function parseStyles(
       // `animate-*` utilities) pass through unchanged.
       const shorthand = resolveVarsInValue(animationDecl.value, ruleResolve);
       const folded = foldAnimation(shorthand, keyframes);
-      if (folded) Object.assign(style, folded);
+      if (folded) {
+        animationStyle = folded;
+        Object.assign(style, folded);
+      }
       // A linear or conic gradient whose angle is driven by an angle-bearing keyframe var
       // gets a runtime-only angle track. Guard on the gradient TYPE marker
       // (the descriptor itself is folded later, in core/normalize.ts) so the
@@ -475,6 +485,20 @@ export function parseStyles(
           });
         }
       }
+    }
+    const scrollSource = extractScrollTimelineSource(rule.declarations);
+    if (scrollSource) {
+      style[SCROLL_TIMELINE_SOURCE_PROP] = scrollSource as unknown as RNStyle[string];
+    }
+    const scrollAnimation = extractScrollTimelineAnimation(
+      rule.declarations,
+      animationStyle,
+    );
+    if (scrollAnimation) {
+      for (const prop of Object.keys(style)) {
+        if (prop.startsWith("animation")) delete style[prop];
+      }
+      style[SCROLL_TIMELINE_ANIMATION_PROP] = scrollAnimation as unknown as RNStyle[string];
     }
     for (const transitionDecl of rule.declarations.filter((d) =>
       isTransitionProp(d.prop),

@@ -4,12 +4,14 @@ import {
   Text as RNText,
   type Text as RNTextType,
   type TextProps,
+  type TextStyle,
 } from "react-native";
 import { resolveStylesForPlatform } from "../core/store";
 import { getAnimatedText } from "./animated";
 import { useLinkedRef, useReactiveSnapshot } from "./internal";
 import { type PseudoStateProp, withChildPseudoState } from "./pseudo";
 import { useAccessibilityClassName } from "../accessibility/native";
+import { webClassNameStyle } from "./webClassName";
 
 export interface NitroCssTextProps extends TextProps, PseudoStateProp {
   /** Class names resolved by the nitrocss engine. */
@@ -77,7 +79,13 @@ const BOLD_STYLE = { fontWeight: "700" as const };
  * host so browser CSS owns styling directly.
  */
 export const Text = forwardRef<RNTextType, NitroCssTextProps>(function Text(
-  { className: requestedClassName = "", style, children, __nitrocssPseudoState, ...rest },
+  {
+    className: requestedClassName = "",
+    style,
+    children,
+    __nitrocssPseudoState,
+    ...rest
+  },
   forwardedRef,
 ) {
   const className = useAccessibilityClassName(requestedClassName);
@@ -109,14 +117,14 @@ export const Text = forwardRef<RNTextType, NitroCssTextProps>(function Text(
         layout: resolved.layout,
       }
     : undefined;
-  const webProps: Record<string, unknown> =
-    isWeb && className ? { className } : {};
-
   return (
     <Base
       ref={ref}
-      {...webProps}
-      style={isWeb ? style : [resolved.styles, style]}
+      style={
+        isWeb
+          ? [webClassNameStyle<TextStyle>(className), style]
+          : [resolved.styles, style]
+      }
       {...animationProps}
       {...rest}
     >

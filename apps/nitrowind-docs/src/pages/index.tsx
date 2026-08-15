@@ -22,9 +22,41 @@ export default function Home(): React.ReactNode {
                 adaptive themes, container queries, and native C++ style updates.
               </p>
               <div className="seo-home-proof-strip" aria-label="Nitrowind highlights">
-                <span><strong>Tailwind v4</strong> CSS-first configuration</span>
-                <span><strong>Native C++</strong> ShadowTree runtime</span>
-                <span><strong>Open source</strong> MIT licensed</span>
+                <div>
+                  <div className="seo-home-proof-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="16 18 22 12 16 6" />
+                      <polyline points="8 6 2 12 8 18" />
+                    </svg>
+                  </div>
+                  <div className="seo-home-proof-text">
+                    <strong>Tailwind v4</strong>
+                    <span>CSS-first configuration</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="seo-home-proof-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 12l3-3" />
+                    </svg>
+                  </div>
+                  <div className="seo-home-proof-text">
+                    <strong>Native C++</strong>
+                    <span>ShadowTree runtime</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="seo-home-proof-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                    </svg>
+                  </div>
+                  <div className="seo-home-proof-text">
+                    <strong>Open source</strong>
+                    <span>MIT licensed</span>
+                  </div>
+                </div>
               </div>
               <div className="seo-home-actions">
                 <Link className="seo-home-button seo-home-button-primary" to="/getting-started/installation">

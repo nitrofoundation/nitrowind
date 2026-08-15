@@ -1,0 +1,199 @@
+---
+title: Nitrowind 1.0 beta — Tailwind CSS v4 at native speed
+description: Meet Nitrowind 1.0 beta, learn how its native C++ styling runtime works, install it in Expo or React Native, and explore the features available today.
+date: 2026-08-15
+tags:
+  - announcement
+  - 1.0 beta
+  - react native
+  - tailwind css
+author:
+  name: Ashwith Joylan
+  title: Nitrowind creator and maintainer
+  image_url: https://github.com/AshwithJoylan.png
+  url: https://github.com/AshwithJoylan
+---
+
+Nitrowind **1.0 beta** is here. It brings the Tailwind CSS v4 workflow to React Native while moving runtime-dependent style updates into a native C++ engine.
+
+Instead of resolving every theme, state, or environment change again on the JavaScript thread, Nitrowind compiles CSS and class candidates ahead of time. Its native dependency graph can then update linked Fabric nodes where the change happens.
+
+<Callout type="warning" title="This is a beta release">
+  The public API and native implementation are ready for real-world testing, but may still change
+  before the stable 1.0 release. Pin exact beta versions for production trials and report issues on
+  GitHub.
+</Callout>
+
+## Why Nitrowind exists
+
+React Native styling is expressive, but advanced CSS workflows often require JavaScript work, custom wrappers, or one-off native implementations. Nitrowind is designed around a different boundary:
+
+- Tailwind CSS v4 remains the authoring language.
+- Metro compiles utilities and plain CSS before the app runs.
+- A shared C++ registry tracks style rules and runtime dependencies.
+- iOS and Android apply supported paint, layout, and interaction updates natively.
+- Web keeps standards-based CSS behavior as the fallback.
+
+The result is a familiar utility-first workflow without turning the JavaScript thread into a styling engine.
+
+## Install Nitrowind 1.0 beta
+
+<Steps>
+<Step>
+
+### Install the beta packages
+
+Choose the package manager used by your project:
+
+<Tabs items={['yarn', 'npm', 'pnpm', 'bun']}>
+<Tab value="yarn">
+
+```bash
+yarn add @nitrofoundation/nitrowind@1.0.0-beta.0 @nitrofoundation/nitrocss@1.0.0-beta.0 tailwindcss react-native-nitro-modules
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @nitrofoundation/nitrowind@1.0.0-beta.0 @nitrofoundation/nitrocss@1.0.0-beta.0 tailwindcss react-native-nitro-modules
+```
+
+</Tab>
+<Tab value="pnpm">
+
+```bash
+pnpm add @nitrofoundation/nitrowind@1.0.0-beta.0 @nitrofoundation/nitrocss@1.0.0-beta.0 tailwindcss react-native-nitro-modules
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @nitrofoundation/nitrowind@1.0.0-beta.0 @nitrofoundation/nitrocss@1.0.0-beta.0 tailwindcss react-native-nitro-modules
+```
+
+</Tab>
+</Tabs>
+
+Add `react-native-svg` when styling SVG primitives and `react-native-reanimated` when using its entering, exiting, or layout helpers.
+
+</Step>
+<Step>
+
+### Connect Nitrowind to Metro
+
+Use Expo's Metro config for Expo applications:
+
+```js title="metro.config.js"
+const { getDefaultConfig } = require('expo/metro-config');
+const { withNitrowindMetroConfig } = require('@nitrofoundation/nitrowind/metro');
+
+module.exports = withNitrowindMetroConfig(getDefaultConfig(__dirname), {
+  input: './global.css',
+});
+```
+
+For framework-less React Native, import `getDefaultConfig` from `@react-native/metro-config`. Nitrowind does not require a Babel plugin.
+
+</Step>
+<Step>
+
+### Add the Tailwind CSS entry
+
+```css title="global.css"
+@import 'tailwindcss';
+
+@theme {
+  --color-brand: oklch(0.72 0.11 178);
+  --color-surface: #ffffff;
+  --color-on-surface: #111827;
+}
+
+.dark {
+  --color-surface: #09090b;
+  --color-on-surface: #f9fafb;
+}
+```
+
+</Step>
+<Step>
+
+### Add the provider and native components
+
+```tsx title="App.tsx"
+import './global.css';
+import { NitrowindProvider, Text, View } from '@nitrofoundation/nitrowind';
+
+export default function App() {
+  return (
+    <NitrowindProvider>
+      <View className="flex-1 items-center justify-center bg-surface pt-safe">
+        <Text className="text-xl font-bold text-brand">Hello Nitrowind</Text>
+      </View>
+    </NitrowindProvider>
+  );
+}
+```
+
+</Step>
+<Step>
+
+### Finish the native install
+
+Run CocoaPods for iOS. Android uses React Native autolinking.
+
+```bash
+cd ios && pod install
+```
+
+</Step>
+</Steps>
+
+For troubleshooting and framework-specific details, use the complete [installation guide](/docs/getting-started/installation).
+
+## Features supported in 1.0 beta
+
+### Native runtime and adaptive styling
+
+- Light, dark, and named themes with native dependency updates
+- Color-scheme, dimensions, orientation, RTL, and font-scale variants
+- Safe-area utilities for padding, margin, position, and sizing
+- Interactive states and parent group-state propagation
+- Responsive utilities and width, height, named, and custom container queries
+
+### Native paint and effects
+
+- Background images with cover, contain, repeat, stretch, and focal positioning
+- Linear, radial, and conic gradients, including arbitrary values and gradient borders
+- Display P3 wide-gamut colors and native semantic colors
+- URL and gradient masks
+- Geometric clip paths
+- Box shadows, text shadows, transforms, filters, and backdrop filters where supported
+
+### Motion and component integration
+
+- CSS keyframes and utility animations such as `animate-spin`, `animate-bounce`, and `animate-pulse`
+- Entering, exiting, and layout animation helpers through the optional Reanimated integration
+- Native scroll-driven animation timelines without a JavaScript `onScroll` loop
+- Class-aware `View`, `Text`, image, pressable, and scrollable primitives
+- `react-native-svg` paint primitives
+- Native prop remapping for component-specific host properties
+
+See the [platform compatibility matrix](/docs/core-concepts/supported-features) for the exact iOS, Android, and web boundaries of every feature.
+
+## What moves to native
+
+Nitrowind does not claim that JavaScript disappears from React Native. Components, application state, and event handlers remain yours. The important difference is what happens after a supported style dependency has been registered.
+
+Theme tokens, runtime state, safe-area values, dimensions, container sizes, and scroll timelines can notify the native dependency graph. Nitrowind can update the affected nodes without asking JavaScript to resolve the complete style again.
+
+That boundary matters most in interfaces that respond continuously: adaptive themes, interactive groups, responsive containers, and scroll-driven motion.
+
+## Help shape the stable release
+
+The 1.0 beta is an invitation to test Nitrowind in real applications. Useful contributions include minimal reproductions, platform compatibility reports, documentation improvements, compiler fixtures, and native performance traces.
+
+Nitrowind is open source under the MIT license. Start with the [repository](https://github.com/nitrofoundation/nitrowind), read the [documentation](/docs), or open an issue with a focused reproduction.
+
+This release was created and is maintained by [Ashwith Joylan](https://github.com/AshwithJoylan).

@@ -21,9 +21,8 @@ namespace margelo::nitro {
  */
 template <>
 struct JSIConverter<std::shared_ptr<const facebook::react::ShadowNode>> {
-  static std::shared_ptr<const facebook::react::ShadowNode> fromJSI(
-      facebook::jsi::Runtime& runtime,
-      const facebook::jsi::Value& value) {
+  static std::shared_ptr<const facebook::react::ShadowNode>
+  fromJSI(facebook::jsi::Runtime &runtime, const facebook::jsi::Value &value) {
     if (!value.isObject()) {
       return nullptr;
     }
@@ -34,19 +33,23 @@ struct JSIConverter<std::shared_ptr<const facebook::react::ShadowNode>> {
     // We hold a live JS runtime here, on the JS thread, at the exact moment a
     // node is first linked — the bridgeless-safe seam to capture the UIManager
     // (its binding isn't reachable via `setBridge:` under the New Arch host).
-    ::nitrocss::NitroCssInstaller::shared().ensureCaptured(runtime);
-    return object.getNativeState<facebook::react::ShadowNodeWrapper>(runtime)->shadowNode;
+    if (!::nitrocss::NitroCssInstaller::shared().ensureCaptured(runtime)) {
+      return nullptr;
+    }
+    return object.getNativeState<facebook::react::ShadowNodeWrapper>(runtime)
+        ->shadowNode;
   }
 
-  static facebook::jsi::Value toJSI(
-      facebook::jsi::Runtime& runtime,
-      const std::shared_ptr<const facebook::react::ShadowNode>& node) {
-    if (node == nullptr) return facebook::jsi::Value::null();
+  static facebook::jsi::Value
+  toJSI(facebook::jsi::Runtime &runtime,
+        const std::shared_ptr<const facebook::react::ShadowNode> &node) {
+    if (node == nullptr)
+      return facebook::jsi::Value::null();
     return facebook::react::valueFromShadowNode(runtime, node);
   }
 
-  static bool canConvert(facebook::jsi::Runtime& /*runtime*/,
-                         const facebook::jsi::Value& value) {
+  static bool canConvert(facebook::jsi::Runtime & /*runtime*/,
+                         const facebook::jsi::Value &value) {
     return value.isObject();
   }
 };

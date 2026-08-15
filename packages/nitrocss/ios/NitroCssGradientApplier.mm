@@ -12,6 +12,7 @@
 #import "NitroCssClipPathApplier.h"
 #import "NitroCssBackgroundImageApplier.h"
 #import "NitroCssMaskApplier.h"
+#import "NitroCssScrollTimelineApplier.h"
 
 #include <algorithm>
 #include <atomic>
@@ -437,12 +438,51 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   return nil;
 }
 
+void collectGradientViews(UIView *view,
+                          NSSet<NSNumber *> *requestedTags,
+                          NSMutableDictionary<NSNumber *, UIView *> *result) {
+  if (view == nil) return;
+  NSNumber *tag = @(view.tag);
+  if (view.tag != 0 && [requestedTags containsObject:tag]) result[tag] = view;
+  for (UIView *child in view.subviews) {
+    collectGradientViews(child, requestedTags, result);
+  }
+}
+
+NSDictionary<NSNumber *, UIView *> *mountedGradientViews(
+    const std::unordered_map<GradientTargets::Tag, GradientTargets::Entry> &snapshot,
+    NSMapTable<NSNumber *, UIView *> *cache) {
+  NSMutableSet<NSNumber *> *tags = [NSMutableSet setWithCapacity:snapshot.size()];
+  for (const auto &entry : snapshot) [tags addObject:@(entry.first)];
+
+  NSMutableDictionary<NSNumber *, UIView *> *views =
+      [NSMutableDictionary dictionaryWithCapacity:tags.count];
+  for (NSNumber *tag in tags) {
+    UIView *cached = [cache objectForKey:tag];
+    if (cached != nil && cached.window != nil && cached.tag == tag.integerValue) {
+      views[tag] = cached;
+    }
+  }
+  if (views.count == tags.count) return views;
+
+  for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+    if (![scene isKindOfClass:UIWindowScene.class]) continue;
+    for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+      collectGradientViews(window, tags, views);
+    }
+  }
+  for (NSNumber *tag in views) [cache setObject:views[tag] forKey:tag];
+  return views;
+}
+
 } // namespace
 
 @implementation NitroCssGradientApplier {
   __weak RCTSurfacePresenter *_surfacePresenter;
   /** Views currently carrying our layer, weakly held for the prune pass. */
   NSHashTable<UIView *> *_paintedViews;
+  /** Reload-safe tag lookup; values stay weak so Fabric can recycle views. */
+  NSMapTable<NSNumber *, UIView *> *_fallbackViews;
   std::atomic<bool> _flushScheduled;
   /**
    * Bounded first-paint retry: a JS-thread `link` can register a descriptor
@@ -465,6 +505,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 - (instancetype)init {
   if (self = [super init]) {
     _paintedViews = [NSHashTable weakObjectsHashTable];
+    _fallbackViews = [NSMapTable strongToWeakObjectsMapTable];
     _flushScheduled.store(false);
     _retriesLeft = 3;
   }
@@ -500,6 +541,8 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   [[NitroCssBackgroundImageApplier shared]
       attachToSurfacePresenter:surfacePresenter];
   [[NitroCssMaskApplier shared] attachToSurfacePresenter:surfacePresenter];
+  [[NitroCssScrollTimelineApplier shared]
+      attachToSurfacePresenter:surfacePresenter];
 }
 
 - (void)setNeedsFlush {
@@ -525,9 +568,18 @@ CAGradientLayer *findGradientLayer(UIView *view) {
 - (void)flushOnMainThread {
   NSAssert(NSThread.isMainThread, @"gradient flush must run on main");
   RCTSurfacePresenter *presenter = _surfacePresenter;
-  if (presenter == nil) return;
-
   const auto snapshot = GradientTargets::shared().snapshot();
+  // Bridgeless reload replaces the presenter without re-running the host
+  // attachment. Resolve the fresh Fabric views by their UIView tags in that
+  // case, while retaining the presenter registry as the normal fast path.
+  NSDictionary<NSNumber *, UIView *> *mountedViews =
+      presenter == nil ? mountedGradientViews(snapshot, _fallbackViews) : nil;
+
+  auto viewForTag = [&](NSInteger tag) -> UIView * {
+    return presenter != nil
+        ? [presenter findComponentViewWithTag_DO_NOT_USE_DEPRECATED:tag]
+        : mountedViews[@(tag)];
+  };
 
   [CATransaction begin];
   [CATransaction setDisableActions:YES];
@@ -541,8 +593,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
     if (appliedTag != nil) {
       const auto it = snapshot.find(appliedTag.intValue);
       if (it != snapshot.end()) {
-        UIView *current = [presenter
-            findComponentViewWithTag_DO_NOT_USE_DEPRECATED:appliedTag.integerValue];
+        UIView *current = viewForTag(appliedTag.integerValue);
         keep = (current == view);
       }
     }
@@ -555,8 +606,7 @@ CAGradientLayer *findGradientLayer(UIView *view) {
   //    currently mounted. Unchanged (generation + frame) views are skipped.
   BOOL anyMissing = NO;
   for (const auto &entry : snapshot) {
-    UIView *view =
-        [presenter findComponentViewWithTag_DO_NOT_USE_DEPRECATED:entry.first];
+    UIView *view = viewForTag(entry.first);
     if (view == nil) {
       // Not mounted right now (first paint racing the mount, or culled
       // off-screen). The next mount transaction re-triggers us.

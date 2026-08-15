@@ -1,5 +1,6 @@
 @import 'tailwindcss';
-/* nitrowind gradient support — cache-bust v1 */
+@source inline("h-[2300px] h-[2400px] h-[2800px] h-[3100px] h-[3400px] h-[3500px]");
+/* nitrowind gradient support — cache-bust v2 */
 
 /*
  * Tailwind v4 design tokens. `@theme` tokens become utilities, e.g.
@@ -136,6 +137,416 @@
     --mask-angle: 360deg;
     --mask-scale: 0.92;
   }
+}
+
+/* Native scroll-timeline demo. Each target uses the same source timeline
+ * with a different range, producing a stagger without an onScroll handler. */
+@keyframes scroll-demo-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scroll-demo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(96px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scroll-demo-scale-rotate {
+  from {
+    opacity: 0;
+    transform: scale(0.72) rotate(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes scroll-demo-compose {
+  from {
+    opacity: 0;
+    transform: translateX(64px) translateY(72px) scale(0.82) rotate(9deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes scroll-demo-cue {
+  from {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(22px);
+  }
+}
+
+@keyframes scroll-demo-progress {
+  from {
+    opacity: 0.35;
+    transform: translateX(-178px) scaleX(0.02);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+@utility scroll-demo-feed {
+  scroll-timeline: --scroll-demo block;
+}
+
+@utility scroll-demo-cue {
+  animation: scroll-demo-cue 1s linear both;
+  animation-timeline: --scroll-demo;
+  animation-range: 0% 12%;
+}
+
+@utility scroll-demo-progress {
+  animation: scroll-demo-progress 1s linear both;
+  animation-timeline: --scroll-demo;
+  animation-range: 0% 100%;
+}
+
+@utility scroll-reveal-one {
+  animation: scroll-demo-fade 1s linear both;
+  animation-timeline: --scroll-demo;
+  animation-range: 3% 22%;
+}
+
+@utility scroll-reveal-two {
+  animation: scroll-demo-rise 1s linear both;
+  animation-timeline: --scroll-demo;
+  animation-range: 28% 52%;
+}
+
+@utility scroll-reveal-three {
+  animation: scroll-demo-scale-rotate 1s linear both;
+  animation-timeline: --scroll-demo;
+  animation-range: 50% 76%;
+}
+
+@utility scroll-reveal-four {
+  animation: scroll-demo-compose 1s linear both;
+  animation-timeline: --scroll-demo;
+  animation-range: 72% 94%;
+}
+
+/* iOS-first native scroll effects gallery. Page-wide effects use a named
+ * timeline; entering cards and panels use element-local view() timelines. */
+@utility scroll-lab-source {
+  scroll-timeline: --scroll-lab block;
+}
+
+@keyframes scroll-header-compact {
+  from { opacity: 0; transform: translateY(-88px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@utility scroll-sticky-header {
+  animation: scroll-header-compact 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 2% 11%;
+}
+
+@keyframes scroll-parallax-a {
+  from { opacity: 0.72; transform: translateY(110px) scale(1.12); }
+  to { opacity: 1; transform: translateY(-70px) scale(1); }
+}
+@keyframes scroll-parallax-b {
+  from { opacity: 0.7; transform: translateY(130px) scale(1.14); }
+  to { opacity: 1; transform: translateY(-90px) scale(1); }
+}
+@utility scroll-parallax-1 {
+  animation: scroll-parallax-a 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% exit 100%;
+}
+@utility scroll-parallax-2 {
+  animation: scroll-parallax-b 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% exit 100%;
+}
+@utility scroll-parallax-3 {
+  animation: scroll-parallax-a 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% exit 100%;
+}
+
+@keyframes scroll-parallax-orb {
+  from { transform: translateY(-80px) scale(0.82); }
+  to { transform: translateY(140px) scale(1.18); }
+}
+@utility scroll-parallax-orb {
+  animation: scroll-parallax-orb 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+
+@keyframes scroll-stack-a {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0.72; transform: translateY(-18px) scale(0.88); }
+}
+@keyframes scroll-stack-b {
+  from { opacity: 0.4; transform: translateY(120px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes scroll-stack-middle {
+  0% { opacity: 0.4; transform: translateY(120px) scale(0.92); }
+  45% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0.8; transform: translateY(-10px) scale(0.94); }
+}
+@utility scroll-stack-card-1 {
+  animation: scroll-stack-a 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 10% 34%;
+}
+@utility scroll-stack-card-2 {
+  animation: scroll-stack-middle 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 20% 52%;
+}
+@utility scroll-stack-card-3 {
+  animation: scroll-stack-b 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 40% 60%;
+}
+
+@keyframes scroll-depth-left {
+  from { opacity: 0.3; transform: translateX(-90px) translateY(130px) scale(0.72) rotate(-9deg); }
+  to { opacity: 1; transform: translateX(0) translateY(0) scale(1) rotate(0deg); }
+}
+@keyframes scroll-depth-right {
+  from { opacity: 0.3; transform: translateX(90px) translateY(130px) scale(0.72) rotate(9deg); }
+  to { opacity: 1; transform: translateX(0) translateY(0) scale(1) rotate(0deg); }
+}
+@utility scroll-depth-card-1 {
+  animation: scroll-depth-left 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 4% 24%;
+}
+@utility scroll-depth-card-2 {
+  animation: scroll-depth-right 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 20% 40%;
+}
+@utility scroll-depth-card-3 {
+  animation: scroll-depth-left 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 38% 58%;
+}
+
+@keyframes scroll-marquee-forward {
+  from { transform: translateX(-180px); }
+  to { transform: translateX(120px); }
+}
+@keyframes scroll-marquee-reverse {
+  from { transform: translateX(100px); }
+  to { transform: translateX(-200px); }
+}
+@keyframes scroll-marquee-down {
+  from { transform: translateY(-120px); }
+  to { transform: translateY(120px); }
+}
+@keyframes scroll-marquee-up {
+  from { transform: translateY(120px); }
+  to { transform: translateY(-120px); }
+}
+@utility scroll-marquee-forward {
+  animation: scroll-marquee-forward 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+@utility scroll-marquee-reverse {
+  animation: scroll-marquee-reverse 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+@utility scroll-marquee-side-a {
+  animation: scroll-marquee-down 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+@utility scroll-marquee-side-b {
+  animation: scroll-marquee-up 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+
+@keyframes scroll-image-zoom {
+  from { opacity: 0.88; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.65); }
+}
+@keyframes scroll-image-zoom-deep {
+  from { opacity: 1; transform: scale(1.55); }
+  to { opacity: 0.12; transform: scale(0.88); }
+}
+@keyframes scroll-image-blur-copy {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@utility scroll-image-zoom {
+  animation: scroll-image-zoom 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 72%;
+}
+@utility scroll-image-zoom-deep {
+  animation: scroll-image-zoom-deep 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 72%;
+}
+@utility scroll-image-blur-copy {
+  animation: scroll-image-blur-copy 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 8% 58%;
+}
+
+@keyframes scroll-slide-left {
+  from { opacity: 0; transform: translateX(-140px) rotate(-4deg); }
+  to { opacity: 1; transform: translateX(0) rotate(0deg); }
+}
+@keyframes scroll-slide-right {
+  from { opacity: 0; transform: translateX(140px) rotate(4deg); }
+  to { opacity: 1; transform: translateX(0) rotate(0deg); }
+}
+@utility scroll-slider-1 {
+  animation: scroll-slide-left 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% entry 100%;
+}
+@utility scroll-slider-2 {
+  animation: scroll-slide-right 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% entry 100%;
+}
+@utility scroll-slider-3 {
+  animation: scroll-slide-left 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% entry 100%;
+}
+
+@keyframes scroll-grid-rise-left {
+  from { opacity: 0; transform: translateX(-60px) translateY(90px) scale(0.72) rotate(-8deg); }
+  to { opacity: 1; transform: translateX(0) translateY(0) scale(1) rotate(0deg); }
+}
+@keyframes scroll-grid-rise-right {
+  from { opacity: 0; transform: translateX(60px) translateY(90px) scale(0.72) rotate(8deg); }
+  to { opacity: 1; transform: translateX(0) translateY(0) scale(1) rotate(0deg); }
+}
+@utility scroll-grid-1 {
+  animation: scroll-grid-rise-left 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% entry 100%;
+}
+@utility scroll-grid-2 {
+  animation: scroll-grid-rise-right 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% entry 100%;
+}
+@utility scroll-grid-3 {
+  animation: scroll-grid-rise-left 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% entry 100%;
+}
+@utility scroll-grid-4 {
+  animation: scroll-grid-rise-right 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% entry 100%;
+}
+
+@keyframes scroll-eye-orbit-a {
+  0% { transform: translateX(-28px) translateY(0); }
+  25% { transform: translateX(0) translateY(-28px); }
+  50% { transform: translateX(28px) translateY(0); }
+  75% { transform: translateX(0) translateY(28px); }
+  100% { transform: translateX(-28px) translateY(0); }
+}
+@keyframes scroll-eye-orbit-b {
+  0% { transform: translateX(28px) translateY(0); }
+  25% { transform: translateX(0) translateY(28px); }
+  50% { transform: translateX(-28px) translateY(0); }
+  75% { transform: translateX(0) translateY(-28px); }
+  100% { transform: translateX(28px) translateY(0); }
+}
+@utility scroll-eye-1 {
+  animation: scroll-eye-orbit-a 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+@utility scroll-eye-2 {
+  animation: scroll-eye-orbit-b 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+
+@keyframes scroll-eye-bg-2 {
+  0% { opacity: 0; }
+  35% { opacity: 0; }
+  58% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes scroll-eye-bg-3 {
+  0%, 58% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@utility scroll-eye-bg-2 {
+  animation: scroll-eye-bg-2 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+@utility scroll-eye-bg-3 {
+  animation: scroll-eye-bg-3 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+
+@keyframes scroll-mast-progress {
+  from { opacity: 0.4; transform: translateX(-170px) scaleX(0.02); }
+  to { opacity: 1; transform: translateX(0) scaleX(1); }
+}
+@keyframes scroll-mast-title {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0.18; transform: translateY(-180px) scale(0.72); }
+}
+@keyframes scroll-mast-orb {
+  from { opacity: 0.9; transform: translateX(0) translateY(0) scale(1) rotate(0deg); }
+  to { opacity: 0.35; transform: translateX(-180px) translateY(520px) scale(0.5) rotate(180deg); }
+}
+@keyframes scroll-mast-kicker {
+  from { opacity: 0; transform: translateX(-80px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@utility scroll-mast-progress {
+  animation: scroll-mast-progress 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 100%;
+}
+@utility scroll-mast-title {
+  animation: scroll-mast-title 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 58%;
+}
+@utility scroll-mast-orb {
+  animation: scroll-mast-orb 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 82%;
+}
+@utility scroll-mast-kicker {
+  animation: scroll-mast-kicker 1s linear both;
+  animation-timeline: --scroll-lab;
+  animation-range: 0% 12%;
 }
 
 /* --- clip-path (native CAShapeLayer mask, no SVG) --- */

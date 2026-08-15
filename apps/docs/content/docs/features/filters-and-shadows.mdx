@@ -1,0 +1,23 @@
+---
+title: Filters & Shadows
+description: Native shadows, text shadows, filters, backdrop filters, and transforms.
+---
+
+# Filters & Shadows
+
+Nitrowind maps supported effect declarations to native descriptors and platform-specific paint APIs.
+
+```tsx
+<Text className="text-xl font-bold shadow-lg [text-shadow:0_2px_4px_rgba(0,0,0,0.25)]">
+  Polished text
+</Text>
+```
+
+## Supported effect families
+
+- Box shadows and text shadows.
+- Filters and backdrop filters where the target platform supports them.
+- Individual transforms folded into React Native transform arrays.
+- Font variants and supported native paint properties.
+
+Use [Masks](./masks) and [Clip Paths](./clip-paths) for alpha and geometric clipping.

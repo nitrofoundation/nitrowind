@@ -1,0 +1,24 @@
+---
+title: Gradients & Gradient Borders
+description: Native linear, radial, conic, and border-gradient paint layers.
+---
+
+# Gradients & Gradient Borders
+
+Nitrowind compiles Tailwind gradient utilities into native paint descriptors, without adding a JavaScript wrapper component.
+
+```tsx
+<View className="h-40 rounded-2xl bg-linear-to-br from-cyan-400 via-blue-600 to-violet-700" />
+<View className="h-40 rounded-2xl bg-radial from-white to-sky-500" />
+<View className="h-40 rounded-2xl bg-conic-45 from-rose-500 via-violet-500 to-cyan-400" />
+```
+
+## Supported
+
+- Linear directions, positive and negative angles, and arbitrary gradients.
+- Radial and conic geometry, including position and angle controls.
+- Theme-aware color stops and runtime `var()` values.
+- Percentage stop positions and `bg-none` clearing.
+- The common two-layer CSS recipe for gradient borders.
+
+For image layers, see [Background Images](./background-images).

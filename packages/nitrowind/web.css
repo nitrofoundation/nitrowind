@@ -1,0 +1,13 @@
+/* Browser-safe utilities shared by Vite, Next.js, and other DOM bundlers. */
+@import "@nitrofoundation/nitrocss/safe-area.css";
+
+/* Manual app theming controls Tailwind's dark variant through `.dark`. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Match the platform markers produced by Nitrowind's native compiler. */
+@custom-variant ios (&:where([data-nitrocss-os="ios"], [data-nitrocss-os="ios"] *));
+@custom-variant android (&:where([data-nitrocss-os="android"], [data-nitrocss-os="android"] *));
+@custom-variant macos (&:where([data-nitrocss-os="macos"], [data-nitrocss-os="macos"] *));
+@custom-variant windows (&:where([data-nitrocss-os="windows"], [data-nitrocss-os="windows"] *));
+@custom-variant web (&:where([data-nitrocss-os="web"], [data-nitrocss-os="web"] *));
+@custom-variant native (&:where([data-nitrocss-os="native"], [data-nitrocss-os="native"] *));

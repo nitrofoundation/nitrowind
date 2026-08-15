@@ -1,0 +1,170 @@
+---
+title: Install Nitrowind in React Native
+description: Install Nitrowind in React Native or Expo, configure Metro and Tailwind CSS v4, and render your first native className component.
+---
+
+# Install Nitrowind in React Native
+
+<Callout type="info" title="Expo and framework-less React Native are supported">
+  Both use the same Nitrowind runtime and Tailwind CSS v4 compiler. Select the Metro import for your
+  app, then follow the shared steps below.
+</Callout>
+
+<div className="docs-segment-links">
+  <a href="#expo">Expo</a>
+  <a href="#framework-less">Framework-less</a>
+  <a href="#verify-the-installation">Verify setup</a>
+</div>
+
+<Steps>
+<Step>
+
+### Install the packages
+
+Choose your package manager:
+
+<Tabs items={['yarn', 'npm', 'pnpm', 'bun']}>
+<Tab value="yarn">
+
+```bash
+yarn add @nitrofoundation/nitrowind @nitrofoundation/nitrocss tailwindcss react-native-nitro-modules
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @nitrofoundation/nitrowind @nitrofoundation/nitrocss tailwindcss react-native-nitro-modules
+```
+
+</Tab>
+<Tab value="pnpm">
+
+```bash
+pnpm add @nitrofoundation/nitrowind @nitrofoundation/nitrocss tailwindcss react-native-nitro-modules
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @nitrofoundation/nitrowind @nitrofoundation/nitrocss tailwindcss react-native-nitro-modules
+```
+
+</Tab>
+</Tabs>
+
+Add optional peers only when you use their integrations:
+
+```bash
+yarn add react-native-svg react-native-reanimated
+```
+
+`react-native-svg` enables className-styled SVG primitives. `react-native-reanimated` enables entering, exiting, layout, and animation helpers.
+
+</Step>
+<Step>
+
+### Configure Metro
+
+<Tabs items={['Expo', 'Framework-less']}>
+<Tab value="Expo">
+
+<span id="expo" />
+
+```js title="metro.config.js"
+const { getDefaultConfig } = require('expo/metro-config');
+const { withNitrowindMetroConfig } = require('@nitrofoundation/nitrowind/metro');
+
+module.exports = withNitrowindMetroConfig(getDefaultConfig(__dirname), {
+  input: './global.css',
+});
+```
+
+</Tab>
+<Tab value="Framework-less">
+
+<span id="framework-less" />
+
+```js title="metro.config.js"
+const { getDefaultConfig } = require('@react-native/metro-config');
+const { withNitrowindMetroConfig } = require('@nitrofoundation/nitrowind/metro');
+
+module.exports = withNitrowindMetroConfig(getDefaultConfig(__dirname), {
+  input: './global.css',
+});
+```
+
+</Tab>
+</Tabs>
+
+<Callout type="success" title="No Babel plugin">
+  The Metro plugin compiles CSS and class candidates at build time. Nitrowind does not require a
+  Babel transform.
+</Callout>
+
+</Step>
+<Step>
+
+### Create the Tailwind CSS entry
+
+```css title="global.css"
+@import 'tailwindcss';
+
+@theme {
+  --color-brand: oklch(0.72 0.11 178);
+  --color-surface: #ffffff;
+  --color-on-surface: #111827;
+}
+
+.dark {
+  --color-surface: #09090b;
+  --color-on-surface: #f9fafb;
+}
+```
+
+</Step>
+<Step>
+
+### Import CSS and add the provider
+
+```tsx title="App.tsx"
+import './global.css';
+import { NitrowindProvider, Text, View } from '@nitrofoundation/nitrowind';
+
+export default function App() {
+  return (
+    <NitrowindProvider>
+      <View className="flex-1 items-center justify-center bg-surface pt-safe">
+        <Text className="text-xl font-bold text-brand">Hello Nitrowind</Text>
+      </View>
+    </NitrowindProvider>
+  );
+}
+```
+
+</Step>
+<Step>
+
+### Complete the native install
+
+iOS needs the normal CocoaPods step:
+
+```bash
+cd ios && pod install
+```
+
+Android is autolinked through the package Gradle project.
+
+</Step>
+</Steps>
+
+## Verify the installation
+
+<Callout type="idea" title="Expected result">
+  Start Metro, open the app, and confirm that the centered text uses your `brand` token. Switch the
+  root to `.dark` to verify that runtime theme dependencies update natively instead of being
+  resolved again in JavaScript.
+</Callout>
+
+Continue with [global CSS](./global-css), [adaptive theming](../core-concepts/adaptive-theming), or the [complete feature matrix](../core-concepts/supported-features).

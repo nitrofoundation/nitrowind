@@ -4,22 +4,18 @@ import "react-native";
 declare module "react-native" {
 	interface ViewProps {
 		className?: string;
-		children?: ReactNode;
 	}
 
 	interface TextProps {
 		className?: string;
-		children?: ReactNode;
 	}
 
 	interface PressableProps {
 		className?: string;
-		children?: ReactNode;
 	}
 
 	interface ScrollViewProps {
 		contentContainerClassName?: string;
-		children?: ReactNode;
 	}
 }
 

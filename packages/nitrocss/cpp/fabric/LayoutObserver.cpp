@@ -7,6 +7,7 @@
 #include "../gradient/GradientTargets.hpp"
 #include "../mask/MaskTargets.hpp"
 #include "../mask/MaskTransformOverrides.hpp"
+#include "../scroll/ScrollTimelineTargets.hpp"
 
 #include <react/renderer/core/LayoutableShadowNode.h>
 #include <react/renderer/core/ShadowNode.h>
@@ -21,13 +22,30 @@ namespace nitrocss {
 
 using namespace facebook::react;
 
-LayoutObserver& LayoutObserver::shared() {
+LayoutObserver &LayoutObserver::shared() {
   static LayoutObserver instance;
   return instance;
 }
 
-void LayoutObserver::registerWith(UIManager& uiManager) {
-  if (registered_ && uiManager_ == &uiManager) return;
+class LayoutObserver::RegistrationHook final : public UIManagerMountHook {
+public:
+  RegistrationHook(LayoutObserver &owner, uint64_t generation)
+      : owner_(owner), generation_(generation) {}
+
+  void shadowTreeDidMount(const RootShadowNode::Shared &rootShadowNode,
+                          HighResTimeStamp mountTime) noexcept override {
+    owner_.shadowTreeDidMount(generation_, rootShadowNode, mountTime);
+  }
+
+private:
+  LayoutObserver &owner_;
+  const uint64_t generation_;
+};
+
+void LayoutObserver::registerWith(UIManager &uiManager) {
+  std::lock_guard<std::mutex> lifecycleLock(lifecycleMutex_);
+  if (registered_ && uiManager_ == &uiManager)
+    return;
   // A different UIManager means a new React instance (dev reload) replaced the
   // one we registered on. That instance — including its mount-hook registry —
   // is gone or being torn down; unregistering through the stale pointer would
@@ -35,16 +53,73 @@ void LayoutObserver::registerWith(UIManager& uiManager) {
   // mount hook is what re-pings the gradient applier and re-measures container
   // queries after every mount, so without this the reloaded app never paints
   // gradients again.
+  const uint64_t generation = registrationGeneration_.fetch_add(1) + 1;
+  auto hook = std::make_unique<RegistrationHook>(*this, generation);
+  currentHook_ = hook.get();
+  registrationHooks_.push_back(std::move(hook));
   uiManager_ = &uiManager;
-  uiManager.registerMountHook(*this);
+  uiManager.registerMountHook(*currentHook_);
   registered_ = true;
 }
 
-void LayoutObserver::unregister() {
-  if (!registered_ || uiManager_ == nullptr) return;
-  uiManager_->unregisterMountHook(*this);
+void LayoutObserver::resetForNewInstance() {
+  // Never unregister through the retiring raw pointer: the old UIManager may
+  // already be destroyed. Forgetting the identity also handles the allocator
+  // placing the replacement UIManager at the exact same address.
+  registrationGeneration_.fetch_add(1);
+  std::lock_guard<std::mutex> lifecycleLock(lifecycleMutex_);
   registered_ = false;
   uiManager_ = nullptr;
+  currentHook_ = nullptr;
+}
+
+void LayoutObserver::waitForIdle() {
+  std::unique_lock<std::mutex> lifecycleLock(lifecycleMutex_);
+  lifecycleCv_.wait(lifecycleLock, [this]() { return inFlightWork_ == 0; });
+}
+
+void LayoutObserver::unregister() {
+  UIManager *uiManager = nullptr;
+  RegistrationHook *hook = nullptr;
+  {
+    std::lock_guard<std::mutex> lifecycleLock(lifecycleMutex_);
+    if (!registered_ || uiManager_ == nullptr || currentHook_ == nullptr)
+      return;
+    registrationGeneration_.fetch_add(1);
+    uiManager = uiManager_;
+    hook = currentHook_;
+    registered_ = false;
+    uiManager_ = nullptr;
+    currentHook_ = nullptr;
+  }
+  uiManager->unregisterMountHook(*hook);
+  waitForIdle();
+}
+
+bool LayoutObserver::beginWork(uint64_t registrationGeneration) {
+  std::lock_guard<std::mutex> lifecycleLock(lifecycleMutex_);
+  if (registrationGeneration != registrationGeneration_.load() ||
+      !registered_ || uiManager_ == nullptr) {
+    return false;
+  }
+  ++inFlightWork_;
+  return true;
+}
+
+UIManager *LayoutObserver::beginRemeasure() {
+  std::lock_guard<std::mutex> lifecycleLock(lifecycleMutex_);
+  if (!registered_ || uiManager_ == nullptr)
+    return nullptr;
+  ++inFlightWork_;
+  return uiManager_;
+}
+
+void LayoutObserver::finishWork() {
+  std::lock_guard<std::mutex> lifecycleLock(lifecycleMutex_);
+  if (inFlightWork_ > 0)
+    --inFlightWork_;
+  if (inFlightWork_ == 0)
+    lifecycleCv_.notify_all();
 }
 
 namespace {
@@ -54,21 +129,20 @@ namespace {
  * and group tags. Containers are measured; query/group nodes are bound to their
  * nearest *ancestor* (CSS semantics: an element never queries itself).
  */
-void walk(const ShadowNode& node,
-          Tag nearestContainer,
-          Tag nearestGroup,
-          const std::unordered_map<Tag, std::string>& containers,
-          const std::unordered_map<Tag, std::string>& groups,
-          const std::unordered_set<Tag>& linkedTags,
-          const std::unordered_set<Tag>& structuralPseudoTags,
-          const std::unordered_set<Tag>& queryTags,
-          const std::unordered_set<Tag>& groupDependentTags,
-          const std::unordered_set<Tag>& gridTags,
-          std::vector<NitroCssCore::ContainerMeasurement>& measurements,
-          std::unordered_map<Tag, Tag>& nodeToContainer,
-          std::unordered_map<Tag, Tag>& nodeToGroup,
-          std::unordered_map<Tag, NitroCssCore::StructuralPseudoState>& structuralState,
-          std::vector<NitroCssCore::GridMeasurement>& gridMeasurements) {
+void walk(const ShadowNode &node, Tag nearestContainer, Tag nearestGroup,
+          const std::unordered_map<Tag, std::string> &containers,
+          const std::unordered_map<Tag, std::string> &groups,
+          const std::unordered_set<Tag> &linkedTags,
+          const std::unordered_set<Tag> &structuralPseudoTags,
+          const std::unordered_set<Tag> &queryTags,
+          const std::unordered_set<Tag> &groupDependentTags,
+          const std::unordered_set<Tag> &gridTags,
+          std::vector<NitroCssCore::ContainerMeasurement> &measurements,
+          std::unordered_map<Tag, Tag> &nodeToContainer,
+          std::unordered_map<Tag, Tag> &nodeToGroup,
+          std::unordered_map<Tag, NitroCssCore::StructuralPseudoState>
+              &structuralState,
+          std::vector<NitroCssCore::GridMeasurement> &gridMeasurements) {
   const Tag tag = node.getTag();
 
   // Bind this query node to the nearest container found above it.
@@ -76,7 +150,8 @@ void walk(const ShadowNode& node,
     nodeToContainer[tag] = nearestContainer;
   }
 
-  if (nearestGroup != 0 && groupDependentTags.find(tag) != groupDependentTags.end()) {
+  if (nearestGroup != 0 &&
+      groupDependentTags.find(tag) != groupDependentTags.end()) {
     nodeToGroup[tag] = nearestGroup;
   }
 
@@ -85,7 +160,7 @@ void walk(const ShadowNode& node,
   Tag childNearest = nearestContainer;
   auto containerIt = containers.find(tag);
   if (containerIt != containers.end()) {
-    if (auto* layoutable = dynamic_cast<const LayoutableShadowNode*>(&node)) {
+    if (auto *layoutable = dynamic_cast<const LayoutableShadowNode *>(&node)) {
       const auto size = layoutable->getLayoutMetrics().frame.size;
       measurements.push_back({tag, containerIt->second,
                               static_cast<double>(size.width),
@@ -99,36 +174,40 @@ void walk(const ShadowNode& node,
     childNearestGroup = tag;
   }
 
-  // Native grid: measure the container's content width and collect its grid-item
-  // children (in tree order) so the engine can lay them out and commit absolute
-  // frames. Placements travel positionally with these families (see grid.tsx).
+  // Native grid: measure the container's content width and collect its
+  // grid-item children (in tree order) so the engine can lay them out and
+  // commit absolute frames. Placements travel positionally with these families
+  // (see grid.tsx).
   if (gridTags.find(tag) != gridTags.end()) {
-    if (auto* layoutable = dynamic_cast<const LayoutableShadowNode*>(&node)) {
+    if (auto *layoutable = dynamic_cast<const LayoutableShadowNode *>(&node)) {
       NitroCssCore::GridMeasurement measurement;
       measurement.tag = tag;
       measurement.family = node.getFamilyShared();
       measurement.surfaceId = node.getSurfaceId();
       measurement.width =
           static_cast<double>(layoutable->getLayoutMetrics().frame.size.width);
-      for (const auto& child : node.getChildren()) {
-        if (child == nullptr) continue;
-        auto* childLayoutable =
-            dynamic_cast<const LayoutableShadowNode*>(child.get());
+      for (const auto &child : node.getChildren()) {
+        if (child == nullptr)
+          continue;
+        auto *childLayoutable =
+            dynamic_cast<const LayoutableShadowNode *>(child.get());
         if (childLayoutable == nullptr) {
           continue;
         }
         measurement.childFamilies.push_back(child->getFamilyShared());
         const auto childSize = childLayoutable->getLayoutMetrics().frame.size;
         measurement.childWidths.push_back(static_cast<double>(childSize.width));
-        measurement.childHeights.push_back(static_cast<double>(childSize.height));
+        measurement.childHeights.push_back(
+            static_cast<double>(childSize.height));
       }
       gridMeasurements.push_back(std::move(measurement));
     }
   }
 
   std::vector<Tag> linkedChildTags;
-  for (const auto& child : node.getChildren()) {
-    if (child == nullptr) continue;
+  for (const auto &child : node.getChildren()) {
+    if (child == nullptr)
+      continue;
     const Tag childTag = child->getTag();
     if (linkedTags.find(childTag) != linkedTags.end()) {
       linkedChildTags.push_back(childTag);
@@ -138,17 +217,18 @@ void walk(const ShadowNode& node,
     const Tag first = linkedChildTags.front();
     const Tag last = linkedChildTags.back();
     for (const auto childTag : linkedChildTags) {
-      if (structuralPseudoTags.find(childTag) == structuralPseudoTags.end()) continue;
+      if (structuralPseudoTags.find(childTag) == structuralPseudoTags.end())
+        continue;
       structuralState[childTag] = {childTag == first, childTag == last};
     }
   }
 
-  for (const auto& child : node.getChildren()) {
+  for (const auto &child : node.getChildren()) {
     if (child != nullptr) {
       walk(*child, childNearest, childNearestGroup, containers, groups,
            linkedTags, structuralPseudoTags, queryTags, groupDependentTags,
-           gridTags, measurements, nodeToContainer, nodeToGroup, structuralState,
-           gridMeasurements);
+           gridTags, measurements, nodeToContainer, nodeToGroup,
+           structuralState, gridMeasurements);
     }
   }
 }
@@ -158,27 +238,28 @@ void walk(const ShadowNode& node,
  * (plus each query node's nearest-container binding) to the engine. Shared by
  * the mount hook and the out-of-band {@link LayoutObserver::remeasure} path.
  */
-void measureAndSync(const ShadowNode& root, bool forceRecompute) {
-  auto& core = NitroCssCore::shared();
+void measureAndSync(const ShadowNode &root, bool forceRecompute) {
+  auto &core = NitroCssCore::shared();
   const auto containers = core.containerTags();
   const auto groups = core.groupTags();
-    const auto structuralPseudoTags = core.structuralPseudoTags();
-    const auto gridTags = core.gridTags();
-    if (containers.empty() && groups.empty() && structuralPseudoTags.empty() &&
-        gridTags.empty()) return;
+  const auto structuralPseudoTags = core.structuralPseudoTags();
+  const auto gridTags = core.gridTags();
+  if (containers.empty() && groups.empty() && structuralPseudoTags.empty() &&
+      gridTags.empty())
+    return;
   const auto queryTags = core.containerQueryTags();
   const auto groupDependentTags = core.groupDependentTags();
-    const auto linkedTags = core.linkedTags();
+  const auto linkedTags = core.linkedTags();
 
   std::vector<NitroCssCore::ContainerMeasurement> measurements;
   std::unordered_map<Tag, Tag> nodeToContainer;
   std::unordered_map<Tag, Tag> nodeToGroup;
-    std::unordered_map<Tag, NitroCssCore::StructuralPseudoState> structuralState;
-    std::vector<NitroCssCore::GridMeasurement> gridMeasurements;
+  std::unordered_map<Tag, NitroCssCore::StructuralPseudoState> structuralState;
+  std::vector<NitroCssCore::GridMeasurement> gridMeasurements;
   walk(root, /*nearestContainer=*/0, /*nearestGroup=*/0, containers, groups,
-      linkedTags, structuralPseudoTags, queryTags, groupDependentTags,
-      gridTags, measurements, nodeToContainer, nodeToGroup, structuralState,
-      gridMeasurements);
+       linkedTags, structuralPseudoTags, queryTags, groupDependentTags,
+       gridTags, measurements, nodeToContainer, nodeToGroup, structuralState,
+       gridMeasurements);
 
   if (!measurements.empty() || !nodeToContainer.empty()) {
     core.syncContainers(measurements, nodeToContainer, forceRecompute);
@@ -197,9 +278,13 @@ void measureAndSync(const ShadowNode& root, bool forceRecompute) {
 } // namespace
 
 void LayoutObserver::shadowTreeDidMount(
-    const RootShadowNode::Shared& rootShadowNode,
+    uint64_t registrationGeneration,
+    const RootShadowNode::Shared &rootShadowNode,
     HighResTimeStamp /*mountTime*/) noexcept {
-  if (rootShadowNode == nullptr) return;
+  if (rootShadowNode == nullptr)
+    return;
+  if (!beginWork(registrationGeneration))
+    return;
 
   // This hook is `noexcept`: a thrown exception would terminate the app, so we
   // contain any failure to a skipped frame rather than a crash.
@@ -216,6 +301,7 @@ void LayoutObserver::shadowTreeDidMount(
     ClipPathTargets::shared().onMountTransaction();
     BackgroundImageTargets::shared().onMountTransaction();
     MaskTargets::shared().onMountTransaction();
+    ScrollTimelineTargets::shared().onMountTransaction();
     GradientAngleOverrides::shared().onMountTransaction();
     MaskTransformOverrides::shared().onMountTransaction();
 
@@ -223,30 +309,34 @@ void LayoutObserver::shadowTreeDidMount(
   } catch (...) {
     // Swallow — container styles will be reconciled on the next mount.
   }
+  finishWork();
 }
 
 void LayoutObserver::remeasure() noexcept {
-  if (uiManager_ == nullptr) return;
+  auto *uiManager = beginRemeasure();
+  if (uiManager == nullptr)
+    return;
 
   // Same containment rationale as `shadowTreeDidMount`: never let a failure
   // escape onto the JS thread that calls us from `NitroCssCore::link`.
   try {
     // Cheap pre-check so the registry walk is skipped entirely when the app
     // uses no container queries.
-    auto& core = NitroCssCore::shared();
-    if (core.containerTags().empty() && core.groupTags().empty() &&
-      core.structuralPseudoTags().empty() && core.gridTags().empty()) return;
-
-    uiManager_->getShadowTreeRegistry().enumerate(
-        [](const ShadowTree& shadowTree, bool& /*stop*/) {
-          const auto revision = shadowTree.getCurrentRevision();
-          if (revision.rootShadowNode != nullptr) {
-            measureAndSync(*revision.rootShadowNode, true);
-          }
-        });
+    auto &core = NitroCssCore::shared();
+    if (!core.containerTags().empty() || !core.groupTags().empty() ||
+        !core.structuralPseudoTags().empty() || !core.gridTags().empty()) {
+      uiManager->getShadowTreeRegistry().enumerate(
+          [](const ShadowTree &shadowTree, bool & /*stop*/) {
+            const auto revision = shadowTree.getCurrentRevision();
+            if (revision.rootShadowNode != nullptr) {
+              measureAndSync(*revision.rootShadowNode, true);
+            }
+          });
+    }
   } catch (...) {
     // Swallow — the next mount will reconcile container styles.
   }
+  finishWork();
 }
 
 } // namespace nitrocss

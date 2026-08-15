@@ -1,0 +1,12 @@
+{
+  "title": "Nitrowind Documentation",
+  "pages": [
+    "index",
+    "skills",
+    "getting-started",
+    "core-concepts",
+    "features",
+    "api",
+    "native-engine"
+  ]
+}

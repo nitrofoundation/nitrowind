@@ -1,0 +1,21 @@
+---
+title: Native Masks
+description: Use URL and gradient masks to control a native view's alpha.
+---
+
+# Native Masks
+
+Mask images control the alpha of a painted native view while its content stays in place.
+
+```css
+.photo-star {
+  mask-image: radial-gradient(circle, black 46%, transparent 68%);
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+}
+```
+
+Nitrowind supports URL and gradient alpha masks with native size, position, repeat, and animation updates on iOS and Android.
+
+Mask animation changes the mask transform or opacity track; it does not rotate the underlying image or outer border.

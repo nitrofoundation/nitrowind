@@ -1,5 +1,32 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+The same `App.tsx`, React Navigation stack, home list, and feature screens run
+on iOS, Android, and the browser. The browser target uses React Native Web and
+compiles `global.css` through Nitrowind's own Tailwind pipeline.
+
+## Run on the web
+
+From the repository root:
+
+```sh
+yarn workspace nitrowind-example web
+```
+
+Create and inspect a production build with:
+
+```sh
+yarn workspace nitrowind-example web:build
+yarn workspace nitrowind-example web:preview
+```
+
+React Navigation maps every screen to a browser URL, so refresh, back/forward,
+and direct links such as `/container-queries` work. A production static host
+must serve `index.html` as the fallback for application routes.
+
+Standard CSS `@container` and named descendant queries run in the browser.
+Nitrowind's `parent-*` and cross-tree sibling query extensions intentionally
+remain native-only and are identified as such in the container-query screen.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

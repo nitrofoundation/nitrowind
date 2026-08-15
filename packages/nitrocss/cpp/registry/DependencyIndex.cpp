@@ -24,12 +24,28 @@ void DependencyIndex::add(const LinkedNode& node) {
   indexByBits(node.tag, node.dependencyMask);
 }
 
-void DependencyIndex::remove(facebook::react::Tag tag) {
+bool DependencyIndex::remove(
+    facebook::react::Tag tag,
+    const facebook::react::ShadowNodeFamily::Shared& expectedFamily) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto it = nodes_.find(tag);
-  if (it == nodes_.end()) return;
+  if (it == nodes_.end()) return false;
+  // Fabric restarts its tag allocator on a dev reload. An unlink callback from
+  // the old React tree can therefore arrive after the new tree has linked a
+  // different family under the same numeric tag. Never let that stale cleanup
+  // remove the new registration.
+  if (expectedFamily != nullptr && it->second.family != expectedFamily) {
+    return false;
+  }
   unindexByBits(tag, it->second.dependencyMask);
   nodes_.erase(it);
+  return true;
+}
+
+void DependencyIndex::clear() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  nodes_.clear();
+  for (auto& entries : byBit_) entries.clear();
 }
 
 void DependencyIndex::setSuspended(facebook::react::Tag tag, bool suspended) {

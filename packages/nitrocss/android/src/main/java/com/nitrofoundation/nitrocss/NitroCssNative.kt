@@ -14,7 +14,10 @@ internal object NitroCssNative {
   }
 
   /** Capture the Fabric UIManager via a RuntimeExecutor built from the CallInvoker. */
-  external fun install(runtimePtr: Long, callInvokerHolder: CallInvokerHolderImpl): Boolean
+  external fun install(runtimePtr: Long, callInvokerHolder: CallInvokerHolderImpl): Long
+
+  /** Retire one exact runtime install without affecting a newer React context. */
+  external fun invalidate(runtimeEpoch: Long)
 
   /** Push the full runtime snapshot so the engine can recompute on changes. */
   external fun setRuntimeState(

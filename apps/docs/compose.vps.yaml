@@ -2,12 +2,17 @@ name: nitrowind-docs
 
 services:
   docs:
-    image: caddy:2.10-alpine
+    image: node:22-alpine
+    command: ['node', 'apps/docs/server.js']
+    working_dir: /app
+    environment:
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production
+      PORT: 8080
     ports:
-      - "127.0.0.1:${DOCS_PORT:-8080}:8080"
+      - '127.0.0.1:${DOCS_PORT:-8080}:8080'
     volumes:
-      - ./current/dist:/usr/share/caddy:ro
-      - ./current/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./current/standalone:/app
     networks:
       nitrowind-proxy:
     restart: unless-stopped

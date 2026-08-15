@@ -21,7 +21,10 @@ namespace nitrocss {
 class DependencyIndex {
 public:
   void add(const LinkedNode& node);
-  void remove(facebook::react::Tag tag);
+  bool remove(
+      facebook::react::Tag tag,
+      const facebook::react::ShadowNodeFamily::Shared& expectedFamily = nullptr);
+  void clear();
   void setSuspended(facebook::react::Tag tag, bool suspended);
   bool contains(facebook::react::Tag tag) const;
   bool tryGet(facebook::react::Tag tag, LinkedNode& out) const;

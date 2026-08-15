@@ -1,0 +1,20 @@
+---
+title: Clip Paths
+description: Define native geometric clipping with supported CSS clip paths.
+---
+
+# Clip Paths
+
+Use `clip-path` when a geometric shape should define the visible portion of a native view.
+
+```css
+.ticket {
+  clip-path: inset(0 round 24px);
+}
+
+.avatar {
+  clip-path: circle(48% at 50% 50%);
+}
+```
+
+Supported clip paths are parsed and applied through Nitrowind's native platform appliers. Keep the path to shapes that can be represented consistently on the target platform; unsupported browser-only declarations are ignored instead of becoming invalid React Native props.

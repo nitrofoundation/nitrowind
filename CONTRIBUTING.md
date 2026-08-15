@@ -15,13 +15,13 @@ yarn install --immutable
 
 The repository is a Yarn workspace:
 
-| Area | Location |
-| --- | --- |
-| Native CSS engine | `packages/nitrocss` |
-| Tailwind and Metro integration | `packages/nitrowind` |
-| Agent skills and generator | `packages/nitrowind-skills` |
-| Documentation site | `apps/nitrowind-docs` |
-| React Native example | `apps/example` |
+| Area                           | Location                    |
+| ------------------------------ | --------------------------- |
+| Native CSS engine              | `packages/nitrocss`         |
+| Tailwind and Metro integration | `packages/nitrowind`        |
+| Agent skills and generator     | `packages/nitrowind-skills` |
+| Documentation site             | `apps/nitrowind-docs`       |
+| React Native example           | `apps/example`              |
 
 ## Make a change
 
@@ -50,10 +50,10 @@ The package checks cover the libraries that are published to npm. The documentat
 
 ## Deploy documentation
 
-Documentation is a static site served with Docker, with no GitHub Actions deployment. Start it locally at [http://localhost:8080](http://localhost:8080):
+Documentation is a Next.js/Fumadocs site deployed as a standalone Node service with Docker. Start the development server locally at [http://localhost:3000](http://localhost:3000):
 
 ```sh
-yarn docs:docker:up
+yarn docs
 ```
 
 Deploy a locally built static release to the NitroPush VPS with SSH:
@@ -64,7 +64,7 @@ NITROPUSH_DOCS_URL=https://docs.example.com \
 yarn docs:deploy
 ```
 
-Use `yarn docs:docker:logs` to follow the local server logs and `yarn docs:docker:down` to stop it. See `apps/nitrowind-docs/README.md` for all VPS deployment settings.
+The deployment replaces the existing `nitrowind-docs` Compose service while retaining its VPS port and reverse-proxy integration. See `apps/docs/README.md` for all VPS deployment settings.
 
 ## Pull requests
 

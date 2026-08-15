@@ -8,6 +8,7 @@
 #endif
 
 #import "ClipPathTargets.hpp"
+#import "NitroCssMountedViewResolver.h"
 
 #include <algorithm>
 #include <atomic>
@@ -265,6 +266,9 @@ CAShapeLayer *findMaskLayer(UIView *view) {
   __weak RCTSurfacePresenter *_surfacePresenter;
   /** Views currently carrying our mask, weakly held for the prune pass. */
   NSHashTable<UIView *> *_maskedViews;
+  /** Reload-safe tag lookup; values stay weak so Fabric can recycle views. */
+  NSMapTable<NSNumber *, UIView *> *_fallbackViews;
+  uint64_t _snapshotGeneration;
   std::atomic<bool> _flushScheduled;
   /** Bounded first-paint retry (mirrors the gradient applier). */
   std::atomic<NSInteger> _retriesLeft;
@@ -282,6 +286,8 @@ CAShapeLayer *findMaskLayer(UIView *view) {
 - (instancetype)init {
   if (self = [super init]) {
     _maskedViews = [NSHashTable weakObjectsHashTable];
+    _fallbackViews = [NSMapTable strongToWeakObjectsMapTable];
+    _snapshotGeneration = 0;
     _flushScheduled.store(false);
     _retriesLeft = 3;
   }
@@ -315,9 +321,18 @@ CAShapeLayer *findMaskLayer(UIView *view) {
 - (void)flushOnMainThread {
   NSAssert(NSThread.isMainThread, @"clip-path flush must run on main");
   RCTSurfacePresenter *presenter = _surfacePresenter;
-  if (presenter == nil) return;
-
   const auto snapshot = ClipPathTargets::shared().snapshot();
+  const uint64_t generation =
+      nitrocss::ios::latestSnapshotGeneration(snapshot);
+  const bool snapshotChanged = generation != _snapshotGeneration;
+  NSDictionary<NSNumber *, UIView *> *mountedViews =
+      nitrocss::ios::mountedViewsForSnapshot(
+          snapshot, _fallbackViews, snapshotChanged);
+  _snapshotGeneration = generation;
+
+  auto viewForTag = [&](NSInteger tag) -> UIView * {
+    return nitrocss::ios::resolveMountedView(tag, presenter, mountedViews);
+  };
 
   [CATransaction begin];
   [CATransaction setDisableActions:YES];
@@ -329,8 +344,7 @@ CAShapeLayer *findMaskLayer(UIView *view) {
     if (appliedTag != nil) {
       const auto it = snapshot.find(appliedTag.intValue);
       if (it != snapshot.end()) {
-        UIView *current = [presenter
-            findComponentViewWithTag_DO_NOT_USE_DEPRECATED:appliedTag.integerValue];
+        UIView *current = viewForTag(appliedTag.integerValue);
         keep = (current == view);
       }
     }
@@ -342,8 +356,7 @@ CAShapeLayer *findMaskLayer(UIView *view) {
   // 2) Apply: (re)install the mask on every mounted target.
   BOOL anyMissing = NO;
   for (const auto &entry : snapshot) {
-    UIView *view =
-        [presenter findComponentViewWithTag_DO_NOT_USE_DEPRECATED:entry.first];
+    UIView *view = viewForTag(entry.first);
     if (view == nil) {
       anyMissing = YES;
       continue;

@@ -20,9 +20,7 @@ import { Caption, Screen, Section } from '../components/ui';
 function Tile({ cls, label }: { cls: string; label: string }) {
   return (
     <View className="w-[47%] gap-2">
-      <View
-        className={`h-28 items-center justify-center rounded-2xl ${cls}`}
-      >
+      <View className={`h-28 items-center justify-center rounded-2xl ${cls}`}>
         <Text className="text-sm font-bold text-white">{label}</Text>
       </View>
       <Caption>{label}</Caption>
@@ -35,7 +33,7 @@ export default function Effects() {
     <Screen>
       <Section
         title="Animated gradient angle"
-        subtitle="The gradient's own angle rotates natively — same view box, no translated layer."
+        subtitle="The gradient's own angle rotates in place — same view box, no translated layer."
       >
         <View className="h-44 items-center justify-center overflow-hidden rounded-3xl bg-linear-45 from-fuchsia-500 via-violet-500 to-cyan-400 animate-gradient-angle-spin">
           <Text className="text-base font-extrabold text-white text-drop">
@@ -73,15 +71,15 @@ export default function Effects() {
           <Caption>
             background: linear-gradient(…) padding-box, linear-gradient(…)
             border-box · border + angle keyframes. The wide ring appears to
-            surge near vertical — constant angular speed, linear-gradient
-            optics on a wide box (compare the square).
+            surge near vertical — constant angular speed, linear-gradient optics
+            on a wide box (compare the square).
           </Caption>
         </View>
       </Section>
 
       <Section
         title="clip-path"
-        subtitle="polygon / circle / inset masks — native CAShapeLayer, no react-native-svg."
+        subtitle="polygon / circle / inset masks — browser CSS or a native shape layer, no SVG view."
       >
         <View className="flex-row flex-wrap gap-3">
           <Tile cls="bg-violet-500 clip-triangle" label="triangle" />
@@ -92,8 +90,8 @@ export default function Effects() {
       </Section>
 
       <Section
-        title="Native masks"
-        subtitle="Image and gradient masks clip the whole native view with alpha or luminance semantics. Mask keyframes animate only the aperture."
+        title="Masks"
+        subtitle="Image and gradient masks clip the whole view with alpha or luminance semantics. Mask keyframes animate the aperture."
       >
         <View className="gap-3">
           <View className="flex-row gap-3">
@@ -110,9 +108,7 @@ export default function Effects() {
               <View className="absolute inset-0 bg-mask-photo mask-star-outline-hires animate-mask-star-rotate-pulse" />
             </View>
           </View>
-          <Caption>
-            image mask · transparent fill · native mask-angle + mask-scale
-          </Caption>
+          <Caption>image mask · transparent fill · animated mask scale</Caption>
           <View className="h-32 items-center justify-center rounded-3xl bg-linear-to-r from-cyan-400 via-violet-500 to-pink-500 mask-[linear-gradient(to_right,transparent,black_25%,black_75%,transparent)]">
             <Text className="text-base font-extrabold text-white">
               alpha · linear
@@ -131,8 +127,8 @@ export default function Effects() {
             </View>
           </View>
           <Caption>
-            iOS CALayer mask · Android RenderEffect DST_IN (API 31+) · the
-            host view never rotates
+            iOS CALayer mask · Android RenderEffect DST_IN (API 31+) · the host
+            view never rotates
           </Caption>
         </View>
       </Section>
@@ -150,12 +146,14 @@ export default function Effects() {
 
       <Section
         title="background-image"
-        subtitle="Real url(...) raster painted on the view's own layer — cover & contain."
+        subtitle="Real url(...) raster painted on the view's own surface — cover & contain."
       >
         <View className="flex-row flex-wrap gap-3">
           <View className="w-[47%] gap-2">
             <View className="h-32 items-end justify-end rounded-2xl overflow-hidden bg-photo p-2">
-              <Text className="text-xs font-bold text-white text-drop">cover</Text>
+              <Text className="text-xs font-bold text-white text-drop">
+                cover
+              </Text>
             </View>
             <Caption>size: cover</Caption>
           </View>
@@ -164,11 +162,16 @@ export default function Effects() {
             <Caption>size: contain</Caption>
           </View>
         </View>
+        <View className="mt-3 h-44 items-center justify-center bg-photo clip-hexagon">
+          <Text className="text-center text-sm font-black text-white text-drop">
+            background-image{`\n`}+ clip-path
+          </Text>
+        </View>
       </Section>
 
       <Section
         title="text-shadow"
-        subtitle="Single-layer native text shadow (RN textShadow*)."
+        subtitle="Single-layer text shadow from the same utility class."
       >
         <View className="gap-3 rounded-2xl bg-primary p-5">
           <Text className="text-2xl font-black text-white text-glow">
@@ -186,8 +189,8 @@ export default function Effects() {
       >
         <View className="rounded-2xl bg-surface-elevated p-5">
           <Text className="text-base text-on-surface">
-            The quick <b>brown fox</b> jumps over the{' '}
-            <strong>lazy dog</strong>.<br />
+            The quick <b>brown fox</b> jumps over the <strong>lazy dog</strong>.
+            <br />
             Second line after an inline <b>{'<br />'}</b>.
           </Text>
         </View>

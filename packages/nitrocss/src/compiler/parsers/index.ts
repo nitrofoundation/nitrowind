@@ -79,3 +79,12 @@ export {
   REANIMATED_VAR_PREFIX,
   type GradientAngleTrack,
 } from "./animations";
+export {
+  extractScrollTimelineAnimation,
+  extractScrollTimelineSource,
+  isScrollTimelineProp,
+  SCROLL_TIMELINE_ANIMATION_PROP,
+  SCROLL_TIMELINE_SOURCE_PROP,
+  type ScrollTimelineAnimationDescriptor,
+  type ScrollTimelineSourceDescriptor,
+} from "./scrollTimeline";

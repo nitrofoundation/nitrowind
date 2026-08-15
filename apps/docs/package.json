@@ -1,20 +1,42 @@
 {
   "name": "docs",
-  "version": "0.1.0",
+  "version": "0.0.15",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "astro dev --host 0.0.0.0",
-    "build": "astro check && astro build",
-    "preview": "astro preview --host 0.0.0.0"
+    "build": "next build --webpack",
+    "dev": "next dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "start": "next start",
+    "types:check": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.41.7",
-    "astro": "7.1.6",
-    "cookie": "2.0.1"
+    "@nitrofoundation/nitrowind": "workspace:*",
+    "cnfast": "^0.1.0",
+    "fumadocs-core": "16.14.4",
+    "fumadocs-mdx": "15.2.3",
+    "fumadocs-ui": "npm:@fumadocs/base-ui@16.14.4",
+    "lucide-react": "^1.31.0",
+    "next": "16.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.10",
-    "typescript": "5.9.2"
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/mdx": "^2.0.14",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.0",
+    "eslint-config-prettier": "^10",
+    "eslint-plugin-prettier": "^5",
+    "postcss": "^8.5.26",
+    "prettier": "^3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3"
   }
 }

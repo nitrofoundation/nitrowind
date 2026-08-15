@@ -1,0 +1,25 @@
+---
+title: Supported Features & Platform Compatibility
+description: Compare Nitrowind support across iOS, Android, and web for native themes, container queries, backgrounds, gradients, masks, clip paths, animations, SVG, and more.
+---
+
+# Supported Features & Platform Compatibility
+
+Nitrowind supports more than a generic React Native `className` layer. Each feature below has its own page with examples, native behavior, platform boundaries, and fallbacks.
+
+<Callout type="info" title="How to read this matrix">
+  **Full** means the feature is available across the listed target. **Platform API** means Nitrowind
+  maps to the best iOS or Android primitive. **CSS** means the browser keeps the authored CSS
+  behavior. A narrower label such as **iOS** is an explicit platform boundary.
+</Callout>
+
+<FeaturePlatformGrid />
+
+## Native runtime boundary
+
+Theme, color scheme, safe-area, dimensions, RTL, font scale, group state, and container-size dependencies can update linked native nodes without resolving the style again on the JavaScript thread.
+
+<Callout type="idea" title="Start with the differentiators">
+  Read [Nitrowind-specific features](../features/nitrowind-specific) for native background images,
+  native grid, paint descriptors, ShadowTree updates, and the plain CSS engine.
+</Callout>

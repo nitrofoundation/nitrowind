@@ -45,6 +45,13 @@ const config: Config = {
   favicon: "favicon.ico?v=20260812",
   url: docsUrl,
   baseUrl: docsBaseUrl,
+  scripts: [
+    {
+      src: "https://analytics.nitrowind.dev/script.js",
+      defer: true,
+      "data-website-id": "b5107f46-7223-408e-8af0-a68bd8672ba5",
+    },
+  ],
   organizationName: "nitrofoundation",
   projectName: "nitrowind",
   trailingSlash: false,

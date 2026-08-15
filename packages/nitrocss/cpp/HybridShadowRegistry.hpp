@@ -99,7 +99,7 @@ public:
   void unlink(const std::shared_ptr<HybridShadowNodeHandleSpec>& shadowNode) override {
     auto handle = std::static_pointer_cast<HybridShadowNodeHandle>(shadowNode);
     if (handle == nullptr) return;
-    ::nitrocss::NitroCssCore::shared().unlink(handle->nativeTag());
+    ::nitrocss::NitroCssCore::shared().unlink(handle->nativeTag(), handle->family());
     if (diagnostics_ != nullptr) {
       diagnostics_->emitUnregistered(static_cast<double>(handle->nativeTag()), 0.0);
     }

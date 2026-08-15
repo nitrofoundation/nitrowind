@@ -7,6 +7,7 @@ import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
@@ -50,18 +51,26 @@ object ClipPathApplier {
   private const val TAG = "NitroCssClipPath"
   private const val RETRY_BUDGET = 5
   private const val RETRY_DELAY_MS = 50L
-
   private val mainHandler = Handler(Looper.getMainLooper())
   private val flushScheduled = AtomicBoolean(false)
   private val retriesLeft = AtomicInteger(RETRY_BUDGET)
-  private var reactContextRef: WeakReference<ReactApplicationContext>? = null
+  private val ownerLock = Any()
+  @Volatile
+  private var ownerState = ReactContextOwner(null, 0L)
   private var nativeInstalled = false
+  private val mountedViewResolver = MountedViewResolver()
+  private var forceHierarchyScan = true
+  private var lastSnapshotIdentity = 0L
 
   /** Views currently carrying a clip. UI-thread only. */
   private val painted = WeakHashMap<View, PaintedState>()
 
   fun install(reactContext: ReactApplicationContext) {
-    reactContextRef = WeakReference(reactContext)
+    val installOwner = synchronized(ownerLock) {
+      val next = ReactContextOwner(WeakReference(reactContext), ownerState.token + 1L)
+      ownerState = next
+      next
+    }
     if (!nativeInstalled) {
       try {
         System.loadLibrary("NitroCss")
@@ -72,7 +81,24 @@ object ClipPathApplier {
         return
       }
     }
-    setNeedsFlush()
+    mainHandler.post {
+      if (ownerState !== installOwner || installOwner.get() !== reactContext) return@post
+      resetRuntimeState(restoreViews = true)
+      setNeedsFlush()
+    }
+  }
+
+  fun invalidate(reactContext: ReactApplicationContext) {
+    val invalidateOwner = synchronized(ownerLock) {
+      if (ownerState.get() !== reactContext) return
+      val next = ReactContextOwner(null, ownerState.token + 1L)
+      ownerState = next
+      next
+    }
+    mainHandler.post {
+      if (ownerState !== invalidateOwner) return@post
+      resetRuntimeState(restoreViews = true)
+    }
   }
 
   @JvmStatic
@@ -80,8 +106,8 @@ object ClipPathApplier {
     setNeedsFlush()
   }
 
-  private fun setNeedsFlush() {
-    retriesLeft.set(RETRY_BUDGET)
+  private fun setNeedsFlush(replenishRetries: Boolean = true) {
+    if (replenishRetries) retriesLeft.set(RETRY_BUDGET)
     if (!flushScheduled.compareAndSet(false, true)) return
     mainHandler.post {
       flushScheduled.set(false)
@@ -90,14 +116,35 @@ object ClipPathApplier {
   }
 
   private fun flushOnUiThread() {
-    val reactContext = reactContextRef?.get() ?: return
+    val owner = ownerState
+    val reactContext = owner.get() ?: return
     val uiManager = try {
       UIManagerHelper.getUIManager(reactContext, UIManagerType.FABRIC)
     } catch (t: Throwable) {
       null
     } ?: return
+    if (ownerState !== owner) return
 
     val entries = parseSnapshot()
+    val generations = HashMap<Int, Long>(entries.size)
+    for ((tag, entry) in entries) generations[tag] = entry.generation
+    val snapshotIdentity = snapshotIdentity(generations)
+    if (snapshotIdentity != lastSnapshotIdentity) {
+      mountedViewResolver.clear()
+      forceHierarchyScan = true
+      lastSnapshotIdentity = snapshotIdentity
+    }
+    val requestedTags = HashSet<Int>(entries.size + painted.size)
+    requestedTags.addAll(entries.keys)
+    painted.values.forEach { requestedTags.add(it.tag) }
+    val mountedViews = mountedViewResolver.resolveAll(
+      context = reactContext,
+      uiManager = uiManager,
+      tags = requestedTags,
+      forceHierarchyScan = forceHierarchyScan,
+    )
+    if (ownerState !== owner) return
+    forceHierarchyScan = false
 
     val iterator = painted.entries.iterator()
     while (iterator.hasNext()) {
@@ -106,7 +153,7 @@ object ClipPathApplier {
       val state = painting.value
       var keep = false
       if (entries.containsKey(state.tag)) {
-        keep = resolveView(uiManager, state.tag) === view
+        keep = mountedViews[state.tag] === view
       }
       if (!keep) {
         removeClip(view, state)
@@ -116,7 +163,7 @@ object ClipPathApplier {
 
     var anyMissing = false
     for ((tag, entry) in entries) {
-      val view = resolveView(uiManager, tag)
+      val view = mountedViews[tag]
       if (view == null) {
         anyMissing = true
         continue
@@ -128,17 +175,28 @@ object ClipPathApplier {
       retriesLeft.set(RETRY_BUDGET)
     } else if (retriesLeft.get() > 0) {
       retriesLeft.decrementAndGet()
-      mainHandler.postDelayed({ setNeedsFlush() }, RETRY_DELAY_MS)
+      val retryOwner = owner
+      mainHandler.postDelayed({
+        if (ownerState !== retryOwner) return@postDelayed
+        setNeedsFlush(replenishRetries = false)
+      }, RETRY_DELAY_MS)
     }
   }
 
-  private fun resolveView(
-    uiManager: com.facebook.react.bridge.UIManager,
-    tag: Int,
-  ): View? = try {
-    uiManager.resolveView(tag)
-  } catch (t: Throwable) {
-    null
+  private fun resetRuntimeState(restoreViews: Boolean) {
+    if (restoreViews) {
+      val iterator = painted.entries.iterator()
+      while (iterator.hasNext()) {
+        val (view, state) = iterator.next()
+        removeClip(view, state)
+        iterator.remove()
+      }
+    } else {
+      painted.clear()
+    }
+    mountedViewResolver.clear()
+    forceHierarchyScan = true
+    lastSnapshotIdentity = 0L
   }
 
   private fun applyEntry(tag: Int, entry: Entry, view: View) {
@@ -146,7 +204,9 @@ object ClipPathApplier {
     // Steady state: same tag + generation and our clip is still installed.
     if (state != null && state.tag == tag && state.generation == entry.generation) {
       if (state.usesOutline && view.outlineProvider === state.outlineProvider) return
-      if (!state.usesOutline && view.background === state.wrapper) return
+      if (!state.usesOutline &&
+        containsActiveOwnedBackground(view.background, state.wrapper)
+      ) return
     }
     if (state != null) {
       removeClip(view, state)
@@ -171,7 +231,8 @@ object ClipPathApplier {
       )
     } else {
       // Arbitrary path → clip the view's background to it.
-      val original = view.background
+      val original = sanitizeOwnedBackground(view.background)
+      if (original !== view.background) view.background = original
       val wrapper = ClipPathDrawable(original, shape, view.resources.displayMetrics.density)
       view.background = wrapper
       painted[view] = PaintedState(
@@ -193,7 +254,16 @@ object ClipPathApplier {
       return
     }
     if (view.background === state.wrapper) {
-      view.background = state.originalBackground
+      view.background = sanitizeOwnedBackground(state.originalBackground)
+      return
+    }
+    state.wrapper?.ownerActive = false
+    val removal = removeOwnedBackground(view.background, state.wrapper)
+    if (removal.changed || removal.drawable !== view.background) {
+      view.background = removal.drawable
+    } else {
+      val sanitizedCurrent = sanitizeOwnedBackground(view.background)
+      if (sanitizedCurrent !== view.background) view.background = sanitizedCurrent
     }
   }
 
@@ -378,19 +448,33 @@ object ClipPathApplier {
 
   /** Clips the wrapped background drawable to an arbitrary Path. */
   private class ClipPathDrawable(
-    private val original: Drawable?,
+    original: Drawable?,
     private val shape: ClipShape,
     private val density: Float,
-  ) : Drawable() {
+  ) : Drawable(), OwnedBackgroundLayer, Drawable.Callback {
+    override var ownerWrappedBackground: Drawable? = null
+      set(value) {
+        field?.callback = null
+        field = value
+        value?.bounds = bounds
+        value?.callback = this
+        invalidateSelf()
+      }
+    override var ownerActive: Boolean = true
     private var path = Path()
     private var pathDirty = true
 
+    init {
+      ownerWrappedBackground = original
+    }
+
     override fun onBoundsChange(bounds: Rect) {
-      original?.bounds = bounds
+      ownerWrappedBackground?.bounds = bounds
       pathDirty = true
     }
 
     override fun draw(canvas: Canvas) {
+      if (!ownerActive) return
       val b = bounds
       val w = b.width().toFloat()
       val h = b.height().toFloat()
@@ -402,13 +486,29 @@ object ClipPathApplier {
       }
       val save = canvas.save()
       canvas.clipPath(path)
-      original?.draw(canvas)
+      ownerWrappedBackground?.draw(canvas)
       canvas.restoreToCount(save)
     }
 
-    override fun setAlpha(alpha: Int) { original?.alpha = alpha }
-    override fun setColorFilter(cf: ColorFilter?) { original?.colorFilter = cf }
+    override fun setAlpha(alpha: Int) { ownerWrappedBackground?.alpha = alpha }
+    override fun setColorFilter(cf: ColorFilter?) { ownerWrappedBackground?.colorFilter = cf }
     @Deprecated("Deprecated in Java")
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+
+    override fun invalidateDrawable(who: Drawable) {
+      invalidateSelf()
+    }
+
+    override fun scheduleDrawable(
+      who: Drawable,
+      what: Runnable,
+      `when`: Long,
+    ) {
+      scheduleSelf(what, `when`)
+    }
+
+    override fun unscheduleDrawable(who: Drawable, what: Runnable) {
+      unscheduleSelf(what)
+    }
   }
 }

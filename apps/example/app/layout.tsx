@@ -3,11 +3,11 @@
  * platform variants (`ios:` / `android:`) and the safe-area utilities the
  * engine resolves against live window insets.
  */
-import { Platform } from "react-native";
-import { Text, View } from "@nitrofoundation/nitrowind";
+import { Platform } from 'react-native';
+import { Text, View } from '@nitrofoundation/nitrowind';
 
-import { Card, Caption, Screen, Section } from "../components/ui";
-function Box({ className = "" }: { className?: string }) {
+import { Card, Caption, Screen, Section } from '../components/ui';
+function Box({ className = '' }: { className?: string }) {
   return <View className={`h-10 w-10 rounded-lg bg-primary ${className}`} />;
 }
 
@@ -57,18 +57,19 @@ export default function Layout() {
 
       <Section
         title="Platform variants"
-        subtitle="ios: / android: pick a value per OS"
+        subtitle="ios: / android: / web: pick a value per platform"
       >
         <Card>
-          <Text className="text-lg font-bold text-on-surface ios:text-sky-500 android:text-emerald-600">
+          <Text className="text-lg font-bold text-on-surface ios:text-sky-500 android:text-emerald-600 web:text-violet-600">
             {Platform.select({
-              ios: "Running on iOS",
-              android: "Running on Android",
-              default: "Running on this platform",
+              ios: 'Running on iOS',
+              android: 'Running on Android',
+              web: 'Running with React Native Web',
+              default: 'Running on this platform',
             })}
           </Text>
           <Text className="mt-1 text-sm text-muted">
-            The color above is chosen by a platform variant, resolved natively.
+            The color above is chosen by the same platform variant API.
           </Text>
         </Card>
       </Section>

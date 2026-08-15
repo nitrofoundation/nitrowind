@@ -7,6 +7,7 @@
 
 #import "MaskTargets.hpp"
 #import "MaskTransformOverrides.hpp"
+#import "NitroCssMountedViewResolver.h"
 
 #include <atomic>
 #include <algorithm>
@@ -142,6 +143,8 @@ void configureGeometry(CAGradientLayer *layer, const folly::dynamic &gradient) {
 @implementation NitroCssMaskApplier {
   __weak RCTSurfacePresenter *_surfacePresenter;
   NSHashTable<UIView *> *_maskedViews;
+  NSMapTable<NSNumber *, UIView *> *_fallbackViews;
+  uint64_t _snapshotGeneration;
   std::atomic<bool> _scheduled;
   std::atomic<NSInteger> _retries;
 }
@@ -156,6 +159,8 @@ void configureGeometry(CAGradientLayer *layer, const folly::dynamic &gradient) {
 - (instancetype)init {
   if (self = [super init]) {
     _maskedViews = [NSHashTable weakObjectsHashTable];
+    _fallbackViews = [NSMapTable strongToWeakObjectsMapTable];
+    _snapshotGeneration = 0;
     _scheduled = false;
     _retries = 5;
   }
@@ -213,19 +218,28 @@ void configureGeometry(CAGradientLayer *layer, const folly::dynamic &gradient) {
 
 - (void)flush {
   RCTSurfacePresenter *presenter = _surfacePresenter;
-  if (!presenter) return;
   const auto snapshot = MaskTargets::shared().snapshot();
+  const uint64_t generation =
+      nitrocss::ios::latestSnapshotGeneration(snapshot);
+  const bool snapshotChanged = generation != _snapshotGeneration;
+  NSDictionary<NSNumber *, UIView *> *mountedViews =
+      nitrocss::ios::mountedViewsForSnapshot(
+          snapshot, _fallbackViews, snapshotChanged);
+  _snapshotGeneration = generation;
+  auto viewForTag = [&](NSInteger tag) -> UIView * {
+    return nitrocss::ios::resolveMountedView(tag, presenter, mountedViews);
+  };
   [CATransaction begin];
   [CATransaction setDisableActions:YES];
   for (UIView *view in [_maskedViews allObjects]) {
     NSNumber *tag = objc_getAssociatedObject(view, kMaskTagKey);
     BOOL keep = tag && snapshot.find(tag.intValue) != snapshot.end() &&
-      [presenter findComponentViewWithTag_DO_NOT_USE_DEPRECATED:tag.integerValue] == view;
+      viewForTag(tag.integerValue) == view;
     if (!keep) [self removeFromView:view];
   }
   BOOL missing = NO;
   for (const auto &[tag, entry] : snapshot) {
-    UIView *view = [presenter findComponentViewWithTag_DO_NOT_USE_DEPRECATED:tag];
+    UIView *view = viewForTag(tag);
     if (!view) { missing = YES; continue; }
     const auto *source = entry.descriptor.get_ptr("source");
     const auto *kind = source && source->isObject() ? source->get_ptr("type") : nullptr;
@@ -329,9 +343,7 @@ void configureGeometry(CAGradientLayer *layer, const folly::dynamic &gradient) {
         } else {
           NSURL *url = [NSURL URLWithString:urlString];
           if (url) {
-            const int32_t tagCopy = tag;
             __weak NitroCssMaskApplier *weakSelf = self;
-            __weak RCTSurfacePresenter *weakPresenter = presenter;
             [[[NSURLSession sharedSession] dataTaskWithURL:url
                  completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
               if (error || !data) return;
@@ -340,12 +352,6 @@ void configureGeometry(CAGradientLayer *layer, const folly::dynamic &gradient) {
               [maskImageCache() setObject:loaded forKey:urlString];
               dispatch_async(dispatch_get_main_queue(), ^{
                 NitroCssMaskApplier *strongSelf = weakSelf;
-                RCTSurfacePresenter *strongPresenter = weakPresenter;
-                UIView *current = [strongPresenter
-                    findComponentViewWithTag_DO_NOT_USE_DEPRECATED:tagCopy];
-                if (!strongSelf || !current) return;
-                NSString *wanted = objc_getAssociatedObject(current, kMaskURLKey);
-                if (![wanted isEqualToString:urlString]) return;
                 [strongSelf setNeedsFlush];
               });
             }] resume];

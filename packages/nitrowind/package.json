@@ -81,11 +81,17 @@
       "types": "./lib/typescript/commonjs/metro/pipeline.d.ts",
       "default": "./lib/commonjs/metro/pipeline.js"
     },
+    "./web.css": "./web.css",
+    "./next.css": "./next.css",
+    "./vite.css": "./vite.css",
     "./package.json": "./package.json"
   },
   "files": [
     "src",
     "lib",
+    "web.css",
+    "next.css",
+    "vite.css",
     "README.md",
     "LICENSE",
     "!**/__tests__",
@@ -127,6 +133,15 @@
     "tailwindcss": ">=4.0.0"
   },
   "peerDependenciesMeta": {
+    "@nitrofoundation/nitrocss": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    },
+    "react-native-nitro-modules": {
+      "optional": true
+    },
     "react-native-reanimated": {
       "optional": true
     },

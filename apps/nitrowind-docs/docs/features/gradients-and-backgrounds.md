@@ -5,6 +5,8 @@ description: Native gradient, border gradient, and background image support.
 
 # Gradients and Backgrounds
 
+import FeaturePlayground from "@site/src/components/FeaturePlayground";
+
 Nitrocss includes dedicated parsers and native appliers for gradient and background-related CSS that React Native does not expose as ordinary style props.
 
 For URL rasters such as `background-image: url(...)`, see [Background Images](./background-images).
@@ -22,6 +24,8 @@ Tailwind gradient utilities compile into compact native descriptors:
 Linear, radial, and conic gradients share the same theme-aware stop descriptor.
 Conic gradients support `from <angle>` and `at <position>` geometry and paint
 with Android `SweepGradient` or iOS conic `CAGradientLayer`.
+
+<FeaturePlayground feature="gradient" />
 
 The native parser also supports:
 

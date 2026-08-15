@@ -17,11 +17,14 @@ namespace nitrocss {
  */
 class CommitBatcher {
 public:
-  static CommitBatcher& shared();
+  static CommitBatcher &shared();
 
   void enqueue(std::vector<NodeMutation> mutations);
   bool flush();
   bool commitNow(std::vector<NodeMutation> mutations);
+
+  /** Drop work captured from a retiring React runtime. */
+  void resetForNewInstance();
 
 private:
   CommitBatcher() = default;

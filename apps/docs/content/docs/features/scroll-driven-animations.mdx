@@ -1,0 +1,32 @@
+---
+title: Scroll-Driven Animations
+description: Drive native CSS keyframes from iOS and Android scroll position.
+---
+
+# Scroll-Driven Animations
+
+On iOS and Android, a Nitrowind `ScrollView` can drive CSS keyframes directly from native scroll position, without a JavaScript `onScroll` handler.
+
+```css
+.feed {
+  scroll-timeline: --feed block;
+}
+
+.reveal-card {
+  animation: reveal-card 1s linear both;
+  animation-timeline: --feed;
+  animation-range: 10% 70%;
+}
+```
+
+Named `scroll-timeline` sources and anonymous `view()` timelines run on both platforms. Block, inline, x, and y axes; percentage ranges; `cover`, `entry`, `contain`, and `exit` view ranges; opacity; translate; scale; and Z rotation are supported.
+
+```css
+.reveal-on-entry {
+  animation: reveal-card 1s linear both;
+  animation-timeline: view(block);
+  animation-range: entry 0% entry 100%;
+}
+```
+
+The native drivers subscribe to platform scroll events. A short bounded startup pass connects newly mounted or Fast Refreshed views, then stops polling while the scroll view is idle.

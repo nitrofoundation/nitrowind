@@ -9,6 +9,7 @@
 #include "../mask/MaskTransformOverrides.hpp"
 #include "../gradient/GradientTargets.hpp"
 #include "../mask/MaskTargets.hpp"
+#include "../scroll/ScrollTimelineTargets.hpp"
 #include "../grid/GridLayoutEngine.hpp"
 
 #include <cstdint>
@@ -191,6 +192,25 @@ void processColorProps(folly::dynamic& style) {
   for (const auto& key : unsupportedColorKeys) {
     style.erase(key);
   }
+}
+
+/**
+ * `position: sticky` is consumed by the NitroCSS ScrollView wrapper and mapped
+ * to React Native's native sticky-header machinery. Fabric/Yoga do not accept
+ * `sticky` as a position enum, and the wrapper owns its edge offset, so neither
+ * the keyword nor physical offsets may be committed to the child ShadowNode.
+ */
+void consumeNativeStickyPosition(folly::dynamic& style) {
+  auto* position = style.get_ptr("position");
+  if (position == nullptr || !position->isString() ||
+      position->getString() != "sticky") {
+    return;
+  }
+  style.erase("position");
+  style.erase("top");
+  style.erase("right");
+  style.erase("bottom");
+  style.erase("left");
 }
 
 // --- Grid config decode (mirrors the JS serializer in grid.tsx) -------------
@@ -459,12 +479,13 @@ void NitroCssCore::link(Tag tag,
   }
 }
 
-void NitroCssCore::unlink(Tag tag) {
-  index_.remove(tag);
+void NitroCssCore::unlink(Tag tag, ShadowNodeFamily::Shared expectedFamily) {
+  if (!index_.remove(tag, expectedFamily)) return;
   GradientTargets::shared().clearDescriptor(tag);
   ClipPathTargets::shared().clearDescriptor(tag);
   BackgroundImageTargets::shared().clearDescriptor(tag);
   MaskTargets::shared().clearDescriptor(tag);
+  ScrollTimelineTargets::shared().clear(tag);
   GradientAngleOverrides::shared().clearAngle(tag);
   MaskTransformOverrides::shared().clearTransform(tag);
   {
@@ -489,6 +510,33 @@ void NitroCssCore::unlink(Tag tag) {
     std::lock_guard<std::mutex> lock(gridMutex_);
     gridConfigs_.erase(tag);
     gridLastWidth_.erase(tag);
+  }
+}
+
+void NitroCssCore::resetForNewInstance() {
+  // The core is process-global, while every dev reload creates a fresh Fabric
+  // tree. Families from the previous UIManager are invalid and Fabric may reuse
+  // their numeric tags immediately, so discard the complete per-tree index.
+  index_.clear();
+  {
+    std::lock_guard<std::mutex> lock(containerMutex_);
+    containerSizes_.clear();
+    namedContainerSizes_.clear();
+    containerTags_.clear();
+  }
+  {
+    std::lock_guard<std::mutex> lock(groupMutex_);
+    groupTags_.clear();
+    groupStates_.clear();
+  }
+  {
+    std::lock_guard<std::mutex> lock(structuralMutex_);
+    structuralPseudoTags_.clear();
+  }
+  {
+    std::lock_guard<std::mutex> lock(gridMutex_);
+    gridConfigs_.clear();
+    gridLastWidth_.clear();
   }
 }
 
@@ -817,6 +865,7 @@ folly::dynamic NitroCssCore::resolveForNode(const LinkedNode& node,
   if (node.inlineStyle && node.inlineStyle->isObject()) {
     mergeFolly(style, *node.inlineStyle);
   }
+  consumeNativeStickyPosition(style);
   processColorProps(style);
   // Native gradient: the folded descriptor never rides on committed RN props —
   // it is routed to GradientTargets, and the platform applier paints it as a
@@ -901,6 +950,20 @@ folly::dynamic NitroCssCore::resolveForNode(const LinkedNode& node,
   }
   if (style.get_ptr("--nitrocss-mask-transform") != nullptr) {
     style.erase("--nitrocss-mask-transform");
+  }
+  if (auto* source = style.get_ptr("--nitrocss-scroll-timeline-source");
+      source != nullptr && source->isObject()) {
+    if (node.tag != 0) ScrollTimelineTargets::shared().setSource(node.tag, *source);
+    style.erase("--nitrocss-scroll-timeline-source");
+  } else if (node.tag != 0) {
+    ScrollTimelineTargets::shared().clearSource(node.tag);
+  }
+  if (auto* animation = style.get_ptr("--nitrocss-scroll-timeline-animation");
+      animation != nullptr && animation->isObject()) {
+    if (node.tag != 0) ScrollTimelineTargets::shared().setAnimation(node.tag, *animation);
+    style.erase("--nitrocss-scroll-timeline-animation");
+  } else if (node.tag != 0) {
+    ScrollTimelineTargets::shared().clearAnimation(node.tag);
   }
   return style;
 }

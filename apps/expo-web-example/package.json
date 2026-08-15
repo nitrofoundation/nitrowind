@@ -1,0 +1,35 @@
+{
+  "name": "nitrowind-expo-web-example",
+  "private": true,
+  "version": "0.1.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "NODE_PATH=./node_modules expo start",
+    "web": "NODE_PATH=./node_modules expo start --web",
+    "export:web": "NODE_PATH=./node_modules expo export --platform web"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~57.0.0",
+    "@nitrofoundation/nitrocss": "workspace:*",
+    "@nitrofoundation/nitrowind": "workspace:*",
+    "expo": "~57.0.0",
+    "expo-constants": "~57.0.0",
+    "expo-linking": "~57.0.0",
+    "expo-router": "~57.0.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-native": "0.86.0",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "^0.10.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@react-native/metro-config": "0.86.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.2"
+  }
+}

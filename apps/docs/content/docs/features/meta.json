@@ -1,0 +1,22 @@
+{
+  "title": "Features",
+  "pages": [
+    "index",
+    "components",
+    "states-and-groups",
+    "responsive-and-containers",
+    "container-queries",
+    "safe-area",
+    "background-images",
+    "gradients",
+    "p3-colors",
+    "masks",
+    "clip-paths",
+    "filters-and-shadows",
+    "animations",
+    "scroll-driven-animations",
+    "svg",
+    "native-props",
+    "nitrowind-specific"
+  ]
+}

@@ -1,9 +1,15 @@
 #pragma once
 
+#include <atomic>
+#include <condition_variable>
+#include <cstdint>
+#include <memory>
+#include <mutex>
 #include <react/renderer/components/root/RootShadowNode.h>
 #include <react/renderer/uimanager/UIManager.h>
 #include <react/renderer/uimanager/UIManagerMountHook.h>
 #include <react/timing/primitives.h>
+#include <vector>
 
 namespace nitrocss {
 
@@ -14,27 +20,32 @@ namespace nitrocss {
  * only exists *after* layout: the measured size of an ancestor. We obtain it by
  * registering a Fabric `UIManagerMountHook`, whose `shadowTreeDidMount` fires
  * right after a tree is laid out and mounted. For every node the engine knows
- * to be a container we read its `LayoutMetrics` straight off the shadow tree and
- * push it to {@link NitroCssCore} (together with each query node's nearest-
+ * to be a container we read its `LayoutMetrics` straight off the shadow tree
+ * and push it to {@link NitroCssCore} (together with each query node's nearest-
  * container association, discovered structurally during the same walk).
  *
  * {@link NitroCssCore::syncContainers} then re-resolves the gated children and
- * commits their new styles via {@link ShadowTreeMutator} in a follow-up commit —
- * no JS round-trip, no React re-render. Because the engine only recomputes when
- * a measured size actually changes, the follow-up commit converges in a single
- * extra frame and never loops.
+ * commits their new styles via {@link ShadowTreeMutator} in a follow-up commit
+ * — no JS round-trip, no React re-render. Because the engine only recomputes
+ * when a measured size actually changes, the follow-up commit converges in a
+ * single extra frame and never loops.
  *
- * The whole pass is skipped (O(1)) when the app registers no containers, so apps
- * that don't use container queries pay nothing.
+ * The whole pass is skipped (O(1)) when the app registers no containers, so
+ * apps that don't use container queries pay nothing.
  *
  * Targets React Native 0.86 Fabric internals.
  */
-class LayoutObserver final : public facebook::react::UIManagerMountHook {
+class LayoutObserver final {
 public:
-  static LayoutObserver& shared();
+  static LayoutObserver &shared();
 
   /** Register as a mount hook on the given UIManager (idempotent). */
-  void registerWith(facebook::react::UIManager& uiManager);
+  void registerWith(facebook::react::UIManager &uiManager);
+  /** Forget a retiring manager without dereferencing its potentially stale
+   * pointer. */
+  void resetForNewInstance();
+  /** Wait for work that entered before reset to leave the retiring manager. */
+  void waitForIdle();
   /** Detach from the UIManager it was registered with. */
   void unregister();
 
@@ -46,23 +57,33 @@ public:
    * Fabric's `shadowTreeDidMount` for the commit that mounted it. On a static
    * screen no further commit follows, so a freshly mounted container would stay
    * unmeasured — its `@container` children stuck on their first-paint styles —
-   * until some unrelated commit happens. Calling this right after a container is
-   * registered closes that gap by pulling the root straight from the
+   * until some unrelated commit happens. Calling this right after a container
+   * is registered closes that gap by pulling the root straight from the
    * `ShadowTreeRegistry` and running the same measure/sync pass. Safe to call
    * from the JS thread; it is a no-op when no containers are registered or the
    * UIManager has not been captured yet.
    */
   void remeasure() noexcept;
 
-  // --- UIManagerMountHook --------------------------------------------------
-  void shadowTreeDidMount(
-      const facebook::react::RootShadowNode::Shared& rootShadowNode,
-      facebook::react::HighResTimeStamp mountTime) noexcept override;
-
 private:
+  class RegistrationHook;
   LayoutObserver() = default;
 
-  facebook::react::UIManager* uiManager_ = nullptr;
+  void shadowTreeDidMount(
+      uint64_t registrationGeneration,
+      const facebook::react::RootShadowNode::Shared &rootShadowNode,
+      facebook::react::HighResTimeStamp mountTime) noexcept;
+  bool beginWork(uint64_t registrationGeneration);
+  facebook::react::UIManager *beginRemeasure();
+  void finishWork();
+
+  facebook::react::UIManager *uiManager_ = nullptr;
+  RegistrationHook *currentHook_ = nullptr;
+  std::vector<std::unique_ptr<RegistrationHook>> registrationHooks_;
+  std::atomic<uint64_t> registrationGeneration_{0};
+  std::mutex lifecycleMutex_;
+  std::condition_variable lifecycleCv_;
+  std::size_t inFlightWork_ = 0;
   bool registered_ = false;
 };
 

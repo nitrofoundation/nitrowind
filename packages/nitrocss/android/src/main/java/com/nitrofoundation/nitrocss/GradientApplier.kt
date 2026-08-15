@@ -31,6 +31,96 @@ import kotlin.math.tan
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal interface OwnedBackgroundLayer {
+  var ownerWrappedBackground: Drawable?
+  var ownerActive: Boolean
+}
+
+internal data class OwnedBackgroundMutation(
+  val drawable: Drawable?,
+  val changed: Boolean,
+)
+
+internal data class ReactContextOwner(
+  val reactContextRef: WeakReference<ReactApplicationContext>?,
+  val token: Long,
+) {
+  fun get(): ReactApplicationContext? = reactContextRef?.get()
+}
+
+internal fun containsActiveOwnedBackground(root: Drawable?, target: Drawable?): Boolean {
+  if (root == null || target == null) return false
+  if (root === target) return root !is OwnedBackgroundLayer || root.ownerActive
+  if (root !is OwnedBackgroundLayer || !root.ownerActive) return false
+  return containsActiveOwnedBackground(root.ownerWrappedBackground, target)
+}
+
+internal fun sanitizeOwnedBackground(root: Drawable?): Drawable? =
+  sanitizeOwnedBackgroundInternal(root).drawable
+
+internal fun removeOwnedBackground(root: Drawable?, target: Drawable?): OwnedBackgroundMutation {
+  if (target == null) return OwnedBackgroundMutation(sanitizeOwnedBackground(root), false)
+  return removeOwnedBackgroundInternal(root, target)
+}
+
+private fun removeOwnedBackgroundInternal(
+  root: Drawable?,
+  target: Drawable,
+): OwnedBackgroundMutation {
+  val sanitized = sanitizeOwnedBackgroundInternal(root)
+  val drawable = sanitized.drawable ?: return sanitized
+  if (drawable === target) {
+    return if (drawable is OwnedBackgroundLayer) {
+      OwnedBackgroundMutation(sanitizeOwnedBackground(drawable.ownerWrappedBackground), true)
+    } else {
+      OwnedBackgroundMutation(null, true)
+    }
+  }
+  if (drawable is OwnedBackgroundLayer && drawable !is LayerDrawable) {
+    val nested = removeOwnedBackgroundInternal(drawable.ownerWrappedBackground, target)
+    if (nested.changed) {
+      drawable.ownerWrappedBackground = nested.drawable
+      return OwnedBackgroundMutation(drawable, true)
+    }
+  }
+  if (drawable !is LayerDrawable) return sanitized
+  for (index in 0 until drawable.numberOfLayers) {
+    val child = drawable.getDrawable(index)
+    val nested = removeOwnedBackgroundInternal(child, target)
+    if (nested.changed) {
+      drawable.setDrawable(index, nested.drawable ?: ColorDrawable(0))
+      return OwnedBackgroundMutation(drawable, true)
+    }
+  }
+  return sanitized
+}
+
+private fun sanitizeOwnedBackgroundInternal(root: Drawable?): OwnedBackgroundMutation {
+  if (root == null) return OwnedBackgroundMutation(null, false)
+  var changed = false
+  if (root is OwnedBackgroundLayer) {
+    val nested = sanitizeOwnedBackgroundInternal(root.ownerWrappedBackground)
+    if (nested.changed) {
+      root.ownerWrappedBackground = nested.drawable
+      changed = true
+    }
+    if (!root.ownerActive) {
+      return OwnedBackgroundMutation(root.ownerWrappedBackground, true)
+    }
+  }
+  if (root is LayerDrawable) {
+    for (index in 0 until root.numberOfLayers) {
+      val child = root.getDrawable(index)
+      val nested = sanitizeOwnedBackgroundInternal(child)
+      if (nested.changed) {
+        root.setDrawable(index, nested.drawable ?: ColorDrawable(0))
+        changed = true
+      }
+    }
+  }
+  return OwnedBackgroundMutation(root, changed)
+}
+
 /**
  * The Android mirror of `NitroCssGradientApplier.mm`: consumes the C++
  * `GradientTargets` registry (`tag → folded gradient descriptor`) and paints
@@ -67,8 +157,13 @@ object GradientApplier {
   private val mainHandler = Handler(Looper.getMainLooper())
   private val flushScheduled = AtomicBoolean(false)
   private val retriesLeft = AtomicInteger(RETRY_BUDGET)
-  private var reactContextRef: WeakReference<ReactApplicationContext>? = null
+  private val ownerLock = Any()
+  @Volatile
+  private var ownerState = ReactContextOwner(null, 0L)
   private var nativeInstalled = false
+  private val mountedViewResolver = MountedViewResolver()
+  private var forceHierarchyScan = true
+  private var lastSnapshotIdentity = 0L
 
   /** Views currently carrying our gradient background. UI-thread only. */
   private val painted = WeakHashMap<View, PaintedState>()
@@ -80,7 +175,11 @@ object GradientApplier {
    * `std::call_once`-guarded and the listener re-fires for existing targets.
    */
   fun install(reactContext: ReactApplicationContext) {
-    reactContextRef = WeakReference(reactContext)
+    val installOwner = synchronized(ownerLock) {
+      val next = ReactContextOwner(WeakReference(reactContext), ownerState.token + 1L)
+      ownerState = next
+      next
+    }
     if (!nativeInstalled) {
       try {
         System.loadLibrary("NitroCss")
@@ -91,7 +190,24 @@ object GradientApplier {
         return
       }
     }
-    setNeedsFlush()
+    mainHandler.post {
+      if (ownerState !== installOwner || installOwner.get() !== reactContext) return@post
+      resetRuntimeState(restoreViews = true)
+      setNeedsFlush()
+    }
+  }
+
+  fun invalidate(reactContext: ReactApplicationContext) {
+    val invalidateOwner = synchronized(ownerLock) {
+      if (ownerState.get() !== reactContext) return
+      val next = ReactContextOwner(null, ownerState.token + 1L)
+      ownerState = next
+      next
+    }
+    mainHandler.post {
+      if (ownerState !== invalidateOwner) return@post
+      resetRuntimeState(restoreViews = true)
+    }
   }
 
   /** Entry point from C++ (fbjni static call). May fire on any thread. */
@@ -100,12 +216,12 @@ object GradientApplier {
     setNeedsFlush()
   }
 
-  private fun setNeedsFlush() {
+  private fun setNeedsFlush(replenishRetries: Boolean = true) {
     // Every fresh signal (new descriptor, theme recompute, mount transaction)
     // replenishes the first-paint retry budget — mirrors the iOS fix: without
     // this, the startup burst exhausts the budget before Fabric mounts the
     // first view and the screen stays gradient-less.
-    retriesLeft.set(RETRY_BUDGET)
+    if (replenishRetries) retriesLeft.set(RETRY_BUDGET)
     if (!flushScheduled.compareAndSet(false, true)) return
     // Lynx-style coalescing: N invalidations between now and the UI-queue turn
     // collapse into one flush.
@@ -116,14 +232,35 @@ object GradientApplier {
   }
 
   private fun flushOnUiThread() {
-    val reactContext = reactContextRef?.get() ?: return
+    val owner = ownerState
+    val reactContext = owner.get() ?: return
     val uiManager = try {
       UIManagerHelper.getUIManager(reactContext, UIManagerType.FABRIC)
     } catch (t: Throwable) {
       null
     } ?: return
+    if (ownerState !== owner) return
 
     val entries = parseSnapshot()
+    val generations = HashMap<Int, Long>(entries.size)
+    for ((tag, entry) in entries) generations[tag] = entry.generation
+    val snapshotIdentity = snapshotIdentity(generations)
+    if (snapshotIdentity != lastSnapshotIdentity) {
+      mountedViewResolver.clear()
+      forceHierarchyScan = true
+      lastSnapshotIdentity = snapshotIdentity
+    }
+    val requestedTags = HashSet<Int>(entries.size + painted.size)
+    requestedTags.addAll(entries.keys)
+    painted.values.forEach { requestedTags.add(it.tag) }
+    val mountedViews = mountedViewResolver.resolveAll(
+      context = reactContext,
+      uiManager = uiManager,
+      tags = requestedTags,
+      forceHierarchyScan = forceHierarchyScan,
+    )
+    if (ownerState !== owner) return
+    forceHierarchyScan = false
 
     // 1) Prune: drop our paint from any view whose tag no longer maps to it —
     //    descriptor cleared, view unmounted/culled, or recycled for another tag.
@@ -134,7 +271,7 @@ object GradientApplier {
       val state = painting.value
       var keep = false
       if (entries.containsKey(state.tag)) {
-        keep = resolveView(uiManager, state.tag) === view
+        keep = mountedViews[state.tag] === view
       }
       if (!keep) {
         removePaint(view, state)
@@ -146,7 +283,7 @@ object GradientApplier {
     //    mounted. Unchanged (tag + generation) views are skipped.
     var anyMissing = false
     for ((tag, entry) in entries) {
-      val view = resolveView(uiManager, tag)
+      val view = mountedViews[tag]
       if (view == null) {
         // Not mounted right now (first paint racing the mount, or culled
         // off-screen). The next mount transaction re-triggers us.
@@ -160,18 +297,28 @@ object GradientApplier {
       retriesLeft.set(RETRY_BUDGET)
     } else if (retriesLeft.get() > 0) {
       retriesLeft.decrementAndGet()
-      mainHandler.postDelayed({ setNeedsFlush() }, RETRY_DELAY_MS)
+      val retryOwner = owner
+      mainHandler.postDelayed({
+        if (ownerState !== retryOwner) return@postDelayed
+        setNeedsFlush(replenishRetries = false)
+      }, RETRY_DELAY_MS)
     }
   }
 
-  private fun resolveView(
-    uiManager: com.facebook.react.bridge.UIManager,
-    tag: Int,
-  ): View? = try {
-    uiManager.resolveView(tag)
-  } catch (t: Throwable) {
-    // Fabric throws for unknown/unmounted tags instead of returning null.
-    null
+  private fun resetRuntimeState(restoreViews: Boolean) {
+    if (restoreViews) {
+      val iterator = painted.entries.iterator()
+      while (iterator.hasNext()) {
+        val (view, state) = iterator.next()
+        removePaint(view, state)
+        iterator.remove()
+      }
+    } else {
+      painted.clear()
+    }
+    mountedViewResolver.clear()
+    forceHierarchyScan = true
+    lastSnapshotIdentity = 0L
   }
 
   private fun applyEntry(tag: Int, entry: Entry, view: View) {
@@ -181,7 +328,9 @@ object GradientApplier {
     // wrapper is still the view's background — nothing to repaint. Size
     // changes don't invalidate this: the drawable rebuilds its shader from
     // `onBoundsChange` when the view resizes.
-    if (state != null && state.tag == tag && view.background === state.wrapper) {
+    if (state != null && state.tag == tag &&
+      containsActiveOwnedBackground(view.background, state.wrapper)
+    ) {
       // Repaint when the descriptor changed OR an animated angle override is
       // live (the driver pushes a new angle every frame → re-shade each flush).
       if (state.generation != entry.generation || entry.angleOverride != null) {
@@ -202,47 +351,23 @@ object GradientApplier {
 
     val gradient = GradientDrawable()
     gradient.update(entry, view)
-    val original = view.background
+    val original = sanitizeOwnedBackground(view.background)
+    if (original !== view.background) view.background = original
     val wrapper = GradientBackgroundWrapper(original, gradient)
     view.background = wrapper
     painted[view] = PaintedState(tag, entry.generation, gradient, wrapper, original)
   }
 
   private fun removePaint(view: View, state: PaintedState) {
-    val background = view.background
-    if (background === state.wrapper) {
-      // Simple case: we are still the outermost background — restore.
-      view.background = state.originalBackground
-      return
-    }
-    // RN replaced the background and buried our wrapper somewhere inside its
-    // composite (as `originalBackground`). Neutralize the old gradient so it
-    // cannot double-paint, and splice the wrapper out of the chain (replacing
-    // it with the background it wrapped) so nesting stays bounded.
+    state.wrapper.ownerActive = false
     state.gradient.enabled = false
-    if (background != null && spliceOut(background, state.wrapper, state.originalBackground)) {
-      background.invalidateSelf()
+    val removal = removeOwnedBackground(view.background, state.wrapper)
+    if (removal.changed || removal.drawable !== view.background) {
+      view.background = removal.drawable
+    } else {
+      val sanitizedCurrent = sanitizeOwnedBackground(view.background)
+      if (sanitizedCurrent !== view.background) view.background = sanitizedCurrent
     }
-  }
-
-  /**
-   * Depth-first search through [LayerDrawable] chains for `target`, replacing
-   * it in place with `replacement` (RN's composite background is itself a
-   * LayerDrawable, so this reaches a wrapper RN swallowed as its
-   * `originalBackground` layer).
-   */
-  private fun spliceOut(root: Drawable, target: Drawable, replacement: Drawable?): Boolean {
-    if (root !is LayerDrawable) return false
-    for (i in 0 until root.numberOfLayers) {
-      val child = root.getDrawable(i) ?: continue
-      if (child === target) {
-        // setDrawable(i, null) throws; an empty ColorDrawable is a no-op layer.
-        root.setDrawable(i, replacement ?: ColorDrawable(TRANSPARENT_BLACK))
-        return true
-      }
-      if (spliceOut(child, target, replacement)) return true
-    }
-    return false
   }
 
   // --- Snapshot transport ------------------------------------------------------
@@ -389,7 +514,15 @@ object GradientApplier {
    * platform EditText style) cannot inset the gradient.
    */
   private class GradientBackgroundWrapper(original: Drawable?, gradient: Drawable) :
-    LayerDrawable(if (original != null) arrayOf(original, gradient) else arrayOf(gradient)) {
+    LayerDrawable(arrayOf(original ?: ColorDrawable(TRANSPARENT_BLACK), gradient)),
+    OwnedBackgroundLayer {
+    override var ownerWrappedBackground: Drawable? = original
+      set(value) {
+        field = value
+        setDrawable(0, value ?: ColorDrawable(TRANSPARENT_BLACK))
+      }
+    override var ownerActive: Boolean = true
+
     init {
       setPaddingMode(PADDING_MODE_STACK)
     }

@@ -85,8 +85,13 @@ public:
             SharedFolly inlineStyle,
             std::vector<LinkedAccent> accents = {},
             facebook::react::Tag containerTag = 0);
-  void unlink(facebook::react::Tag tag);
+  void unlink(
+      facebook::react::Tag tag,
+      facebook::react::ShadowNodeFamily::Shared expectedFamily = nullptr);
   void suspend(facebook::react::Tag tag);
+
+  /** Drop every ShadowNode owned by a React instance that has been reloaded. */
+  void resetForNewInstance();
 
   /** Explicit JS-driven commit: `tag -> style`. Returns true if committed. */
   bool updateShadowTree(const std::unordered_map<facebook::react::Tag, SharedFolly>& mutations);

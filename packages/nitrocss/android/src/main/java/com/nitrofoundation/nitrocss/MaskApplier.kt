@@ -45,8 +45,13 @@ object MaskApplier {
   private val scheduled = AtomicBoolean(false)
   private val retries = AtomicInteger(RETRIES)
   private val ioExecutor = Executors.newFixedThreadPool(3)
-  private var contextRef: WeakReference<ReactApplicationContext>? = null
+  private val ownerLock = Any()
+  @Volatile
+  private var ownerState = ReactContextOwner(null, 0L)
   private var installed = false
+  private val mountedViewResolver = MountedViewResolver()
+  private var forceHierarchyScan = true
+  private var lastSnapshotIdentity = 0L
   private val painted = WeakHashMap<View, State>()
   private val cache = object : LruCache<String, Bitmap>(24 * 1024 * 1024) {
     override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
@@ -54,7 +59,11 @@ object MaskApplier {
   private val inFlight = HashSet<String>()
 
   fun install(context: ReactApplicationContext) {
-    contextRef = WeakReference(context)
+    val installOwner = synchronized(ownerLock) {
+      val next = ReactContextOwner(WeakReference(context), ownerState.token + 1L)
+      ownerState = next
+      next
+    }
     if (!installed) {
       try {
         System.loadLibrary("NitroCss")
@@ -65,13 +74,30 @@ object MaskApplier {
         return
       }
     }
-    setNeedsFlush()
+    handler.post {
+      if (ownerState !== installOwner || installOwner.get() !== context) return@post
+      resetRuntimeState(restoreViews = true)
+      setNeedsFlush()
+    }
+  }
+
+  fun invalidate(context: ReactApplicationContext) {
+    val invalidateOwner = synchronized(ownerLock) {
+      if (ownerState.get() !== context) return
+      val next = ReactContextOwner(null, ownerState.token + 1L)
+      ownerState = next
+      next
+    }
+    handler.post {
+      if (ownerState !== invalidateOwner) return@post
+      resetRuntimeState(restoreViews = true)
+    }
   }
 
   @JvmStatic fun onNativeInvalidate() = setNeedsFlush()
 
-  private fun setNeedsFlush() {
-    retries.set(RETRIES)
+  private fun setNeedsFlush(replenishRetries: Boolean = true) {
+    if (replenishRetries) retries.set(RETRIES)
     if (!scheduled.compareAndSet(false, true)) return
     handler.post {
       scheduled.set(false)
@@ -80,16 +106,36 @@ object MaskApplier {
   }
 
   private fun flush() {
-    val context = contextRef?.get() ?: return
+    val owner = ownerState
+    val context = owner.get() ?: return
     val manager = try {
       UIManagerHelper.getUIManager(context, UIManagerType.FABRIC)
     } catch (_: Throwable) { null } ?: return
+    if (ownerState !== owner) return
     val entries = snapshot()
+    val generations = HashMap<Int, Long>(entries.size)
+    for ((tag, entry) in entries) generations[tag] = entry.generation
+    val snapshotIdentity = snapshotIdentity(generations)
+    if (snapshotIdentity != lastSnapshotIdentity) {
+      mountedViewResolver.clear()
+      forceHierarchyScan = true
+      lastSnapshotIdentity = snapshotIdentity
+    }
+    val requestedTags = HashSet<Int>(entries.size + painted.size)
+    requestedTags.addAll(entries.keys)
+    painted.values.forEach { requestedTags.add(it.tag) }
+    val mountedViews = mountedViewResolver.resolveAll(
+      context = context,
+      uiManager = manager,
+      tags = requestedTags,
+      forceHierarchyScan = forceHierarchyScan,
+    )
+    if (ownerState !== owner) return
+    forceHierarchyScan = false
     val iterator = painted.entries.iterator()
     while (iterator.hasNext()) {
       val item = iterator.next()
-      val keep = entries.containsKey(item.value.tag) &&
-        try { manager.resolveView(item.value.tag) === item.key } catch (_: Throwable) { false }
+      val keep = entries.containsKey(item.value.tag) && mountedViews[item.value.tag] === item.key
       if (!keep) {
         remove(item.key, item.value)
         iterator.remove()
@@ -97,7 +143,7 @@ object MaskApplier {
     }
     var missing = false
     for ((tag, entry) in entries) {
-      val view = try { manager.resolveView(tag) } catch (_: Throwable) { null }
+      val view = mountedViews[tag]
       if (view == null || view.width <= 0 || view.height <= 0) {
         missing = true
         continue
@@ -105,8 +151,28 @@ object MaskApplier {
       apply(tag, entry, view)
     }
     if (missing && retries.getAndDecrement() > 0) {
-      handler.postDelayed({ setNeedsFlush() }, 50)
+      val retryOwner = owner
+      handler.postDelayed({
+        if (ownerState !== retryOwner) return@postDelayed
+        setNeedsFlush(replenishRetries = false)
+      }, 50)
     }
+  }
+
+  private fun resetRuntimeState(restoreViews: Boolean) {
+    if (restoreViews) {
+      val iterator = painted.entries.iterator()
+      while (iterator.hasNext()) {
+        val (view, state) = iterator.next()
+        remove(view, state)
+        iterator.remove()
+      }
+    } else {
+      painted.clear()
+    }
+    mountedViewResolver.clear()
+    forceHierarchyScan = true
+    lastSnapshotIdentity = 0L
   }
 
   private fun apply(tag: Int, entry: Entry, view: View) {

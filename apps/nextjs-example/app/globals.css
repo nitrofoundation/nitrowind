@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@import "@nitrofoundation/nitrowind/next.css";
+
+@theme {
+  --color-brand: #6d28d9;
+}

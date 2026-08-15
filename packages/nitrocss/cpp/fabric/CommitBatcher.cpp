@@ -6,28 +6,30 @@
 
 namespace nitrocss {
 
-CommitBatcher& CommitBatcher::shared() {
+CommitBatcher &CommitBatcher::shared() {
   static CommitBatcher instance;
   return instance;
 }
 
 void CommitBatcher::enqueue(std::vector<NodeMutation> mutations) {
-  if (mutations.empty()) return;
+  if (mutations.empty())
+    return;
   bool shouldSchedule = false;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    for (auto& incoming : mutations) {
-      if (incoming.family == nullptr || !incoming.props.isObject()) continue;
+    for (auto &incoming : mutations) {
+      if (incoming.family == nullptr || !incoming.props.isObject())
+        continue;
       auto existing = std::find_if(
-          pending_.begin(), pending_.end(), [&](const NodeMutation& item) {
+          pending_.begin(), pending_.end(), [&](const NodeMutation &item) {
             return item.surfaceId == incoming.surfaceId &&
-                item.family.get() == incoming.family.get();
+                   item.family.get() == incoming.family.get();
           });
       if (existing == pending_.end()) {
         pending_.push_back(std::move(incoming));
         continue;
       }
-      for (const auto& pair : incoming.props.items()) {
+      for (const auto &pair : incoming.props.items()) {
         existing->props[pair.first] = pair.second;
       }
     }
@@ -36,13 +38,14 @@ void CommitBatcher::enqueue(std::vector<NodeMutation> mutations) {
       shouldSchedule = true;
     }
   }
-  if (shouldSchedule) scheduleFlush();
+  if (shouldSchedule)
+    scheduleFlush();
 }
 
 void CommitBatcher::scheduleFlush() {
   auto executor = NitroCssInstaller::shared().runtimeExecutor();
   if (executor != nullptr) {
-    executor([](facebook::jsi::Runtime&) { CommitBatcher::shared().flush(); });
+    executor([](facebook::jsi::Runtime &) { CommitBatcher::shared().flush(); });
     return;
   }
   // Early startup can link before an executor has been captured. Preserve
@@ -64,6 +67,15 @@ bool CommitBatcher::commitNow(std::vector<NodeMutation> mutations) {
   // Preserve ordering with already queued steady-state writes.
   flush();
   return ShadowTreeMutator::commit(mutations);
+}
+
+void CommitBatcher::resetForNewInstance() {
+  // A RuntimeExecutor callback queued on the retiring JS runtime may never run.
+  // Clear both the stale families and its scheduled bit so the first update
+  // from the replacement runtime can schedule a fresh flush.
+  std::lock_guard<std::mutex> lock(mutex_);
+  pending_.clear();
+  scheduled_ = false;
 }
 
 } // namespace nitrocss

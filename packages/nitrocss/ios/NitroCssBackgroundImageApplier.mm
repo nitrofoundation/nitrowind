@@ -9,6 +9,7 @@
 #endif
 
 #import "BackgroundImageTargets.hpp"
+#import "NitroCssMountedViewResolver.h"
 
 #include <atomic>
 #include <cmath>
@@ -148,6 +149,9 @@ NSCache<NSString *, UIImage *> *imageCache() {
   __weak RCTSurfacePresenter *_surfacePresenter;
   /** Views currently carrying our layer, weakly held for the prune pass. */
   NSHashTable<UIView *> *_paintedViews;
+  /** Reload-safe tag lookup; values stay weak so Fabric can recycle views. */
+  NSMapTable<NSNumber *, UIView *> *_fallbackViews;
+  uint64_t _snapshotGeneration;
   std::atomic<bool> _flushScheduled;
   /** Bounded first-paint retry (mirrors the gradient applier). */
   std::atomic<NSInteger> _retriesLeft;
@@ -165,6 +169,8 @@ NSCache<NSString *, UIImage *> *imageCache() {
 - (instancetype)init {
   if (self = [super init]) {
     _paintedViews = [NSHashTable weakObjectsHashTable];
+    _fallbackViews = [NSMapTable strongToWeakObjectsMapTable];
+    _snapshotGeneration = 0;
     _flushScheduled.store(false);
     _retriesLeft = 3;
   }
@@ -198,9 +204,18 @@ NSCache<NSString *, UIImage *> *imageCache() {
 - (void)flushOnMainThread {
   NSAssert(NSThread.isMainThread, @"background-image flush must run on main");
   RCTSurfacePresenter *presenter = _surfacePresenter;
-  if (presenter == nil) return;
-
   const auto snapshot = BackgroundImageTargets::shared().snapshot();
+  const uint64_t generation =
+      nitrocss::ios::latestSnapshotGeneration(snapshot);
+  const bool snapshotChanged = generation != _snapshotGeneration;
+  NSDictionary<NSNumber *, UIView *> *mountedViews =
+      nitrocss::ios::mountedViewsForSnapshot(
+          snapshot, _fallbackViews, snapshotChanged);
+  _snapshotGeneration = generation;
+
+  auto viewForTag = [&](NSInteger tag) -> UIView * {
+    return nitrocss::ios::resolveMountedView(tag, presenter, mountedViews);
+  };
 
   [CATransaction begin];
   [CATransaction setDisableActions:YES];
@@ -212,8 +227,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
     if (appliedTag != nil) {
       const auto it = snapshot.find(appliedTag.intValue);
       if (it != snapshot.end()) {
-        UIView *current = [presenter
-            findComponentViewWithTag_DO_NOT_USE_DEPRECATED:appliedTag.integerValue];
+        UIView *current = viewForTag(appliedTag.integerValue);
         keep = (current == view);
       }
     }
@@ -225,13 +239,12 @@ NSCache<NSString *, UIImage *> *imageCache() {
   // 2) Apply: (re)install the layer on every mounted target.
   BOOL anyMissing = NO;
   for (const auto &entry : snapshot) {
-    UIView *view =
-        [presenter findComponentViewWithTag_DO_NOT_USE_DEPRECATED:entry.first];
+    UIView *view = viewForTag(entry.first);
     if (view == nil) {
       anyMissing = YES;
       continue;
     }
-    [self applyEntry:entry.second toView:view tag:entry.first presenter:presenter];
+    [self applyEntry:entry.second toView:view tag:entry.first];
   }
 
   [CATransaction commit];
@@ -288,8 +301,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
 
 - (void)applyEntry:(const BackgroundImageTargets::Entry &)entry
             toView:(UIView *)view
-               tag:(int32_t)tag
-         presenter:(RCTSurfacePresenter *)presenter {
+               tag:(int32_t)tag {
   const ParsedBackgroundImage d = parseDescriptor(entry.descriptor);
   if (d.url.empty()) {
     if (findImageLayer(view) != nil) {
@@ -307,7 +319,8 @@ NSCache<NSString *, UIImage *> *imageCache() {
   NSString *appliedURL = objc_getAssociatedObject(view, kBgAppliedURLKey);
   CALayer *layer = findImageLayer(view);
 
-  const BOOL unchanged = layer != nil && appliedTag != nil &&
+  const BOOL unchanged = layer != nil && layer.contents != nil &&
+                         appliedTag != nil &&
                          appliedTag.intValue == tag && appliedGeneration != nil &&
                          appliedGeneration.unsignedLongLongValue == entry.generation &&
                          [appliedURL isEqualToString:urlString];
@@ -367,11 +380,7 @@ NSCache<NSString *, UIImage *> *imageCache() {
   NSURL *url = [NSURL URLWithString:urlString];
   if (url == nil) return;
 
-  // Captured by the completion block (C++ strings copy into the block).
-  const std::string sizeCopy = d.size;
-  const std::string repeatCopy = d.repeat;
   __weak NitroCssBackgroundImageApplier *weakSelf = self;
-  __weak RCTSurfacePresenter *weakPresenter = presenter;
   NSURLSessionDataTask *task = [[NSURLSession sharedSession]
         dataTaskWithURL:url
       completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -382,33 +391,10 @@ NSCache<NSString *, UIImage *> *imageCache() {
 
         dispatch_async(dispatch_get_main_queue(), ^{
           NitroCssBackgroundImageApplier *strongSelf = weakSelf;
-          RCTSurfacePresenter *strongPresenter = weakPresenter;
-          if (strongSelf == nil || strongPresenter == nil) return;
-
-          // Re-find the CURRENT view for this tag: the view may have been
-          // recycled to a different tag, or a different view may now own the
-          // tag. Only paint if the mapping still holds and the intended URL
-          // hasn't been superseded.
-          UIView *currentView = [strongPresenter
-              findComponentViewWithTag_DO_NOT_USE_DEPRECATED:tag];
-          if (currentView == nil) return;
-          NSString *wantURL =
-              objc_getAssociatedObject(currentView, kBgAppliedURLKey);
-          if (![wantURL isEqualToString:urlString]) return;
-
-          CALayer *currentLayer = findImageLayer(currentView);
-          if (currentLayer == nil) return;
-
-          [CATransaction begin];
-          [CATransaction setDisableActions:YES];
-          currentLayer.frame = currentView.layer.bounds;
-          [strongSelf paintImage:image
-                          onView:currentView
-                           layer:currentLayer
-                          bounds:currentView.layer.bounds
-                            size:sizeCopy
-                          repeat:repeatCopy];
-          [CATransaction commit];
+          // Re-resolve the current mounted view on main. This remains valid if
+          // Fast Refresh replaced the presenter while the request was in flight;
+          // applyEntry re-checks the intended tag/generation/URL before painting.
+          [strongSelf setNeedsFlush];
         });
       }];
   [task resume];

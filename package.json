@@ -18,16 +18,14 @@
   ],
   "resolutions": {
     "react": "19.2.7",
-    "react-native": "0.86.0"
+    "react-dom": "19.2.7",
+    "react-native": "0.86.0",
+    "cookie": "^2.0.1"
   },
   "scripts": {
     "build": "turbo run build",
-    "docs": "yarn workspace nitrowind-docs start",
-    "docs:build": "yarn workspace nitrowind-docs build",
-    "docs:docker:build": "docker compose -f apps/nitrowind-docs/compose.yaml build",
-    "docs:docker:up": "docker compose -f apps/nitrowind-docs/compose.yaml up --build -d",
-    "docs:docker:logs": "docker compose -f apps/nitrowind-docs/compose.yaml logs -f",
-    "docs:docker:down": "docker compose -f apps/nitrowind-docs/compose.yaml down",
+    "docs": "yarn workspace docs dev",
+    "docs:build": "yarn workspace docs build",
     "docs:deploy": "bash scripts/deploy-docs.sh",
     "x:link": "node scripts/x-link.mjs",
     "release": "release-it",

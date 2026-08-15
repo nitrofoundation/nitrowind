@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Nitrowind Expo web example",
+    "slug": "nitrowind-expo-web-example",
+    "scheme": "nitrowind-expo-web-example",
+    "web": {
+      "bundler": "metro",
+      "output": "server"
+    },
+    "plugins": [["expo-router", { "unstable_useServerRendering": true }]],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

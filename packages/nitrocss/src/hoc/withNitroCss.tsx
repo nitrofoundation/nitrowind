@@ -37,6 +37,7 @@ import {
   withComponentPseudoState,
 } from "../components/pseudo";
 import { useAccessibilityClassName } from "../accessibility/native";
+import { webClassNameStyle } from "../components/webClassName";
 
 export interface WithNitroCssProps {
   className?: string;
@@ -65,8 +66,7 @@ export interface WithNitroCssAdvancedOptions<P> {
 }
 
 export type WithNitroCssOptions<P> =
-  | WithNitroCssPropOptions<P>
-  | WithNitroCssAdvancedOptions<P>;
+  WithNitroCssPropOptions<P> | WithNitroCssAdvancedOptions<P>;
 
 const isAdvancedOptions = <P,>(
   options: WithNitroCssOptions<P> | undefined,
@@ -359,7 +359,13 @@ export function withNitroCss<P extends { style?: StyleProp<unknown> }>(
     };
 
   const Wrapped = forwardRef<unknown, WrappedProps>(function NitroCssComponent(
-    { className: requestedClassName = "", style, __nitrocssPseudoState, children, ...rest },
+    {
+      className: requestedClassName = "",
+      style,
+      __nitrocssPseudoState,
+      children,
+      ...rest
+    },
     forwardedRef,
   ) {
     const className = useAccessibilityClassName(requestedClassName);
@@ -402,16 +408,12 @@ export function withNitroCss<P extends { style?: StyleProp<unknown> }>(
       () =>
         isWeb
           ? undefined
-          : serializeGridConfig(
-              className,
-              children,
-              [
-                resolved.styles,
-                typeof style === "function"
-                  ? undefined
-                  : (style as StyleProp<ViewStyle>),
-              ],
-            ),
+          : serializeGridConfig(className, children, [
+              resolved.styles,
+              typeof style === "function"
+                ? undefined
+                : (style as StyleProp<ViewStyle>),
+            ]),
       [isWeb, className, children, resolved.styles, style],
     );
     const ref = useLinkedRef<unknown>(
@@ -498,10 +500,7 @@ export function withNitroCss<P extends { style?: StyleProp<unknown> }>(
     const { style: generatedStyle, ...hostGeneratedProps } = generatedProps;
     const classHostColorProps = isWeb
       ? {}
-      : resolveHostColorProps(
-          resolved.styles,
-          rest as Record<string, unknown>,
-        );
+      : resolveHostColorProps(resolved.styles, rest as Record<string, unknown>);
     // Preserve callback styles (e.g. `Pressable`'s `style={(state) => …}`) by
     // composing them rather than discarding them.
     const disabled = Boolean((rest as { disabled?: unknown }).disabled);
@@ -515,29 +514,34 @@ export function withNitroCss<P extends { style?: StyleProp<unknown> }>(
       [disabled, updatesNativePressableState],
     );
     const mergedStyle = isWeb
-      ? style
+      ? typeof style === "function"
+        ? (state: unknown) => [
+            webClassNameStyle(className),
+            (style as (s: unknown) => unknown)(state),
+          ]
+        : [webClassNameStyle(className), style]
       : PressableAnimatedSurface
         ? undefined
         : needsPressableState ||
-          updatesNativePressableState ||
-          typeof style === "function"
-        ? (state: unknown) => {
-            updateNativePressableState(state);
-            return [
-              needsPressableState
-                ? resolveStyles(className, snapshot, {
-                    ...__nitrocssPseudoState,
-                    ...stateFromPressable(state, disabled),
-                  }).styles
-                : resolved.styles,
-              containerStyle,
-              generatedStyle,
-              typeof style === "function"
-                ? (style as (s: unknown) => unknown)(state)
-                : style,
-            ];
-          }
-        : [resolved.styles, containerStyle, generatedStyle, style];
+            updatesNativePressableState ||
+            typeof style === "function"
+          ? (state: unknown) => {
+              updateNativePressableState(state);
+              return [
+                needsPressableState
+                  ? resolveStyles(className, snapshot, {
+                      ...__nitrocssPseudoState,
+                      ...stateFromPressable(state, disabled),
+                    }).styles
+                  : resolved.styles,
+                containerStyle,
+                generatedStyle,
+                typeof style === "function"
+                  ? (style as (s: unknown) => unknown)(state)
+                  : style,
+              ];
+            }
+          : [resolved.styles, containerStyle, generatedStyle, style];
     const renderedChildren = (() => {
       if (isWeb) return gridFallback.children;
       if (!needsPressableRenderFunction) {
@@ -579,12 +583,9 @@ export function withNitroCss<P extends { style?: StyleProp<unknown> }>(
         );
       };
     })();
-    const webProps: Record<string, unknown> =
-      isWeb && className ? { className } : {};
     const node = (
       <Host
         ref={ref}
-        {...webProps}
         {...(rest as Record<string, unknown>)}
         {...classHostColorProps}
         {...hostGeneratedProps}

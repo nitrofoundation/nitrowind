@@ -21,7 +21,10 @@ import { Caption, Screen, Section, ThemeToggle } from '../components/ui';
 
 const LINEAR = [
   { cls: 'bg-linear-to-r from-fuchsia-500 to-cyan-400', label: 'to-r' },
-  { cls: 'bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500', label: 'to-br · via' },
+  {
+    cls: 'bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500',
+    label: 'to-br · via',
+  },
   { cls: 'bg-linear-to-t from-emerald-400 to-lime-300', label: 'to-t' },
   { cls: 'bg-linear-45 from-amber-400 to-rose-600', label: '45°' },
   { cls: '-bg-linear-45 from-red-500 to-blue-600', label: '-45° / calc()' },
@@ -33,9 +36,15 @@ const LINEAR = [
 
 const RADIAL = [
   { cls: 'bg-radial from-white to-sky-500', label: 'center' },
-  { cls: 'bg-radial-[at_25%_25%] from-yellow-300 to-orange-600', label: 'at 25% 25%' },
+  {
+    cls: 'bg-radial-[at_25%_25%] from-yellow-300 to-orange-600',
+    label: 'at 25% 25%',
+  },
   { cls: 'bg-radial from-pink-400 via-purple-500 to-indigo-700', label: 'via' },
-  { cls: 'bg-radial-[at_50%_100%] from-teal-300 to-blue-700', label: 'at 50% 100%' },
+  {
+    cls: 'bg-radial-[at_50%_100%] from-teal-300 to-blue-700',
+    label: 'at 50% 100%',
+  },
   {
     cls: 'bg-radial-[circle_closest-side_at_25%_25%] from-white to-rose-600',
     label: 'circle closest-side',
@@ -48,7 +57,10 @@ const RADIAL = [
 
 const CONIC = [
   { cls: 'bg-conic from-rose-500 via-violet-500 to-cyan-400', label: 'center' },
-  { cls: 'bg-conic-45 from-amber-400 via-fuchsia-500 to-indigo-700', label: 'from 45°' },
+  {
+    cls: 'bg-conic-45 from-amber-400 via-fuchsia-500 to-indigo-700',
+    label: 'from 45°',
+  },
   {
     cls: 'bg-conic-[from_135deg_at_25%_25%] from-emerald-300 via-sky-500 to-violet-700',
     label: 'from 135° at 25% 25%',
@@ -97,7 +109,9 @@ function AnimatedGradient() {
   return (
     <View className="h-40 overflow-hidden items-center justify-center rounded-3xl bg-slate-900">
       <View className="absolute h-[180%] w-[180%] animate-gradient-shift bg-linear-[144deg] from-primary via-cyan-400 to-danger" />
-      <Text className="text-sm font-bold text-white">animate-gradient-shift</Text>
+      <Text className="text-sm font-bold text-white">
+        animate-gradient-shift
+      </Text>
     </View>
   );
 }
@@ -130,24 +144,24 @@ export default function Gradients() {
     <Screen>
       <View className="flex-row items-center justify-between">
         <Text className="text-sm text-muted">
-          Toggle theme — themed gradients update natively
+          Toggle theme — themed gradients update everywhere
         </Text>
         <ThemeToggle />
       </View>
 
       <Section
         title="Gradient showcase"
-        subtitle="Two gradient types plus a conic sweep whose native angle moves clockwise with CSS keyframes."
+        subtitle="Two gradient types plus a conic sweep whose angle moves clockwise with CSS keyframes."
       >
         <PostShowcase />
       </Section>
 
       <Section
         title="Linear"
-        subtitle="bg-linear-* direction + from/via/to stops → the view's own native gradient layer."
+        subtitle="bg-linear-* direction + from/via/to stops → the view's own gradient surface."
       >
         <View className="flex-row flex-wrap gap-4">
-          {LINEAR.map((g) => (
+          {LINEAR.map(g => (
             <GradientTile key={g.label} cls={g.cls} label={g.label} />
           ))}
         </View>
@@ -155,26 +169,28 @@ export default function Gradients() {
 
       <Section
         title="Arbitrary and variable values"
-        subtitle="Full literal gradients and runtime custom-property images use the same native descriptor path."
+        subtitle="Full literal gradients and runtime custom-property images use the same styling path."
       >
         <View className="flex-row flex-wrap gap-4">
-          {ARBITRARY.map((g) => (
+          {ARBITRARY.map(g => (
             <GradientTile key={g.label} cls={g.cls} label={g.label} />
           ))}
           <View className="w-[47%] gap-2">
             <View className="h-24 items-center justify-center rounded-2xl bg-surface p-2">
               <View className="h-full w-full items-center justify-center rounded-xl bg-linear-to-r from-red-500 to-blue-600 bg-none">
-                <Text className="text-xs font-semibold text-on-surface">cleared</Text>
+                <Text className="text-xs font-semibold text-on-surface">
+                  cleared
+                </Text>
               </View>
             </View>
-            <Caption>bg-none clears native paint</Caption>
+            <Caption>bg-none clears gradient paint</Caption>
           </View>
         </View>
       </Section>
 
       <Section
         title="Animated"
-        subtitle="RN can't animate background-position, so an oversized gradient layer is translated via a CSS keyframe for the same sweep."
+        subtitle="An oversized gradient layer is translated via a CSS keyframe for a portable sweep."
       >
         <AnimatedGradient />
       </Section>
@@ -184,7 +200,7 @@ export default function Gradients() {
         subtitle="bg-radial / bg-radial-[at_x_y] with the same from/via/to stops."
       >
         <View className="flex-row flex-wrap gap-4">
-          {RADIAL.map((g) => (
+          {RADIAL.map(g => (
             <GradientTile key={g.label} cls={g.cls} label={g.label} />
           ))}
         </View>
@@ -195,7 +211,7 @@ export default function Gradients() {
         subtitle="bg-conic / bg-conic-&lt;angle&gt; sweeps clockwise around an optional center point."
       >
         <View className="flex-row flex-wrap gap-4">
-          {CONIC.map((g) => (
+          {CONIC.map(g => (
             <GradientTile key={g.label} cls={g.cls} label={g.label} />
           ))}
         </View>

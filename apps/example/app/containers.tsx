@@ -9,10 +9,16 @@
  *
  * Resize the container with the buttons below and watch the children respond.
  */
-import { useCallback, useRef } from "react";
-import { Text, View, setNativeProps } from "@nitrofoundation/nitrowind";
+import { useCallback, useRef, useState } from 'react';
+import { Platform } from 'react-native';
+import {
+  Pressable,
+  Text,
+  View,
+  setNativeProps,
+} from '@nitrofoundation/nitrowind';
 
-import { Caption, Screen, Section } from "../components/ui";
+import { Caption, Card, Screen, Section } from '../components/ui';
 
 const WIDTHS = [
   { px: 200, height: 120 },
@@ -21,11 +27,17 @@ const WIDTHS = [
 ];
 
 export default function Containers() {
+  const [webSize, setWebSize] = useState<(typeof WIDTHS)[number]>(WIDTHS[1]!);
   const layoutContainerRef = useRef<any>(null);
   const colorContainerRef = useRef<any>(null);
   const namedContainerRef = useRef<any>(null);
 
   const setContainerSize = useCallback((width: number, height: number) => {
+    if (Platform.OS === 'web') {
+      setWebSize({ px: width, height });
+      return;
+    }
+
     const style = { width };
     setNativeProps(layoutContainerRef.current, { style });
     setNativeProps(colorContainerRef.current, { style });
@@ -39,17 +51,17 @@ export default function Containers() {
         subtitle="The same children re-style themselves from the container's measured width."
       >
         <View className="flex-row gap-2">
-          {WIDTHS.map((w) => (
-            <View
+          {WIDTHS.map(w => (
+            <Pressable
               key={w.px}
               accessibilityRole="button"
-              onTouchEnd={() => setContainerSize(w.px, w.height)}
+              onPress={() => setContainerSize(w.px, w.height)}
               className="rounded-full border border-border bg-surface-elevated px-4 py-2"
             >
               <Text className="text-sm font-semibold text-on-surface">
                 {w.px}px
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       </Section>
@@ -60,6 +72,7 @@ export default function Containers() {
       >
         <View
           ref={layoutContainerRef}
+          style={Platform.OS === 'web' ? { width: webSize.px } : undefined}
           className="@container w-70 self-center rounded-2xl border border-border bg-surface-elevated p-4"
         >
           <View className="flex-col gap-3 @min-[280px]:gap-4">
@@ -84,6 +97,7 @@ export default function Containers() {
       >
         <View
           ref={colorContainerRef}
+          style={Platform.OS === 'web' ? { width: webSize.px } : undefined}
           className="@container w-70 self-center rounded-2xl border border-border bg-surface-elevated p-4"
         >
           <View className="h-14 items-center justify-center rounded-xl bg-emerald-500 @min-[300px]:bg-amber-500">
@@ -94,49 +108,82 @@ export default function Containers() {
         </View>
       </Section>
 
-      <Section
-        title="Auto Size-based color"
-        subtitle="The native layout measurement crosses 260px without button taps."
-      >
-        <View className="self-stretch px-16">
-          <View className="@container self-stretch rounded-2xl border border-border bg-surface-elevated p-4">
-            <View className="h-14 items-center justify-center rounded-xl bg-emerald-500 [parent-w>=260px]:bg-amber-500">
-              <Text className="text-sm font-semibold text-white">
-                green &lt; 260px &lt;= amber
-              </Text>
+      {Platform.OS === 'web' ? (
+        <Section
+          title="Native parent query"
+          subtitle="The parent-* extension remains a native-only Nitrowind feature."
+        >
+          <Card>
+            <Text className="text-sm leading-5 text-muted">
+              Browser examples use standards-based @container rules. Open this
+              screen on iOS or Android to see [parent-w&gt;=260px] resolve from
+              native layout measurements.
+            </Text>
+          </Card>
+        </Section>
+      ) : (
+        <Section
+          title="Auto Size-based color"
+          subtitle="The native layout measurement crosses 260px without button taps."
+        >
+          <View className="self-stretch px-16">
+            <View className="@container self-stretch rounded-2xl border border-border bg-surface-elevated p-4">
+              <View className="h-14 items-center justify-center rounded-xl bg-emerald-500 [parent-w>=260px]:bg-amber-500">
+                <Text className="text-sm font-semibold text-white">
+                  green &lt; 260px &lt;= amber
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
-      </Section>
+        </Section>
+      )}
 
       <Section
         title="Named container elsewhere"
-        subtitle="This receiver is not a child of the measured container."
+        subtitle={
+          Platform.OS === 'web'
+            ? 'The browser uses a standards-based named ancestor container.'
+            : 'This receiver is not a child of the measured container.'
+        }
       >
         <View className="gap-3">
           <View
             ref={namedContainerRef}
+            style={
+              Platform.OS === 'web'
+                ? { width: webSize.px, height: webSize.height }
+                : undefined
+            }
             className="@container/remote h-38 w-70 self-center items-center justify-center rounded-2xl border border-border bg-surface-elevated p-4"
           >
             <Text className="text-center text-sm font-semibold text-on-surface">
               remote named container
             </Text>
             <Text className="text-center text-xs text-muted">
-              buttons change my native width and height
+              buttons change my width and height
             </Text>
+            {Platform.OS === 'web' ? (
+              <View className="mt-3 rounded-xl bg-rose-500 px-3 py-2 @min-[300px]/remote:bg-emerald-500">
+                <Text className="text-center text-xs font-bold text-white">
+                  named descendant reacts at 300px
+                </Text>
+              </View>
+            ) : null}
           </View>
 
-          <View className="rounded-2xl border border-border bg-rose-500 p-4 [cq-h>=170px]/remote:py-7 [cq-w>=300px]/remote:bg-emerald-500">
-            <Text className="text-center text-sm font-bold text-white [cq-w>=300px]/remote:text-black">
-              sibling reacts to /remote width and height
-            </Text>
-          </View>
+          {Platform.OS !== 'web' ? (
+            <View className="rounded-2xl border border-border bg-rose-500 p-4 [cq-h>=170px]/remote:py-7 [cq-w>=300px]/remote:bg-emerald-500">
+              <Text className="text-center text-sm font-bold text-white [cq-w>=300px]/remote:text-black">
+                sibling reacts to /remote width and height
+              </Text>
+            </View>
+          ) : null}
         </View>
       </Section>
 
       <Caption>
-        Width changes from a button tap; the size-based styling is applied
-        natively.
+        Width changes from a button tap; native uses the ShadowTree engine and
+        web uses browser container queries.
       </Caption>
     </Screen>
   );

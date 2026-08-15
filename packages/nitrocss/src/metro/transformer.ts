@@ -85,6 +85,7 @@ const NONCE = String(Date.now());
 let pipelinePromise: Promise<NitroCssPipeline> | null = null;
 let bootstrapPromise: Promise<string> | null = null;
 let candidateSignature: string | null = null;
+let latestBuildVersion = Date.now();
 
 /**
  * Load the configured pipeline module. Metro workers require() this
@@ -142,6 +143,12 @@ async function buildBootstrap(): Promise<string> {
     return bootstrapPromise;
   }
   candidateSignature = memoKey;
+  // Embed an ordered build version in every generated bootstrap. During a dev
+  // reload Metro can execute cached application transforms after the freshly
+  // transformed stylesheet. The runtime uses this value to reject those stale
+  // registrations. Keep it monotonic even when two builds start in one ms.
+  const buildVersion = Math.max(Date.now(), latestBuildVersion + 1);
+  latestBuildVersion = buildVersion;
   bootstrapPromise = (async () => {
     const css = await pipeline.buildCss(pipelineOptions, candidates);
     const artifact = compiler.compileFromCss(css, pipelineOptions.rem);
@@ -155,7 +162,7 @@ async function buildBootstrap(): Promise<string> {
       "import { registerSerializedStyles as __nitrocssRegisterSerializedStyles } from '@nitrofoundation/nitrocss';\n" +
       `__nitrocssRegisterSerializedStyles(${JSON.stringify(serialized)}, ${JSON.stringify(
         artifact.themeNames,
-      )}, ${JSON.stringify(artifact.rem)});\n`
+      )}, ${JSON.stringify(artifact.rem)}, ${buildVersion});\n`
     );
   })();
   return bootstrapPromise;

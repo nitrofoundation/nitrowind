@@ -1,0 +1,161 @@
+@import './global.css';
+@import '@nitrofoundation/nitrowind/vite.css';
+
+/* Reanimated entering/exiting metadata is native-only. These matching browser
+ * keyframes keep the same demo interactive without changing the shared JSX. */
+@keyframes nitrowind-web-fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nitrowind-web-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nitrowind-web-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes nitrowind-web-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes nitrowind-web-bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes nitrowind-web-flip-in-x {
+  from {
+    opacity: 0;
+    transform: perspective(480px) rotateX(75deg);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(480px) rotateX(0);
+  }
+}
+
+@keyframes nitrowind-web-rotate-in {
+  from {
+    opacity: 0;
+    transform: rotate(-35deg) scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+@keyframes nitrowind-web-fade-out-down {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .entering-fade-in-down {
+    animation: nitrowind-web-fade-in-down
+      var(--reanimated-entering-duration, 500ms) ease-out both;
+  }
+  .entering-fade-in-up {
+    animation: nitrowind-web-fade-in-up
+      var(--reanimated-entering-duration, 500ms) ease-out both;
+  }
+  .entering-zoom-in {
+    animation: nitrowind-web-zoom-in var(--reanimated-entering-duration, 500ms)
+      ease-out both;
+  }
+  .entering-slide-in-left {
+    animation: nitrowind-web-slide-in-left
+      var(--reanimated-entering-duration, 500ms) ease-out both;
+  }
+  .entering-bounce-in {
+    animation: nitrowind-web-bounce-in
+      var(--reanimated-entering-duration, 500ms) ease-out both;
+  }
+  .entering-flip-in-easy-x {
+    animation: nitrowind-web-flip-in-x
+      var(--reanimated-entering-duration, 500ms) ease-out both;
+  }
+  .entering-rotate-in-down-left {
+    animation: nitrowind-web-rotate-in
+      var(--reanimated-entering-duration, 500ms) ease-out both;
+  }
+  .web-exiting-fade-out-down {
+    animation: nitrowind-web-fade-out-down 300ms ease-in both;
+  }
+}
+
+/* Native infers these animated custom-property tracks directly. Registering
+ * them gives browsers the same interpolated angle/scale behavior. */
+@property --gradient-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@property --mask-scale {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+#root .animate-gradient-angle-spin:not(.btn-gradient-border) {
+  --tw-gradient-position: var(--gradient-angle) in oklab;
+}
+
+#root .btn-gradient-border.animate-gradient-angle-spin {
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+    linear-gradient(var(--gradient-angle), #00008b, #9932cc) border-box;
+}
+
+#root .animate-conic-clock {
+  --tw-gradient-position: from var(--gradient-angle) in oklab;
+}
+
+#root .animate-mask-star-rotate-pulse {
+  mask-size: calc(100% * var(--mask-scale));
+}

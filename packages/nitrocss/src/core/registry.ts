@@ -6,6 +6,7 @@ let serializedArtifact: string | null = null;
 let serializedThemeNames: string[] = [];
 let serializedRem = 16;
 let artifactVersion = 0;
+let latestRegistrationVersion = 0;
 
 function clearSerializedCache(): void {
   serializedArtifact = null;
@@ -36,6 +37,9 @@ function getOrParseArtifact(): CompiledArtifact | null {
  * startup does not create a huge object only to stringify it again.
  */
 export function registerStyles(next: CompiledArtifact): void {
+  // Explicit JS callers are authoritative and are not part of Metro's
+  // versioned dev bootstrap protocol.
+  latestRegistrationVersion = 0;
   artifact = next;
   clearSerializedCache();
   artifactVersion += 1;
@@ -62,7 +66,21 @@ export function registerSerializedStyles(
   json: string,
   themeNames: string[],
   rem = 16,
+  registrationVersion?: number,
 ): void {
+  // In development the transformer may prepend a stylesheet bootstrap to
+  // several application modules. Metro can replay an older cached transform
+  // after the current stylesheet module during a full reload. Without this
+  // guard that stale module silently replaces the newest native style table.
+  if (
+    registrationVersion !== undefined &&
+    registrationVersion <= latestRegistrationVersion
+  ) {
+    return;
+  }
+  if (registrationVersion !== undefined) {
+    latestRegistrationVersion = registrationVersion;
+  }
   artifact = null;
   serializedArtifact = json;
   serializedThemeNames = themeNames;

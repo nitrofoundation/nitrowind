@@ -2,8 +2,7 @@ import './global.css';
 
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { usePerformanceMonitorDevTools } from '@rozenite/performance-monitor-plugin';
-import { StatusBar } from 'react-native';
+import { Platform, StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NitrowindProvider } from '@nitrofoundation/nitrowind';
 
@@ -23,33 +22,19 @@ import LayoutScreen from './app/layout';
 import ListsScreen from './app/lists';
 import MaskingScreen from './app/masking';
 import PseudoScreen from './app/pseudo';
+import ScrollAnimationsScreen from './app/scroll-animations';
+import ScrollEffectScreen from './app/scroll-effect';
+import ScrollTimelineBasicsScreen from './app/scroll-timeline-basics';
 import SvgScreen from './app/svg';
 import ThemingScreen from './app/theming';
 import TransformsScreen from './app/transforms';
 import TypographyScreen from './app/typography';
-
-type RootStackParamList = {
-  Home: undefined;
-  Animations: undefined;
-  AppleGradient: undefined;
-  Borders: undefined;
-  Backgrounds: undefined;
-  Benchmark: undefined;
-  StyleSheetBenchmark: undefined;
-  Transforms: undefined;
-  Containers: undefined;
-  Typography: undefined;
-  Theming: undefined;
-  Layout: undefined;
-  Pseudo: undefined;
-  Grid: undefined;
-  Gradients: undefined;
-  Effects: undefined;
-  BackgroundImage: undefined;
-  Svg: undefined;
-  Lists: undefined;
-  Masking: undefined;
-};
+import { usePerformanceMonitorDevTools } from './devtools/usePerformanceMonitorDevTools';
+import {
+  linking,
+  scrollEffectTitle,
+  type RootStackParamList,
+} from './navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -71,7 +56,10 @@ export default function App() {
   return (
     <NitrowindProvider>
       <SafeAreaProvider>
-        <NavigationContainer theme={navTheme}>
+        <NavigationContainer
+          linking={Platform.OS === 'web' ? linking : undefined}
+          theme={navTheme}
+        >
           <StatusBar barStyle="light-content" />
           <Stack.Navigator
             initialRouteName="Home"
@@ -91,6 +79,24 @@ export default function App() {
               name="Animations"
               component={AnimationsScreen}
               options={{ title: 'Animations' }}
+            />
+            <Stack.Screen
+              name="ScrollAnimations"
+              component={ScrollAnimationsScreen}
+              options={{ title: 'Scroll-driven Animations' }}
+            />
+            <Stack.Screen
+              name="ScrollTimelineBasics"
+              component={ScrollTimelineBasicsScreen}
+              options={{ title: 'Timeline Basics' }}
+            />
+            <Stack.Screen
+              name="ScrollEffect"
+              component={ScrollEffectScreen}
+              options={({ route }) => ({
+                title:
+                  route.params.title ?? scrollEffectTitle(route.params.effect),
+              })}
             />
             <Stack.Screen
               name="AppleGradient"

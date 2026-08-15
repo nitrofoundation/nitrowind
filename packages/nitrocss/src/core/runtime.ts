@@ -174,7 +174,10 @@ class RuntimeManager {
   setColorScheme(scheme: "light" | "dark" | "system"): void {
     this.colorSchemeMode = scheme;
     this.adaptiveThemeFollowsColorScheme = true;
-    Appearance.setColorScheme((scheme === "system" ? null : scheme) as never);
+    const appearance = Appearance as typeof Appearance & {
+      setColorScheme?: (value: "light" | "dark" | null) => void;
+    };
+    appearance.setColorScheme?.(scheme === "system" ? null : scheme);
     if (hasNativeEngine()) {
       try {
         getEngine()!.Platform.setColorScheme(scheme);

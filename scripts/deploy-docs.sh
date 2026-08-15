@@ -16,7 +16,7 @@ is_safe_remote_path() {
 }
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-docs_dir="$repo_root/apps/nitrowind-docs"
+docs_dir="$repo_root/apps/docs"
 
 vps_host="${NITROPUSH_VPS_HOST:-}"
 vps_user="${NITROPUSH_VPS_USER:-}"
@@ -64,9 +64,20 @@ printf 'Building documentation for %s%s\n' "$docs_url" "$docs_base_url"
 cd "$repo_root"
 DOCS_URL="$docs_url" DOCS_BASE_URL="$docs_base_url" yarn docs:build
 
+standalone_dir="$docs_dir/.next/standalone"
+[[ -f "$standalone_dir/apps/docs/server.js" ]] || fail "Next.js standalone server was not generated"
+
+stage_dir="$(mktemp -d)"
+trap 'rm -rf "$stage_dir"' EXIT
+mkdir -p "$stage_dir/standalone/apps/docs/.next"
+cp -R "$standalone_dir/." "$stage_dir/standalone/"
+cp -R "$docs_dir/.next/static" "$stage_dir/standalone/apps/docs/.next/static"
+cp -R "$docs_dir/public" "$stage_dir/standalone/apps/docs/public"
+cp "$docs_dir/compose.vps.yaml" "$stage_dir/compose.vps.yaml"
+
 printf 'Uploading release %s to %s\n' "$release_id" "$target"
 ssh "${ssh_args[@]}" "$target" "mkdir -p '$release_dir'"
-tar -C "$docs_dir" -czf - build Caddyfile compose.vps.yaml |
+tar -C "$stage_dir" -czf - standalone compose.vps.yaml |
   ssh "${ssh_args[@]}" "$target" "tar -xzf - -C '$release_dir'"
 
 printf 'Starting documentation container on the VPS\n'
@@ -77,6 +88,7 @@ ssh "${ssh_args[@]}" "$target" "
   ln -sfn '$release_dir' '$remote_root/current'
   cd '$remote_root'
   DOCS_PORT='$docs_port' docker compose -f compose.vps.yaml up -d --force-recreate --remove-orphans
+  docker compose -f compose.vps.yaml ps
   find '$remote_root/releases' -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
 "
 

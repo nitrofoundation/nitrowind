@@ -7,6 +7,7 @@
 import type { ReactNode } from 'react';
 import { ColorScheme, runtime } from '@nitrofoundation/nitrowind';
 import { Pressable, ScrollView, Text, View } from '@nitrofoundation/nitrowind';
+import { setExampleColorScheme } from '../platform/theme';
 
 /** Safe-area aware scrolling page wrapper used by every demo screen. */
 export function Screen({ children }: { children: ReactNode }) {
@@ -82,7 +83,7 @@ export function ThemeToggle() {
       accessibilityRole="button"
       onPress={() => {
         const isDark = runtime.current.colorScheme === ColorScheme.Dark;
-        runtime.setColorScheme(isDark ? 'light' : 'dark');
+        setExampleColorScheme(isDark ? 'light' : 'dark');
       }}
     >
       <View className="flex-row items-center gap-2 rounded-full bg-primary px-4 py-2">
