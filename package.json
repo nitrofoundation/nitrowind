@@ -38,7 +38,8 @@
     "dev": "turbo run dev",
     "build:packages": "turbo run build --filter=@nitrofoundation/nitrocss --filter=@nitrofoundation/nitrowind --filter=@nitrofoundation/nitrowind-skills",
     "nitrogen": "turbo run nitrogen",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "node scripts/clean.mjs",
+    "clean:dry-run": "node scripts/clean.mjs --dry-run"
   },
   "devDependencies": {
     "@release-it-plugins/workspaces": "5.0.3",
