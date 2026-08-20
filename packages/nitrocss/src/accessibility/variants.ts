@@ -4,6 +4,8 @@ const BOOLEAN_VARIANTS = new Set([
   "motion-reduce", "contrast-more", "reduce-transparency", "bold-text", "screen-reader",
 ]);
 const FONT_SCALE_RE = /^font-scale-\[(>=|<=|>|<|=)?\s*(\d+(?:\.\d+)?)\]$/;
+const ACCESSIBILITY_VARIANT_RE =
+  /(?:^|[\s:])(?:motion-reduce|contrast-more|reduce-transparency|bold-text|screen-reader|font-scale-\[)/;
 
 function splitVariants(candidate: string): string[] {
   const parts: string[] = [];
@@ -50,6 +52,7 @@ export function matchesAccessibilityVariant(variant: AccessibilityVariant, env: 
 }
 
 export function resolveAccessibilityClassName(className: string, env: AccessibilityEnvironment): string {
+  if (!ACCESSIBILITY_VARIANT_RE.test(className)) return className;
   return className.split(/\s+/).filter(Boolean).flatMap((candidate) => {
     const parts = splitVariants(candidate);
     const variants = parts.slice(0, -1).map(parseAccessibilityVariant).filter((v): v is AccessibilityVariant => v !== null);

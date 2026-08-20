@@ -26,6 +26,10 @@ function structuralPseudoClassName(className: string): string {
     .join(" ");
 }
 
+function hasStructuralPseudoClassName(className: string): boolean {
+  return /(?:^|\s)(?:first|last):/.test(className);
+}
+
 function mergePseudoStyle(
   props: { className: string; style?: StyleProp<unknown> },
   snapshot: RuntimeSnapshot | undefined,
@@ -54,10 +58,26 @@ export function withChildPseudoState(
 
   if (styledIndexes.length === 0) return children;
 
+  const hasStructuralChild = styledIndexes.some((index) => {
+    const child = items[index];
+    return (
+      isValidElement(child) &&
+      hasClassName(child.props) &&
+      hasStructuralPseudoClassName(child.props.className)
+    );
+  });
+  if (!hasStructuralChild) return children;
+
   const first = styledIndexes[0];
   const last = styledIndexes[styledIndexes.length - 1];
   return items.map((child, index) => {
-    if (!isValidElement(child) || !hasClassName(child.props)) return child;
+    if (
+      !isValidElement(child) ||
+      !hasClassName(child.props) ||
+      !hasStructuralPseudoClassName(child.props.className)
+    ) {
+      return child;
+    }
     const existing = child.props.__nitrocssPseudoState ?? {};
     const state = {
       ...existing,

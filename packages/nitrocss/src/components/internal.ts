@@ -43,6 +43,8 @@ export interface LinkedNodeRegistration {
   cleanup: () => void;
 }
 
+const nativeRegistrationCache = new WeakMap<GetStylesResult, boolean>();
+
 /**
  * Most host styles are already owned by React: every wrapper passes the
  * resolved object as its normal `style` prop, and a NitroCssProvider publishes
@@ -66,8 +68,11 @@ function requiresNativeRegistration(
     return true;
   }
 
+  const cached = nativeRegistrationCache.get(resolved);
+  if (cached !== undefined) return cached;
+
   const style = resolved.styles as Record<string, unknown>;
-  if (
+  const required =
     "--nitrocss-gradient" in style ||
     "--nitrocss-clip-path" in style ||
     "--nitrocss-background-image" in style ||
@@ -76,16 +81,15 @@ function requiresNativeRegistration(
     "--nitrocss-gradient-angle" in style ||
     "--nitrocss-mask-transform" in style ||
     SCROLL_TIMELINE_SOURCE_PROP in style ||
-    SCROLL_TIMELINE_ANIMATION_PROP in style
-  ) {
-    return true;
-  }
+    SCROLL_TIMELINE_ANIMATION_PROP in style ||
+    // These selectors depend on native component/layout state rather than a
+    // runtime snapshot, so React cannot keep them current by itself.
+    /(?:^|\s)(?:group(?:-|\/|\s|$)|(?:hover|active|focus(?:-visible|-within)?|disabled|enabled|first|last):)/.test(
+      className,
+    );
 
-  // These selectors depend on native component/layout state rather than a
-  // runtime snapshot, so React cannot keep them current by itself.
-  return /(?:^|\s)(?:group(?:-|\/|\s|$)|(?:hover|active|focus(?:-visible|-within)?|disabled|enabled|first|last):)/.test(
-    className,
-  );
+  nativeRegistrationCache.set(resolved, required);
+  return required;
 }
 
 function normalizeComponentState(

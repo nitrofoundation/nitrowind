@@ -13,6 +13,15 @@ function propsOf(node: React.ReactNode): Array<Record<string, unknown>> {
 }
 
 describe("pseudo child state helpers", () => {
+  it("preserves child identity when no structural pseudo is present", () => {
+    const children = [
+      <div key="a" className="bg-surface" />,
+      <div key="b" className="text-white" />,
+    ];
+
+    expect(withChildPseudoState(children)).toBe(children);
+  });
+
   it("marks the first and last styled direct children", () => {
     const children = withChildPseudoState([
       <div key="a" className="first:bg-sky-500" />,
