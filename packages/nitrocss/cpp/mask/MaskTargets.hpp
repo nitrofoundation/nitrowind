@@ -1,10 +1,11 @@
 #pragma once
 
+#include "../effects/TargetRegistry.hpp"
+
 #include <folly/dynamic.h>
 
 #include <cstdint>
 #include <functional>
-#include <mutex>
 #include <unordered_map>
 #include <utility>
 
@@ -25,78 +26,38 @@ public:
   }
 
   void setDescriptor(Tag tag, const folly::dynamic& descriptor) {
-    bool changed = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      auto it = entries_.find(tag);
-      if (it == entries_.end()) {
-        entries_.emplace(tag, Entry{descriptor, ++generation_});
-        changed = true;
-      } else if (it->second.descriptor != descriptor) {
-        it->second = Entry{descriptor, ++generation_};
-        changed = true;
-      }
-    }
-    if (changed) notify();
+    registry_.set(tag, Entry{descriptor, 0},
+                  [](const Entry& current, const Entry& next) {
+                    return current.descriptor == next.descriptor;
+                  });
   }
 
   void clearDescriptor(Tag tag) {
-    bool changed = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      changed = entries_.erase(tag) > 0;
-    }
-    if (changed) notify();
+    registry_.clear(tag);
   }
 
   bool empty() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return entries_.empty();
+    return registry_.empty();
   }
 
   std::unordered_map<Tag, Entry> snapshot() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return entries_;
+    return registry_.snapshot();
   }
 
   void setInvalidationListener(std::function<void()> listener) {
-    bool populated = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      listener_ = std::move(listener);
-      populated = !entries_.empty();
-    }
-    if (populated) notify();
+    registry_.setInvalidationListener(std::move(listener));
   }
 
   void onMountTransaction() {
-    if (!empty()) notify();
+    registry_.onMountTransaction();
   }
 
   void resetForNewInstance() {
-    bool changed = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      changed = !entries_.empty();
-      entries_.clear();
-    }
-    if (changed) notify();
+    registry_.resetForNewInstance();
   }
 
 private:
-  void notify() {
-    std::function<void()> listener;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      listener = listener_;
-    }
-    if (listener) listener();
-  }
-
-  mutable std::mutex mutex_;
-  std::unordered_map<Tag, Entry> entries_;
-  std::function<void()> listener_;
-  uint64_t generation_ = 0;
+  TargetRegistry<Entry, Tag> registry_;
 };
 
 } // namespace nitrocss

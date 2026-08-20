@@ -1,15 +1,11 @@
 #include "NitroCssInstaller.hpp"
 
-#include "bgimage/BackgroundImageTargets.hpp"
-#include "clippath/ClipPathTargets.hpp"
 #include "core/NitroCssCore.hpp"
+#include "effects/NativeEffects.hpp"
+#include "gradient/GradientAngleOverrides.hpp"
+#include "mask/MaskTransformOverrides.hpp"
 #include "fabric/CommitBatcher.hpp"
 #include "fabric/LayoutObserver.hpp"
-#include "gradient/GradientAngleOverrides.hpp"
-#include "gradient/GradientTargets.hpp"
-#include "mask/MaskTargets.hpp"
-#include "mask/MaskTransformOverrides.hpp"
-#include "scroll/ScrollTimelineTargets.hpp"
 
 #include <react/renderer/uimanager/UIManagerBinding.h>
 
@@ -323,13 +319,7 @@ void NitroCssInstaller::resetForNewInstanceLocked() {
 void NitroCssInstaller::resetEngineStateLocked() {
   CommitBatcher::shared().resetForNewInstance();
   NitroCssCore::shared().resetForNewInstance();
-  GradientTargets::shared().resetForNewInstance();
-  ClipPathTargets::shared().resetForNewInstance();
-  BackgroundImageTargets::shared().resetForNewInstance();
-  MaskTargets::shared().resetForNewInstance();
-  ScrollTimelineTargets::shared().resetForNewInstance();
-  GradientAngleOverrides::shared().resetForNewInstance();
-  MaskTransformOverrides::shared().resetForNewInstance();
+  NativeEffects::resetForNewInstance();
 }
 
 void NitroCssInstaller::setContextContainer(

@@ -1,10 +1,11 @@
 #pragma once
 
+#include "../effects/TargetRegistry.hpp"
+
 #include <folly/dynamic.h>
 
 #include <cstdint>
 #include <functional>
-#include <mutex>
 #include <unordered_map>
 #include <utility>
 
@@ -61,26 +62,11 @@ public:
    * Notifies the platform applier only when the payload actually changed.
    */
   void setDescriptor(Tag tag, const folly::dynamic& descriptor, double borderRadius) {
-    bool changed = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      auto it = entries_.find(tag);
-      if (it == entries_.end()) {
-        Entry entry;
-        entry.descriptor = descriptor;
-        entry.borderRadius = borderRadius;
-        entry.generation = ++generationCounter_;
-        entries_.emplace(tag, std::move(entry));
-        changed = true;
-      } else if (it->second.descriptor != descriptor ||
-                 it->second.borderRadius != borderRadius) {
-        it->second.descriptor = descriptor;
-        it->second.borderRadius = borderRadius;
-        it->second.generation = ++generationCounter_;
-        changed = true;
-      }
-    }
-    if (changed) notify();
+    registry_.set(tag, Entry{descriptor, borderRadius, 0},
+                  [](const Entry& current, const Entry& next) {
+                    return current.descriptor == next.descriptor &&
+                        current.borderRadius == next.borderRadius;
+                  });
   }
 
   /**
@@ -88,28 +74,20 @@ public:
    * node unlinked). The applier's next flush prunes the view's layer.
    */
   void clearDescriptor(Tag tag) {
-    bool removed = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      removed = entries_.erase(tag) > 0;
-    }
-    if (removed) notify();
+    registry_.clear(tag);
   }
 
   bool empty() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return entries_.empty();
+    return registry_.empty();
   }
 
   bool contains(Tag tag) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return entries_.find(tag) != entries_.end();
+    return registry_.contains(tag);
   }
 
   /** Copy of every registered target, safe to consume off-thread. */
   std::unordered_map<Tag, Entry> snapshot() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return entries_;
+    return registry_.snapshot();
   }
 
   /**
@@ -119,13 +97,7 @@ public:
    * already exist so a late-attaching applier catches up.
    */
   void setInvalidationListener(std::function<void()> listener) {
-    bool hasEntries = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      listener_ = std::move(listener);
-      hasEntries = !entries_.empty();
-    }
-    if (hasEntries) notify();
+    registry_.setInvalidationListener(std::move(listener));
   }
 
   /**
@@ -134,8 +106,7 @@ public:
    * uses no gradients.
    */
   void onMountTransaction() {
-    if (empty()) return;
-    notify();
+    registry_.onMountTransaction();
   }
 
   /**
@@ -147,31 +118,13 @@ public:
    * painted for the previous instance.
    */
   void resetForNewInstance() {
-    bool hadEntries = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      hadEntries = !entries_.empty();
-      entries_.clear();
-    }
-    if (hadEntries) notify();
+    registry_.resetForNewInstance();
   }
 
 private:
   GradientTargets() = default;
 
-  void notify() {
-    std::function<void()> listener;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      listener = listener_;
-    }
-    if (listener) listener();
-  }
-
-  mutable std::mutex mutex_;
-  std::unordered_map<Tag, Entry> entries_;
-  std::function<void()> listener_;
-  uint64_t generationCounter_ = 0;
+  TargetRegistry<Entry, Tag> registry_;
 };
 
 } // namespace nitrocss

@@ -2,7 +2,9 @@
 
 #include "ShadowTreeMutator.hpp"
 
+#include <cstddef>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 namespace nitrocss {
@@ -27,11 +29,29 @@ public:
   void resetForNewInstance();
 
 private:
+  struct MutationKey {
+    facebook::react::SurfaceId surfaceId = 0;
+    const facebook::react::ShadowNodeFamily *family = nullptr;
+
+    bool operator==(const MutationKey &other) const {
+      return surfaceId == other.surfaceId && family == other.family;
+    }
+  };
+
+  struct MutationKeyHash {
+    std::size_t operator()(const MutationKey &key) const {
+      const auto surface = std::hash<facebook::react::SurfaceId>{}(key.surfaceId);
+      const auto family = std::hash<const void *>{}(key.family);
+      return surface ^ (family + 0x9e3779b9 + (surface << 6) + (surface >> 2));
+    }
+  };
+
   CommitBatcher() = default;
   void scheduleFlush();
 
   std::mutex mutex_;
   std::vector<NodeMutation> pending_;
+  std::unordered_map<MutationKey, std::size_t, MutationKeyHash> pendingIndex_;
   bool scheduled_ = false;
 };
 

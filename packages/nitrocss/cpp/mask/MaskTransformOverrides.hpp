@@ -1,9 +1,9 @@
 #pragma once
 
-#include <atomic>
+#include "../effects/TargetRegistry.hpp"
+
 #include <cstdint>
 #include <functional>
-#include <mutex>
 #include <optional>
 #include <unordered_map>
 #include <utility>
@@ -16,6 +16,7 @@ class MaskTransformOverrides {
   struct Transform {
     double angle{0.0};
     double scale{1.0};
+    uint64_t generation{0};
   };
 
   using InvalidationListener = std::function<void()>;
@@ -26,60 +27,35 @@ class MaskTransformOverrides {
   }
 
   void setTransform(int32_t tag, double angle, double scale) {
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      transforms_[tag] = {angle, scale};
-    }
-    invalidate();
+    registry_.set(tag, Transform{angle, scale, 0},
+                  [](const Transform& current, const Transform& next) {
+                    return current.angle == next.angle &&
+                        current.scale == next.scale;
+                  });
   }
 
   void clearTransform(int32_t tag) {
-    bool erased = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      erased = transforms_.erase(tag) > 0;
-    }
-    if (erased) invalidate();
+    registry_.clear(tag);
   }
 
   std::optional<Transform> transformForTag(int32_t tag) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    const auto it = transforms_.find(tag);
-    if (it == transforms_.end()) return std::nullopt;
-    return it->second;
+    return registry_.get(tag);
   }
 
   void setInvalidationListener(InvalidationListener listener) {
-    std::lock_guard<std::mutex> lock(listenerMutex_);
-    listener_ = std::move(listener);
+    registry_.setInvalidationListener(std::move(listener));
   }
 
-  void onMountTransaction() { invalidate(); }
+  void onMountTransaction() { registry_.onMountTransaction(); }
 
   void resetForNewInstance() {
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      transforms_.clear();
-    }
-    invalidate();
+    registry_.resetForNewInstance();
   }
 
  private:
   MaskTransformOverrides() = default;
 
-  void invalidate() {
-    InvalidationListener listener;
-    {
-      std::lock_guard<std::mutex> lock(listenerMutex_);
-      listener = listener_;
-    }
-    if (listener) listener();
-  }
-
-  mutable std::mutex mutex_;
-  std::unordered_map<int32_t, Transform> transforms_;
-  std::mutex listenerMutex_;
-  InvalidationListener listener_;
+  TargetRegistry<Transform, int32_t> registry_;
 };
 
 } // namespace nitrocss

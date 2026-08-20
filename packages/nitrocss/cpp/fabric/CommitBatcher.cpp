@@ -2,8 +2,6 @@
 
 #include "../NitroCssInstaller.hpp"
 
-#include <algorithm>
-
 namespace nitrocss {
 
 CommitBatcher &CommitBatcher::shared() {
@@ -20,17 +18,15 @@ void CommitBatcher::enqueue(std::vector<NodeMutation> mutations) {
     for (auto &incoming : mutations) {
       if (incoming.family == nullptr || !incoming.props.isObject())
         continue;
-      auto existing = std::find_if(
-          pending_.begin(), pending_.end(), [&](const NodeMutation &item) {
-            return item.surfaceId == incoming.surfaceId &&
-                   item.family.get() == incoming.family.get();
-          });
-      if (existing == pending_.end()) {
+      const MutationKey key{incoming.surfaceId, incoming.family.get()};
+      const auto existing = pendingIndex_.find(key);
+      if (existing == pendingIndex_.end()) {
+        pendingIndex_.emplace(key, pending_.size());
         pending_.push_back(std::move(incoming));
         continue;
       }
       for (const auto &pair : incoming.props.items()) {
-        existing->props[pair.first] = pair.second;
+        pending_[existing->second].props[pair.first] = pair.second;
       }
     }
     if (!pending_.empty() && !scheduled_) {
@@ -58,6 +54,7 @@ bool CommitBatcher::flush() {
   {
     std::lock_guard<std::mutex> lock(mutex_);
     batch.swap(pending_);
+    pendingIndex_.clear();
     scheduled_ = false;
   }
   return ShadowTreeMutator::commit(batch);
@@ -75,6 +72,7 @@ void CommitBatcher::resetForNewInstance() {
   // from the replacement runtime can schedule a fresh flush.
   std::lock_guard<std::mutex> lock(mutex_);
   pending_.clear();
+  pendingIndex_.clear();
   scheduled_ = false;
 }
 

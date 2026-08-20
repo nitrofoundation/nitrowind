@@ -1,15 +1,10 @@
 #include "NitroCssCore.hpp"
 
-#include "../bgimage/BackgroundImageTargets.hpp"
-#include "../clippath/ClipPathTargets.hpp"
+#include "NativeStyleNormalizer.hpp"
+#include "../effects/NativeEffects.hpp"
 #include "../fabric/LayoutObserver.hpp"
-#include "../fabric/ShadowTreeMutator.hpp"
 #include "../fabric/CommitBatcher.hpp"
-#include "../gradient/GradientAngleOverrides.hpp"
-#include "../mask/MaskTransformOverrides.hpp"
-#include "../gradient/GradientTargets.hpp"
-#include "../mask/MaskTargets.hpp"
-#include "../scroll/ScrollTimelineTargets.hpp"
+#include "../grid/GridConfigParser.hpp"
 #include "../grid/GridLayoutEngine.hpp"
 
 #include <cstdint>
@@ -378,8 +373,7 @@ void NitroCssCore::link(Tag tag,
   // Clearing on link guarantees this node starts from its own descriptor angle;
   // if it is itself an animated gradient, its JS driver re-sets the override
   // right after mount (useEffect runs post-link).
-  GradientAngleOverrides::shared().clearAngle(tag);
-  MaskTransformOverrides::shared().clearTransform(tag);
+  NativeEffects::clear(tag);
 
   LinkedNode node;
   node.tag = tag;
@@ -400,7 +394,7 @@ void NitroCssCore::link(Tag tag,
   if (node.inlineStyle && node.inlineStyle->isObject()) {
     if (auto* g = node.inlineStyle->get_ptr("__nitrocssGrid");
         g != nullptr && g->isObject()) {
-      gridConfig = parseGridConfig(*g);
+      gridConfig = grid::parseGridConfig(*g);
       isGrid = !gridConfig.columns.empty();
     }
     node.inlineStyle->erase("__nitrocssGrid");
@@ -481,13 +475,7 @@ void NitroCssCore::link(Tag tag,
 
 void NitroCssCore::unlink(Tag tag, ShadowNodeFamily::Shared expectedFamily) {
   if (!index_.remove(tag, expectedFamily)) return;
-  GradientTargets::shared().clearDescriptor(tag);
-  ClipPathTargets::shared().clearDescriptor(tag);
-  BackgroundImageTargets::shared().clearDescriptor(tag);
-  MaskTargets::shared().clearDescriptor(tag);
-  ScrollTimelineTargets::shared().clear(tag);
-  GradientAngleOverrides::shared().clearAngle(tag);
-  MaskTransformOverrides::shared().clearTransform(tag);
+  NativeEffects::clear(tag);
   {
     std::lock_guard<std::mutex> lock(containerMutex_);
     auto it = containerTags_.find(tag);
@@ -554,18 +542,18 @@ bool NitroCssCore::updateShadowTree(
     folly::dynamic props = entry.second && entry.second->isObject()
                                ? *entry.second
                                : folly::dynamic::object();
-    processColorProps(props);
+    NativeStyleNormalizer::normalize(props);
     batch.push_back({node.family, node.surfaceId, std::move(props)});
   }
   if (batch.empty()) return false;
-  return ShadowTreeMutator::commit(batch);
+  return CommitBatcher::shared().commitNow(std::move(batch));
 }
 
 folly::dynamic NitroCssCore::resolveAccent(const LinkedAccent& accent,
                                             const ResolveContext& ctx) {
   uint32_t mask = 0;
   folly::dynamic style = styleEngine_.resolve(accent.className, ctx, mask);
-  processColorProps(style);
+  NativeStyleNormalizer::normalize(style);
 
   folly::dynamic props = folly::dynamic::object();
   auto copyValue = [&](const std::string& key) -> bool {
@@ -865,106 +853,8 @@ folly::dynamic NitroCssCore::resolveForNode(const LinkedNode& node,
   if (node.inlineStyle && node.inlineStyle->isObject()) {
     mergeFolly(style, *node.inlineStyle);
   }
-  consumeNativeStickyPosition(style);
-  processColorProps(style);
-  // Native gradient: the folded descriptor never rides on committed RN props —
-  // it is routed to GradientTargets, and the platform applier paints it as a
-  // CAGradientLayer on the target view's OWN layer (RN backgroundImage-style).
-  // Registering here (resolve time) means first paint, theme/scheme recomputes
-  // and state changes all refresh the registry through the same single path.
-  if (auto* gradient = style.get_ptr("--nitrocss-gradient");
-      gradient != nullptr && gradient->isObject()) {
-    if (node.tag != 0) {
-      double radius = 0.0;
-      if (auto* r = style.get_ptr("borderRadius");
-          r != nullptr && r->isNumber()) {
-        radius = r->asDouble();
-      }
-      // Gradient-border descriptors (an `inner` fill painted over the
-      // gradient's padding box) also need the resolved border width to size
-      // the inset — the width can come from a different class than the
-      // descriptor, so attach it here, after the buckets merged.
-      if (gradient->get_ptr("inner") != nullptr) {
-        folly::dynamic descriptor = *gradient;
-        if (auto* bw = style.get_ptr("borderWidth");
-            bw != nullptr && bw->isNumber()) {
-          descriptor["bw"] = bw->asDouble();
-        }
-        GradientTargets::shared().setDescriptor(node.tag, descriptor, radius);
-      } else {
-        GradientTargets::shared().setDescriptor(node.tag, *gradient, radius);
-      }
-    }
-    style.erase("--nitrocss-gradient");
-  } else if (node.tag != 0) {
-    // The class no longer folds a gradient (e.g. state/variant flip) — make
-    // sure a previously registered paint is removed. No-op for the common case.
-    GradientTargets::shared().clearDescriptor(node.tag);
-  }
-  // Native clip-path: same routing model as the gradient above — the folded
-  // descriptor is a paint/mask instruction for the target view's own layer, not
-  // an RN prop, so it is handed to ClipPathTargets and stripped from the style.
-  if (auto* clipPath = style.get_ptr("--nitrocss-clip-path");
-      clipPath != nullptr && clipPath->isObject()) {
-    if (node.tag != 0) {
-      ClipPathTargets::shared().setDescriptor(node.tag, *clipPath);
-    }
-    style.erase("--nitrocss-clip-path");
-  } else if (node.tag != 0) {
-    ClipPathTargets::shared().clearDescriptor(node.tag);
-  }
-  // Native background-image: url() — routed to its registry and painted as an
-  // image layer on the view's own backing layer, mirroring the gradient path.
-  if (auto* bgImage = style.get_ptr("--nitrocss-background-image");
-      bgImage != nullptr && bgImage->isObject()) {
-    const auto* type = bgImage->get_ptr("type");
-    const bool isNone = type != nullptr && type->isString() &&
-        type->getString() == "none";
-    if (node.tag != 0 && isNone) {
-      BackgroundImageTargets::shared().clearDescriptor(node.tag);
-    } else if (node.tag != 0) {
-      BackgroundImageTargets::shared().setDescriptor(node.tag, *bgImage);
-    }
-    style.erase("--nitrocss-background-image");
-  } else if (node.tag != 0) {
-    BackgroundImageTargets::shared().clearDescriptor(node.tag);
-  }
-  if (auto* mask = style.get_ptr("--nitrocss-mask");
-      mask != nullptr && mask->isObject()) {
-    const auto* source = mask->get_ptr("source");
-    const auto* type = source != nullptr && source->isObject()
-        ? source->get_ptr("type")
-        : nullptr;
-    const bool isNone = type != nullptr && type->isString() && type->getString() == "none";
-    if (node.tag != 0 && isNone) MaskTargets::shared().clearDescriptor(node.tag);
-    else if (node.tag != 0) MaskTargets::shared().setDescriptor(node.tag, *mask);
-    style.erase("--nitrocss-mask");
-  } else if (node.tag != 0) {
-    MaskTargets::shared().clearDescriptor(node.tag);
-  }
-  // Animated gradient angle is a RUNTIME-ONLY track: the JS driver pushes each
-  // frame's angle through GradientAngleOverrides via the JSI channel. The marker
-  // must never reach RN or the native paint registry — strip it unconditionally.
-  if (style.get_ptr("--nitrocss-gradient-angle") != nullptr) {
-    style.erase("--nitrocss-gradient-angle");
-  }
-  if (style.get_ptr("--nitrocss-mask-transform") != nullptr) {
-    style.erase("--nitrocss-mask-transform");
-  }
-  if (auto* source = style.get_ptr("--nitrocss-scroll-timeline-source");
-      source != nullptr && source->isObject()) {
-    if (node.tag != 0) ScrollTimelineTargets::shared().setSource(node.tag, *source);
-    style.erase("--nitrocss-scroll-timeline-source");
-  } else if (node.tag != 0) {
-    ScrollTimelineTargets::shared().clearSource(node.tag);
-  }
-  if (auto* animation = style.get_ptr("--nitrocss-scroll-timeline-animation");
-      animation != nullptr && animation->isObject()) {
-    if (node.tag != 0) ScrollTimelineTargets::shared().setAnimation(node.tag, *animation);
-    style.erase("--nitrocss-scroll-timeline-animation");
-  } else if (node.tag != 0) {
-    ScrollTimelineTargets::shared().clearAnimation(node.tag);
-  }
+  NativeStyleNormalizer::normalize(style);
+  NativeEffects::extract(node.tag, style);
   return style;
 }
 
